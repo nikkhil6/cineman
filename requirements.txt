@@ -1,0 +1,13 @@
+# Web Framework
+flask>=3.0.0
+
+# LangChain dependencies
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-google-genai>=1.0.0
+
+# HTTP requests
+requests>=2.31.0
+
+# Environment variables (optional but recommended)
+python-dotenv>=1.0.0

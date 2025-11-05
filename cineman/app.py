@@ -17,6 +17,12 @@ except Exception as e:
     print(f"FATAL: Failed to load AI Chain: {e}")
     movie_chain = None  # Set to None to prevent calls
 
+# --- Health Check Endpoint (for Render) ---
+@app.route('/health')
+def health():
+    """Health check endpoint for deployment monitoring."""
+    return jsonify({"status": "healthy", "service": "cineman"}), 200
+
 # --- Route to serve the HTML chat interface ---
 @app.route('/')
 def index():

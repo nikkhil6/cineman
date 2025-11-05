@@ -16,16 +16,18 @@
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; 
             background-color: #f5f5f5;
+            /* hero/background image (JPG) - kept on body for backward compatibility */
             background-image: url('/static/background.jpg');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            background-attachment: fixed;
+            /* avoid fixed attachment on mobile (causes many mobile browsers to ignore the image) */
+            background-attachment: scroll;
             position: relative;
             min-height: 100vh;
         }
         
-        /* Transparent overlay for background image */
+        /* Very subtle transparent overlay for better contrast */
         body::before {
             content: '';
             position: fixed;
@@ -33,49 +35,56 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(245, 245, 245, 0.15); /* Very low opacity for maximum background visibility */
+            background-color: rgba(245, 245, 245, 0.08);
             z-index: 0;
+            pointer-events: none;
         }
+
+        /* Container that sits on top of background */
         .chat-container { 
-            max-width: 800px; 
-            margin: 50px auto; 
-            border: 1px solid #ddd;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.95); /* Slightly transparent white for elegant blend */
-            backdrop-filter: blur(5px); /* Optional: adds a nice blur effect */
+            max-width: 920px; 
+            margin: 40px auto; 
+            box-shadow: 0 8px 24px rgba(2,16,34,0.08);
+            border-radius: 14px;
+            /* make the card slightly translucent so the background image shows through */
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(6px); /* gives frosted glass effect */
+            -webkit-backdrop-filter: blur(6px);
             overflow: hidden;
-            min-height: 600px;
+            min-height: 640px;
             position: relative;
             z-index: 10;
+            border: 1px solid rgba(0,0,0,0.04);
         }
         
-        /* Header: Clean Black Bar */
+        /* Header */
         .chat-header {
             padding: 12px 20px;
-            background-color: #f7f7f7;
+            background-color: rgba(247,247,247,0.9);
             color: #1d1d1f;
-            border-bottom: 1px solid #eee;
-            font-weight: 600;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 12px;
         }
         
         .header-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
             object-fit: cover;
-            border: 2px solid #ddd;
+            border: 2px solid rgba(0,0,0,0.04);
+            background: #fff;
+            flex-shrink: 0;
         }
 
-        /* Chat Box Styling */
+        /* Chat Box Styling - transparent so background is visible behind messages */
         #chatbox { 
-            height: 550px; 
+            height: 520px; 
             overflow-y: auto; 
             padding: 20px; 
-            background-color: white;
+            background-color: transparent;
             scroll-behavior: smooth; /* SMOOTH SCROLLING (Improvement 2) */
         }
         
@@ -85,6 +94,7 @@
             display: flex;
             align-items: flex-start;
             gap: 10px;
+            clear: both;
         }
         
         .message-container.user-container {
@@ -99,17 +109,19 @@
             object-fit: cover;
             border: 2px solid #ddd;
             flex-shrink: 0;
+            background: #fff;
         }
         
         /* Agent Bubble (Clean Neutral Gray) */
         .agent-message { 
-            background-color: #f0f0f0;
+            background-color: rgba(240,240,240,0.95);
             color: #1d1d1f;
             padding: 12px 18px; 
             border-radius: 18px;
             max-width: 85%; 
             line-height: 1.6;
             flex: 1;
+            box-shadow: 0 6px 18px rgba(2,16,34,0.03);
         }
         /* User Bubble (Primary Color) */
         .user-message { 
@@ -118,8 +130,6 @@
             padding: 12px 18px; 
             border-radius: 18px; 
             max-width: 85%; 
-            float: right;
-            clear: both;
             line-height: 1.6;
         }
         
@@ -129,13 +139,13 @@
 
         /* Loading Indicator Style (REFINED LOADING STATE - Improvement 3) */
         .loading-message {
-            background-color: #fcf8e3; /* Light, unobtrusive yellow */
+            background-color: #fff7d6; /* Light, unobtrusive yellow */
             padding: 10px 15px;
             border-radius: 18px;
-            max-width: 25%;
+            max-width: 45%;
             font-style: italic;
-            color: #777;
-            animation: pulse 1s infinite;
+            color: #666;
+            animation: pulse 1.2s infinite;
         }
         
         .loading-container {
@@ -144,35 +154,93 @@
             gap: 10px;
         }
         @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+            0% { opacity: 1; transform: translateY(0); }
+            50% { opacity: 0.6; transform: translateY(2px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
+
+        /* Suggestion chips */
+        .suggestions {
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            margin-top:12px;
+        }
+        .chip {
+            background: rgba(0,112,201,0.08);
+            color: #0070c9;
+            padding:8px 12px;
+            border-radius: 999px;
+            cursor:pointer;
+            border:1px solid rgba(0,112,201,0.12);
+            font-weight:600;
+            font-size: 0.95rem;
+        }
+        .chip:active { transform: translateY(1px); }
 
         /* Input Area: Thin Border, Clean Controls */
         .input-group-container {
-            padding: 15px 20px;
-            border-top: 1px solid #eee;
+            padding: 12px 16px;
+            border-top: 1px solid rgba(0,0,0,0.04);
+            background: rgba(255,255,255,0.96);
+            display:flex;
+            gap:10px;
+            align-items:center;
         }
+        .input-group-container input[type="text"] {
+            flex:1;
+            min-height:46px;
+            border-radius: 10px;
+        }
+        .btn-send { min-width:110px; }
 
+        /* Mobile adjustments */
+        @media (max-width: 720px) {
+          .chat-container { margin: 20px; min-height: 560px; }
+          #chatbox { height: 420px; padding: 14px; }
+          .header-logo { width:40px; height:40px; }
+        }
+        @media (max-width: 420px) {
+          /* switch to smaller background reference or emblem if needed */
+          body {
+            background-position: center top;
+            background-size: cover;
+          }
+          #chatbox { height: 360px; }
+        }
     </style>
 </head>
 <body>
-    <div class="chat-container">
+    <div class="chat-container" role="main" aria-label="CineMan chat container">
         <div class="chat-header">
             <img src="{{ url_for('static', filename='cineman1.jpg') }}" alt="CineMan" class="header-logo" onerror="this.style.display='none'">
             <span>🎬 CineMan: Your next watch is waiting</span>
         </div>
 
-        <div id="chatbox" class="clearfix">
+        <div id="chatbox" class="clearfix" aria-live="polite" aria-atomic="false">
+            <!-- initial greeting -->
+            <div class="message-container">
+                <img src="{{ url_for('static', filename='cineman1.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
+                <div class="agent-message">Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a suggestion below.</div>
             </div>
+
+            <!-- suggestion chips -->
+            <div class="message-container" id="suggestion-row">
+                <div class="suggestions" id="suggestions" aria-hidden="false">
+                    <button class="chip" type="button">Sci‑fi with twists</button>
+                    <button class="chip" type="button">Comedy for family</button>
+                    <button class="chip" type="button">Classic drama</button>
+                </div>
+            </div>
+        </div>
         
         <div class="input-group-container d-flex">
             <input type="text" id="userInput" 
                    class="form-control me-2" 
                    placeholder="Ask for a sci-fi thriller or a nostalgic comedy..." 
+                   aria-label="Ask CineMan for a movie"
                    onkeydown="if(event.keyCode==13 && !document.getElementById('sendButton').disabled) sendMessage()">
-            <button onclick="sendMessage()" class="btn btn-primary" id="sendButton">Suggest</button>
+            <button onclick="sendMessage()" class="btn btn-primary btn-send" id="sendButton">Suggest</button>
         </div>
     </div>
 
@@ -183,6 +251,7 @@
         const chatbox = document.getElementById('chatbox');
         const userInput = document.getElementById('userInput');
         const sendButton = document.getElementById('sendButton');
+        const suggestions = document.getElementById('suggestions');
 
         function addMessage(sender, message, isLoader = false) {
             const msgContainer = document.createElement('div');
@@ -213,7 +282,7 @@
                     msgContainer.appendChild(avatar);
                     
                     // Render Markdown content
-                    msgDiv.innerHTML = marked.parse(message);
+                    msgDiv.innerHTML = marked.parse(message || '');
                 } else {
                     msgDiv.textContent = message;
                 }
@@ -225,17 +294,23 @@
             return msgDiv; 
         }
 
-        // IMPROVEMENT 1: STOP USER INTERACTION
+        // DISABLE/ENABLE INPUT while processing
         function toggleInput(disabled) {
             userInput.disabled = disabled;
             sendButton.disabled = disabled;
             sendButton.textContent = disabled ? 'Processing...' : 'Suggest';
+            if (!disabled) userInput.focus();
         }
 
-        function showWelcomeMessage() {
-            const welcomeText = "CineMan reporting for duty! I end your search for the perfect film and save your night with an unexpected hit. Ask me: 'Recommend a nostalgic 80s movie.'";
-            addMessage('Agent', welcomeText);
-        }
+        // Suggestion chips: populate input, focus, and optionally submit
+        suggestions?.addEventListener('click', (e) => {
+            const chip = e.target.closest('.chip');
+            if (!chip) return;
+            const text = chip.textContent.trim();
+            userInput.value = text;
+            userInput.focus();
+            // Optional: auto-send on long press or Ctrl+click — currently only fills input
+        });
 
         async function sendMessage() {
             const message = userInput.value.trim();
@@ -246,8 +321,8 @@
             userInput.value = '';
             toggleInput(true); // Disable input
 
-            // 2. Display Loading State
-            const loaderElement = addMessage('Agent', 'Thinking...', true); // Refined Loading Message
+            // 2. Display Loading State (keeps parent container so we can remove it)
+            const loaderElement = addMessage('Agent', 'CineMan is thinking...', true);
 
             try {
                 const response = await fetch('/chat', {
@@ -256,16 +331,19 @@
                     body: JSON.stringify({ message: message })
                 });
 
+                if (!response.ok) {
+                    throw new Error('Non-200 response');
+                }
                 const data = await response.json();
                 
                 // 3. Remove Loader
-                loaderElement.parentElement.remove(); 
+                if (loaderElement && loaderElement.parentElement) loaderElement.parentElement.remove(); 
                 
                 // 4. Add the agent's response
-                addMessage('Agent', data.response);
+                addMessage('Agent', data.response || 'No response from AI.');
 
             } catch (error) {
-                loaderElement.parentElement.remove();
+                if (loaderElement && loaderElement.parentElement) loaderElement.parentElement.remove();
                 addMessage('Agent', 'Error: Could not connect to the AI service. Please restart the Flask server.');
                 console.error('API Error:', error);
             } finally {
@@ -274,9 +352,14 @@
             }
         }
         
-        // SINGLE SOURCE FOR WELCOME MESSAGE
-        window.addEventListener('DOMContentLoaded', showWelcomeMessage);
-
+        // Show welcome message only if no messages were added server-side
+        window.addEventListener('DOMContentLoaded', () => {
+            // If the chatbox is empty (server didn't render greeting), add one
+            const existingAgentMsgs = chatbox.querySelectorAll('.agent-message');
+            if (existingAgentMsgs.length === 0) {
+                addMessage('Agent', "CineMan reporting for duty! Ask: 'Recommend a nostalgic 80s movie.'");
+            }
+        });
     </script>
 </body>
 </html>

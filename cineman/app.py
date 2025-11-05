@@ -5,8 +5,9 @@ import os
 # Get the project root directory (parent of cineman package)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
+STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
-app = Flask(__name__, template_folder=TEMPLATE_DIR)
+app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
 # Cache the chain instance globally (Phase 1 simplicity)
 # In Phase 3, we would manage memory here.
@@ -16,6 +17,12 @@ try:
 except Exception as e:
     print(f"FATAL: Failed to load AI Chain: {e}")
     movie_chain = None  # Set to None to prevent calls
+
+# --- Health Check Endpoint (for Render) ---
+@app.route('/health')
+def health():
+    """Health check endpoint for deployment monitoring."""
+    return jsonify({"status": "healthy", "service": "cineman"}), 200
 
 # --- Route to serve the HTML chat interface ---
 @app.route('/')

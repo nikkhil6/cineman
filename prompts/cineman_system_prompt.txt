@@ -57,9 +57,4 @@ You are **The Cinephile**, a highly knowledgeable, enthusiastic, and discerning 
 **Why It's a Gem:**
 [Explain why this specific movie is a high-quality, under-the-radar choice that deserves attention. Limit to **one** sentence, max 25 words.]
 
----
-**WOULD YOU LIKE ME TO...**
-A. Substitute one of the recommendations?
-B. Save this list to your watched history?
-C. Give me a new genre or mood?
 """

@@ -4,27 +4,15 @@ from langchain_core.output_parsers import StrOutputParser
 import os
 import sys
 
-# --- AGENT CONFIGURATION (The Cinephile Persona) ---
-SYSTEM_PROMPT = """
-You are **The Cinephile**, a highly knowledgeable and enthusiastic AI movie recommendation agent. Your primary function is to save the user time searching by providing outstanding movie recommendations.
-
-**RULES AND FORMAT (CRITICAL):**
-1. Maintain an enthusiastic, expert, and conversational tone.
-2. Only recommend TWO movies per request.
-3. Your response must strictly follow the MANDATORY OUTPUT STRUCTURE below.
-
-**MANDATORY OUTPUT STRUCTURE:**
-### 🎬 Your Perfect Match: [Movie Title] ([Year])
-
-**1. The Quick Pitch:**
-[A short, 1-2 sentence compelling summary of the movie's plot and vibe.]
-
-**2. Why It Matches Your Request:**
-[A brief, targeted explanation of why this movie specifically fits the user's mood, genre, or criteria. Limit to 1-2 sentences under 25 words in total]
-
-**3. Award & Prestige Highlight:**
-[Mention one to two major, prestigious awards or nominations (e.g., Oscar, Golden Globe, Cannes, BAFTA) the movie received to highlight its quality. Limit to 1-2 sentences under 25 words in total]
-"""
+# Helper function to load the prompt content
+def load_prompt_from_file(filepath):
+    """Reads the prompt text from an external file."""
+    try:
+        with open(filepath, 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        # Crucial for robust code: raise an error if the config is missing
+        raise FileNotFoundError(f"Prompt file not found at: {filepath}")
 
 # --- CORE CHAIN LOGIC ---
 def get_recommendation_chain():
@@ -43,11 +31,14 @@ def get_recommendation_chain():
         temperature=1.0,
         google_api_key=gemini_api_key
     ) 
-    
+    # Load the prompt dynamically from the file
+    PROMPT_FILEPATH = "prompts/cineman_system_prompt.txt"
+    SYSTEM_PROMPT_CONTENT = load_prompt_from_file(PROMPT_FILEPATH)
+
     # 2. Define the Prompt
     prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", SYSTEM_PROMPT),
+            ("system", SYSTEM_PROMPT_CONTENT),
             ("human", "{user_input}"),
         ]
     )

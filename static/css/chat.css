@@ -1,203 +1,200 @@
-/* Chat UI styling for Cineman
-   - uses a background image (SVG/PNG) on the container
+/* Chat UI styling for CineMan
+   - uses cineman_hero.jpg on the container
    - keeps chat-panel readable with a frosted/transparent panel
    - mobile-first media queries to ensure visibility on phones
 */
 
 :root{
-    --panel-bg: rgba(255,255,255,0.86); /* fallback */
-    --panel-bg-dark: rgba(10,12,18,0.6);
-    --accent: #0b72b8;
-    --radius: 14px;
-    --max-width: 920px;
-    --gutter: 16px;
-  }
-  
-  /* Main chat area with background image */
+  --panel-bg: rgba(255,255,255,0.86);
+  --panel-bg-dark: rgba(10,12,18,0.6);
+  --accent: #0b72b8;
+  --radius: 14px;
+  --max-width: 920px;
+  --gutter: 16px;
+}
+
+/* Main chat area with background image */
+.chat-container{
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  box-sizing: border-box;
+
+  /* NOTE: updated to use cineman_hero.jpg */
+  background-image: url('/static/cineman_hero.jpg');
+  background-position: center 10%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: scroll; /* mobile-friendly */
+  position: relative;
+  overflow: hidden;
+}
+
+/* dimmer / spotlight overlay to ensure contrast on text */
+.chat-container::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 10%, rgba(255,217,122,0.12) 0%, rgba(2,16,34,0.45) 50%, rgba(2,16,34,0.65) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* central chat panel */
+.chat-panel{
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 12px;
+  position: relative;
+  z-index: 2; /* above background overlay */
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 14px;
+  box-sizing: border-box;
+}
+
+/* The "glass" chat box where messages live */
+.chat-box{
+  background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,255,255,0.82));
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: 0 8px 30px rgba(2,16,34,0.28);
+  border: 1px solid rgba(10,10,10,0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+/* Alternative dark panel (class to toggle) */
+.chat-box.dark{
+  background: linear-gradient(180deg, rgba(10,12,18,0.7), rgba(10,12,18,0.6));
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* header area with small emblem */
+.chat-header{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 6px;
+}
+.chat-header .emblem{
+  width: 46px;
+  height: 46px;
+  background-image: url('/static/images/cine_emblem-small.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 8px;
+  flex: 0 0 46px;
+}
+
+/* message bubble styles */
+.msg{
+  display: inline-block;
+  padding: 10px 14px;
+  margin: 6px 0;
+  border-radius: 12px;
+  max-width: 78%;
+  line-height: 1.35;
+  font-size: 15px;
+  box-shadow: 0 6px 18px rgba(2,16,34,0.06);
+}
+.msg.user{
+  background: linear-gradient(180deg,#f1f8ff,#ffffff);
+  margin-left: auto;
+  text-align: right;
+}
+.msg.cineman{
+  background: linear-gradient(180deg,#fff9e6,#fff2d4);
+  border: 1px solid rgba(0,0,0,0.03);
+}
+
+/* quick-suggestion chips */
+.suggestions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:8px;
+}
+.chip{
+  background: rgba(11,114,184,0.1);
+  color: var(--accent);
+  padding:8px 12px;
+  border-radius: 999px;
+  cursor:pointer;
+  font-weight:600;
+  border:1px solid rgba(11,114,184,0.12);
+  transition:transform .12s ease, background .12s ease;
+}
+.chip:active{ transform: translateY(1px) scale(.995); }
+.chip:hover{ background: rgba(11,114,184,0.12); }
+
+/* input area */
+.chat-input{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding: 10px;
+}
+.chat-input textarea{
+  flex:1;
+  min-height:48px;
+  max-height:160px;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid rgba(2,16,34,0.06);
+  resize:vertical;
+  font-size:15px;
+  line-height:1.35;
+}
+.send-btn{
+  background: var(--accent);
+  color:#fff;
+  padding:10px 14px;
+  border-radius:10px;
+  border:none;
+  cursor:pointer;
+}
+
+/* mobile adjustments */
+@media (max-width: 720px){
+  :root { --max-width: 720px; --gutter: 12px; }
   .chat-container{
-    width: 100%;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 28px;
-    box-sizing: border-box;
-  
-    /* background image: update path if you place the SVG somewhere else */
-    background-image: url('/static/images/cineman_hero.svg');
-    background-position: center 10%; /* slightly higher so hero is visible */
-    background-repeat: no-repeat;
-    background-size: cover;
-    /* background-attachment: fixed is unreliable on mobile - don't use */
-    background-attachment: scroll;
-    position: relative;
-    overflow: hidden;
-  }
-  
-  /* dimmer / spotlight overlay to ensure contrast on text */
-  .chat-container::before{
-    content: "";
-    position: absolute;
-    inset: 0;
-    /* small gradient at top, darker toward bottom for contrast */
-    background: radial-gradient(ellipse at 50% 10%, rgba(255,217,122,0.12) 0%, rgba(2,16,34,0.45) 50%, rgba(2,16,34,0.65) 100%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  
-  /* central chat panel */
-  .chat-panel{
-    width: 100%;
-    max-width: var(--max-width);
-    margin: 12px;
-    position: relative;
-    z-index: 2; /* above background overlay */
-    display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 14px;
-    box-sizing: border-box;
-  }
-  
-  /* The "glass" chat box where messages live */
-  .chat-box{
-    background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,255,255,0.82));
-    border-radius: var(--radius);
+    background-position: center top;
+    background-size: 150% auto;
     padding: 18px;
-    box-shadow: 0 8px 30px rgba(2,16,34,0.28);
-    border: 1px solid rgba(10,10,10,0.04);
-    backdrop-filter: blur(8px); /* creates frosted glass effect; supported on modern browsers */
-    -webkit-backdrop-filter: blur(8px);
-    max-height: calc(100vh - 220px);
-    overflow: auto;
   }
-  
-  /* Alternative dark panel (class to toggle) */
-  .chat-box.dark{
-    background: linear-gradient(180deg, rgba(10,12,18,0.7), rgba(10,12,18,0.6));
-    color: #fff;
-    border: 1px solid rgba(255,255,255,0.04);
-  }
-  
-  /* header area with small emblem (keeps hero visible) */
-  .chat-header{
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 6px;
-  }
-  .chat-header .emblem{
-    width: 46px;
-    height: 46px;
-    background-image: url('/static/images/cine_emblem-small.svg'); /* optional small emblem file */
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    border-radius: 8px;
-    flex: 0 0 46px;
-  }
-  
-  /* message bubble styles */
-  .msg{
-    display: inline-block;
-    padding: 10px 14px;
-    margin: 6px 0;
+  .chat-box{
+    padding: 12px;
+    max-height: calc(100vh - 160px);
     border-radius: 12px;
-    max-width: 78%;
-    line-height: 1.35;
-    font-size: 15px;
-    box-shadow: 0 6px 18px rgba(2,16,34,0.06);
   }
-  .msg.user{
-    background: linear-gradient(180deg,#f1f8ff,#ffffff);
-    margin-left: auto;
-    text-align: right;
+  .chat-header .emblem{ width: 40px; height: 40px; }
+}
+
+/* very small screens: fallback to emblem-only for speed */
+@media (max-width: 420px){
+  .chat-container{
+    background-image: url('/static/images/cine_emblem-small.svg');
+    background-size: 160px 160px;
+    background-position: center top 18px;
+    background-repeat: no-repeat;
+    padding-top: 120px;
   }
-  .msg.cineman{
-    background: linear-gradient(180deg,#fff9e6,#fff2d4);
-    border: 1px solid rgba(0,0,0,0.03);
-  }
-  
-  /* quick-suggestion chips */
-  .suggestions{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-    margin-top:8px;
-  }
-  .chip{
-    background: rgba(11,114,184,0.1);
-    color: var(--accent);
-    padding:8px 12px;
-    border-radius: 999px;
-    cursor:pointer;
-    font-weight:600;
-    border:1px solid rgba(11,114,184,0.12);
-    transition:transform .12s ease, background .12s ease;
-  }
-  .chip:active{ transform: translateY(1px) scale(.995); }
-  .chip:hover{ background: rgba(11,114,184,0.12); }
-  
-  /* input area */
-  .chat-input{
-    display:flex;
-    gap:8px;
-    align-items:center;
+  .chat-box{
+    background: rgba(255,255,255,0.92);
     padding: 10px;
   }
-  .chat-input textarea{
-    flex:1;
-    min-height:48px;
-    max-height:160px;
-    padding:10px 12px;
-    border-radius:10px;
-    border:1px solid rgba(2,16,34,0.06);
-    resize:vertical;
-    font-size:15px;
-    line-height:1.35;
-  }
-  .send-btn{
-    background: var(--accent);
-    color:#fff;
-    padding:10px 14px;
-    border-radius:10px;
-    border:none;
-    cursor:pointer;
-  }
-  
-  /* small tweaks for mobile so the background is still visible */
-  @media (max-width: 720px){
-    :root { --max-width: 720px; --gutter: 12px; }
-    .chat-container{
-      background-position: center top; /* bring hero higher on small viewports */
-      background-size: 150% auto; /* slightly zoomed so hero remains visible */
-      padding: 18px;
-    }
-    .chat-box{
-      padding: 12px;
-      max-height: calc(100vh - 160px);
-      border-radius: 12px;
-    }
-    .chat-header .emblem{ width: 40px; height: 40px; }
-  }
-  
-  /* very small screens: simplify background to emblem-only for performance/readability */
-  @media (max-width: 420px){
-    .chat-container{
-      /* switch to emblem-only background, helps performance on low-end devices */
-      background-image: url('/static/images/cine_emblem-small.svg');
-      background-size: 160px 160px;
-      background-position: center top 18px;
-      background-repeat: no-repeat;
-      padding-top: 120px; /* leave room for emblem */
-    }
-    .chat-box{
-      background: rgba(255,255,255,0.92); /* more opaque for tiny screens */
-      padding: 10px;
-    }
-  }
-  
-  /* accessibility: prefer reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    .chip, .send-btn { transition: none; }
-    .chat-box { transition: none; }
-  }
+}
+
+/* accessibility: reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .chip, .send-btn { transition: none; }
+  .chat-box { transition: none; }
+}

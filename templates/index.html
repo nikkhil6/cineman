@@ -213,14 +213,14 @@
 <body>
     <div class="chat-container" role="main" aria-label="CineMan chat container">
         <div class="chat-header">
-            <img src="{{ url_for('static', filename='cineman1.jpg') }}" alt="CineMan" class="header-logo" onerror="this.style.display='none'">
+            <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" alt="CineMan" class="header-logo" onerror="this.style.display='none'">
             <span>🎬 CineMan: Your next watch is waiting</span>
         </div>
 
         <div id="chatbox" class="clearfix" aria-live="polite" aria-atomic="false">
             <!-- initial greeting -->
             <div class="message-container">
-                <img src="{{ url_for('static', filename='cineman1.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
+                <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
                 <div class="agent-message">Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a suggestion below.</div>
             </div>
 
@@ -264,7 +264,7 @@
                 msgDiv.textContent = message;
                 // Add avatar for loading state too
                 const loadingAvatar = document.createElement('img');
-                loadingAvatar.src = '/static/cineman1.jpg';
+                loadingAvatar.src = '/static/cineman_hero.jpg';
                 loadingAvatar.className = 'agent-avatar';
                 loadingAvatar.alt = 'CineMan';
                 loadingAvatar.onerror = function() { this.style.display = 'none'; };
@@ -275,7 +275,7 @@
                 if (sender === 'Agent') {
                     // Add avatar for agent messages
                     const avatar = document.createElement('img');
-                    avatar.src = '/static/cineman1.jpg';
+                    avatar.src = '/static/cineman_hero.jpg';
                     avatar.className = 'agent-avatar';
                     avatar.alt = 'CineMan';
                     avatar.onerror = function() { this.style.display = 'none'; };

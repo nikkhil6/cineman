@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 from cineman.chain import get_recommendation_chain
+from cineman.routes.api import bp as api_bp
 import os
 
 # Get the project root directory (parent of cineman package)
@@ -9,6 +10,7 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
+app.register_blueprint(api_bp, url_prefix="/api")
 # Cache the chain instance globally (Phase 1 simplicity)
 # In Phase 3, we would manage memory here.
 try:

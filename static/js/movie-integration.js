@@ -1,9 +1,10 @@
 // static/js/movie-integration.js
-// Manifest-driven poster placement helpers (centered posters, show IMDB + Rotten Tomatoes, use "Dir" label).
+// Manifest-driven poster flip-card UI and helpers.
+// This file intentionally exposes its main helpers on window so the page script can call them.
 
 (async () => {})();
 
-// Fetch combined movie data
+/* ----- Fetch helpers ----- */
 async function fetchMovieCombined(title) {
   const url = `/api/movie?title=${encodeURIComponent(title)}`;
   const resp = await fetch(url);
@@ -11,7 +12,7 @@ async function fetchMovieCombined(title) {
   return resp.json();
 }
 
-// Robust director extraction helper
+/* ----- Data extraction helpers ----- */
 function extractDirector(data) {
   if (!data) return null;
   if (data.director && String(data.director).trim()) return String(data.director).trim();
@@ -21,45 +22,108 @@ function extractDirector(data) {
     const dir = data.tmdb.credits.crew.find(c => c.job === 'Director' || c.department === 'Directing');
     if (dir && dir.name) return dir.name;
   }
-  if (data.directors && Array.isArray(data.directors) && data.directors.length > 0) return data.directors[0];
+  if (Array.isArray(data.directors) && data.directors.length) return data.directors[0];
   return null;
 }
 
-// Extract IMDB and RT ratings from combined data (flexible)
 function extractRatings(data) {
-  const imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDbRating)) || null;
-  // try dedicated fields from API
-  const rtTomatometer = data.rt_tomatometer || (data.omdb && data.omdb.RottenTomatoes_Tomatometer) || null;
-  const rtAudience = data.rt_audience || (data.omdb && data.omdb.RottenTomatoes_Audience) || null;
+  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDbRating)) || null;
+  let rtTom = data.rt_tomatometer || (data.omdb && data.omdb.RottenTomatoes_Tomatometer) || null;
+  let rtAud = data.rt_audience || (data.omdb && data.omdb.RottenTomatoes_Audience) || null;
 
-  // Some OMDb responses include Ratings array with Source entries
-  if ((!rtTomatometer || !rtAudience) && data.omdb && Array.isArray(data.omdb.Ratings)) {
+  if ((!rtTom || !imdb) && data.omdb && Array.isArray(data.omdb.Ratings)) {
     for (const r of data.omdb.Ratings) {
-      if (!rtTomatometer && r.Source && r.Source.toLowerCase().includes('rotten')) rtTomatometer = r.Value;
-      if (!imdb && r.Source && r.Source.toLowerCase().includes('imdb')) imdb = r.Value;
+      if (!rtTom && /rotten/i.test(r.Source || '')) rtTom = r.Value;
+      if (!imdb && /imdb/i.test(r.Source || '')) imdb = r.Value;
     }
   }
-
-  return { imdb: imdb || null, rtTomatometer: rtTomatometer || null, rtAudience: rtAudience || null };
+  return { imdb: imdb || null, rt_tomatometer: rtTom || null, rt_audience: rtAud || null };
 }
 
-// Build poster card (returns DOM element)
-function buildPosterCard(title, data) {
-  const poster = data.poster || (data.omdb && (data.omdb.Poster || data.omdb.Poster_URL)) || (data.tmdb && data.tmdb.poster_url) || null;
-  const { imdb, rtTomatometer, rtAudience } = extractRatings(data);
-  const director = extractDirector(data);
+/* ----- Manifest parsing and section extraction ----- */
+function parseManifestAndStrip(replyText) {
+  if (!replyText || typeof replyText !== 'string') return { manifest: null, assistantTextClean: replyText || '', assistantTextRaw: '' };
+  const twoNewlineIdx = replyText.lastIndexOf('\n\n{');
+  let startIdx = -1;
+  if (twoNewlineIdx !== -1) startIdx = twoNewlineIdx + 2;
+  else startIdx = replyText.lastIndexOf('{');
+  if (startIdx === -1) return { manifest: null, assistantTextClean: replyText, assistantTextRaw: replyText };
+  const possible = replyText.slice(startIdx);
+  try {
+    const parsed = JSON.parse(possible);
+    if (parsed && Array.isArray(parsed.movies) && parsed.movies.length === 3) {
+      let assistantRaw = replyText.slice(0, startIdx).trim();
+      let assistantClean = assistantRaw;
+      for (const m of parsed.movies) {
+        if (m.anchor_id) {
+          const tokens = [` (anchor:${m.anchor_id})`, `(anchor:${m.anchor_id})`, ` [anchor:${m.anchor_id}]`, `[anchor:${m.anchor_id}]`];
+          for (const t of tokens) assistantClean = assistantClean.replaceAll(t, '');
+        }
+      }
+      assistantClean = assistantClean.replace(/\*\*\s*Ratings\s*\:\s*\*\*/gi, '');
+      assistantClean = assistantClean.replace(/\bRatings\s*:\s*/gi, '');
+      return { manifest: parsed, assistantTextClean: assistantClean, assistantTextRaw: assistantRaw };
+    }
+  } catch (e) { /* invalid JSON => no manifest */ }
+  return { manifest: null, assistantTextClean: replyText, assistantTextRaw: replyText };
+}
 
-  const card = document.createElement('div');
-  card.className = 'poster-card';
-  card.tabIndex = 0;
+function extractMovieSection(assistantRaw, movieAnchorText, movieAnchorId) {
+  if (!assistantRaw) return null;
+  let startIdx = -1;
+  if (movieAnchorText && assistantRaw.indexOf(movieAnchorText) !== -1) startIdx = assistantRaw.indexOf(movieAnchorText);
+  if (startIdx === -1 && movieAnchorId) {
+    const token1 = `(anchor:${movieAnchorId})`;
+    const token2 = `[anchor:${movieAnchorId}]`;
+    startIdx = assistantRaw.indexOf(token1);
+    if (startIdx === -1) startIdx = assistantRaw.indexOf(token2);
+  }
+  if (startIdx === -1 && movieAnchorText) {
+    const lower = assistantRaw.toLowerCase();
+    const found = lower.indexOf(movieAnchorText.toLowerCase());
+    if (found !== -1) startIdx = found;
+  }
+  if (startIdx === -1) return null;
+  const afterHeaderIdx = assistantRaw.indexOf('\n', startIdx);
+  let contentStart = afterHeaderIdx !== -1 ? afterHeaderIdx + 1 : startIdx;
+  let endIdx = assistantRaw.length;
+  const anchorPositions = [];
+  const anchorRegex = /\(anchor:([^)]+)\)|\[anchor:([^\]]+)\]|\n####/g;
+  let m;
+  while ((m = anchorRegex.exec(assistantRaw)) !== null) {
+    const pos = m.index;
+    if (pos > startIdx) anchorPositions.push(pos);
+  }
+  if (anchorPositions.length > 0) endIdx = Math.min(...anchorPositions);
+  const section = assistantRaw.slice(contentStart, endIdx).trim();
+  return section;
+}
 
-  if (poster) {
+/* ----- Build flip-card DOM (used by handleAssistantReplyWithManifest) ----- */
+function buildFlipCard(movie, movieData, movieMarkdown) {
+  const { imdb, rt_tomatometer, rt_audience } = extractRatings(movieData);
+  const director = extractDirector(movieData);
+
+  const flipCard = document.createElement('div');
+  flipCard.className = 'flip-card';
+  flipCard.setAttribute('role', 'listitem');
+  flipCard.tabIndex = 0;
+
+  const inner = document.createElement('div');
+  inner.className = 'flip-card-inner';
+  flipCard.appendChild(inner);
+
+  // FRONT
+  const front = document.createElement('div');
+  front.className = 'flip-card-face flip-card-front';
+  const posterUrl = movieData.poster || (movieData.omdb && (movieData.omdb.Poster || movieData.omdb.Poster_URL)) || (movieData.tmdb && movieData.tmdb.poster_url) || null;
+  if (posterUrl) {
     const img = document.createElement('img');
-    img.src = poster;
-    img.alt = `${title} poster`;
     img.className = 'poster-image';
+    img.src = posterUrl;
+    img.alt = `${movie.title} poster`;
     img.onerror = () => { img.style.display = 'none'; };
-    card.appendChild(img);
+    front.appendChild(img);
   } else {
     const placeholder = document.createElement('div');
     placeholder.style.height = '220px';
@@ -68,194 +132,152 @@ function buildPosterCard(title, data) {
     placeholder.style.justifyContent = 'center';
     placeholder.style.color = '#666';
     placeholder.textContent = 'Poster not available';
-    card.appendChild(placeholder);
+    front.appendChild(placeholder);
   }
 
   const meta = document.createElement('div');
-  meta.className = 'meta';
-
-  const t = (data.tmdb && data.tmdb.title) || (data.omdb && data.omdb.Title) || title;
-  const y = (data.tmdb && data.tmdb.year) || (data.omdb && data.omdb.Year) || '';
-
-  const titleEl = document.createElement('div'); titleEl.className = 'title'; titleEl.textContent = t; meta.appendChild(titleEl);
-  if (y) { const yearEl = document.createElement('div'); yearEl.className='year'; yearEl.textContent = y; meta.appendChild(yearEl); }
-
-  // show director as "Dir"
-  if (director) { const dirEl = document.createElement('div'); dirEl.className='director'; dirEl.textContent = `Dir: ${director}`; meta.appendChild(dirEl); }
-
-  // show IMDB + Rotten Tomatoes (if available)
-  if (imdb || rtTomatometer || rtAudience) {
-    const ratingsRow = document.createElement('div');
-    ratingsRow.style.marginTop = '6px';
-    ratingsRow.style.display = 'flex';
-    ratingsRow.style.gap = '8px';
-    ratingsRow.style.flexWrap = 'wrap';
-    ratingsRow.style.justifyContent = 'center';
-    if (imdb) {
-      const imdbBadge = document.createElement('div');
-      imdbBadge.className = 'rating-badge';
-      imdbBadge.textContent = `IMDB: ${imdb}`;
-      ratingsRow.appendChild(imdbBadge);
-    }
-    if (rtTomatometer) {
-      const rtBadge = document.createElement('div');
-      rtBadge.className = 'rating-badge';
-      rtBadge.textContent = `RT: ${rtTomatometer}`;
-      ratingsRow.appendChild(rtBadge);
-    } else if (rtAudience) {
-      const rtBadge = document.createElement('div');
-      rtBadge.className = 'rating-badge';
-      rtBadge.textContent = `RT-Aud: ${rtAudience}`;
-      ratingsRow.appendChild(rtBadge);
-    }
-    meta.appendChild(ratingsRow);
+  meta.className = 'poster-meta';
+  const titleEl = document.createElement('div');
+  titleEl.className = 'title';
+  titleEl.textContent = movieData.tmdb?.title || movieData.omdb?.Title || movie.title;
+  meta.appendChild(titleEl);
+  const year = movieData.tmdb?.year || movieData.omdb?.Year || movie.year || '';
+  if (year) {
+    const yEl = document.createElement('div');
+    yEl.className = 'year';
+    yEl.textContent = year;
+    meta.appendChild(yEl);
+  }
+  if (director) {
+    const dEl = document.createElement('div');
+    dEl.className = 'dir';
+    dEl.textContent = `Dir: ${director}`;
+    meta.appendChild(dEl);
   }
 
-  if (data.note) { const noteEl = document.createElement('div'); noteEl.style.marginTop='8px'; noteEl.style.color='#b85a00'; noteEl.textContent = data.note; meta.appendChild(noteEl); }
-
-  card.appendChild(meta);
-  return card;
-}
-
-// parse manifest appended to assistant reply and strip "Ratings" word in the visible text
-function parseManifestAndStrip(replyText) {
-  if (!replyText || typeof replyText !== 'string') return { manifest: null, assistantText: replyText || '', jsonText: null };
-  const twoNewlineIdx = replyText.lastIndexOf('\n\n{');
-  let startIdx = -1;
-  if (twoNewlineIdx !== -1) startIdx = twoNewlineIdx + 2;
-  else startIdx = replyText.lastIndexOf('{');
-  if (startIdx === -1) return { manifest: null, assistantText: replyText, jsonText: null };
-
-  const possible = replyText.slice(startIdx);
-  try {
-    const parsed = JSON.parse(possible);
-    if (parsed && Array.isArray(parsed.movies) && parsed.movies.length === 3) {
-      let assistantText = replyText.slice(0, startIdx).trim();
-
-      // Remove visible anchor tokens like (anchor:m1) so UI looks clean
-      for (const m of parsed.movies) {
-        if (m.anchor_id) {
-          const tokens = [` (anchor:${m.anchor_id})`, `(anchor:${m.anchor_id})`, ` [anchor:${m.anchor_id}]`, `[anchor:${m.anchor_id}]`];
-          for (const t of tokens) assistantText = assistantText.replaceAll(t, '');
-        }
-      }
-
-      // Remove the redundant word "Ratings" in any header like "* **Ratings:** ..." or "Ratings:"
-      assistantText = assistantText.replace(/\*\*\s*Ratings\s*\:\s*\*\*/gi, '');
-      assistantText = assistantText.replace(/\*?\s*Ratings\s*:\s*/gi, '');
-
-      return { manifest: parsed, assistantText, jsonText: possible };
-    }
-  } catch (e) {
-    // invalid JSON
+  const ratingRow = document.createElement('div');
+  ratingRow.style.marginTop = '8px';
+  ratingRow.style.display = 'flex';
+  ratingRow.style.justifyContent = 'center';
+  ratingRow.style.flexWrap = 'wrap';
+  ratingRow.style.gap = '8px';
+  if (imdb) {
+    const imdbBadge = document.createElement('div');
+    imdbBadge.className = 'rating-badge';
+    imdbBadge.textContent = `IMDB: ${imdb}`;
+    ratingRow.appendChild(imdbBadge);
   }
-  return { manifest: null, assistantText: replyText, jsonText: null };
-}
+  if (rt_tomatometer) {
+    const rtBadge = document.createElement('div');
+    rtBadge.className = 'rating-badge';
+    rtBadge.textContent = `RT: ${rt_tomatometer}`;
+    ratingRow.appendChild(rtBadge);
+  } else if (rt_audience) {
+    const rtBadge = document.createElement('div');
+    rtBadge.className = 'rating-badge';
+    rtBadge.textContent = `RT-Aud: ${rt_audience}`;
+    ratingRow.appendChild(rtBadge);
+  }
+  meta.appendChild(ratingRow);
+  front.appendChild(meta);
 
-function normalizeForMatch(s) {
-  return (s || '').replace(/[\u2018\u2019\u201C\u201D"'`]/g, '').replace(/[^\w\s()\-:]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-}
+  // BACK
+  const back = document.createElement('div');
+  back.className = 'flip-card-face flip-card-back';
+  back.style.overflow = 'auto';
+  const backContent = document.createElement('div');
+  backContent.className = 'card-back-content';
+  backContent.innerHTML = movieMarkdown ? (window.marked ? marked.parse(movieMarkdown) : movieMarkdown) : '<div class="small">No summary available.</div>';
+  back.appendChild(backContent);
 
-function findElementForAnchor(agentBubble, anchorText, anchorId) {
-  if (!agentBubble) return null;
-  if (anchorId) {
-    const lit1 = `(anchor:${anchorId})`;
-    const lit2 = `[anchor:${anchorId}]`;
-    const elByLit = Array.from(agentBubble.querySelectorAll('*')).find(el => (el.textContent || '').includes(lit1) || (el.textContent || '').includes(lit2));
-    if (elByLit) return elByLit;
-  }
-  if (!anchorText) return null;
-  const anchorNorm = normalizeForMatch(anchorText);
-  const elements = agentBubble.querySelectorAll('*');
-  for (const el of elements) {
-    const t = (el.textContent || '').trim();
-    if (!t) continue;
-    if (t.includes(anchorText)) return el;
-    if (t.toLowerCase().includes(anchorText.toLowerCase())) return el;
-  }
-  for (const el of elements) {
-    const t = (el.textContent || '').trim();
-    if (!t) continue;
-    if (normalizeForMatch(t).includes(anchorNorm)) return el;
-  }
-  const lines = (agentBubble.innerText || '').split('\n').map(l => l.trim()).filter(Boolean);
-  for (const line of lines) {
-    if (normalizeForMatch(line).includes(anchorNorm)) {
-      for (const el of elements) if ((el.textContent || '').trim() === line) return el;
-    }
-  }
-  return null;
-}
+  inner.appendChild(front);
+  inner.appendChild(back);
 
-function appendCollapsedPosterTray(agentBubble, cards) {
-  if (!agentBubble || !Array.isArray(cards) || cards.length === 0) return;
-  const wrapper = document.createElement('div');
-  wrapper.className = 'poster-collapsed-tray';
-  const btn = document.createElement('button');
-  btn.className = 'poster-tray-btn';
-  btn.setAttribute('aria-expanded', 'false');
-  btn.textContent = 'Posters ';
-  const badge = document.createElement('span');
-  badge.className = 'badge';
-  badge.textContent = `${cards.length}`;
-  badge.style.marginLeft = '6px';
-  btn.appendChild(badge);
-  const tray = document.createElement('div');
-  tray.className = 'poster-row';
-  tray.style.display = 'none';
-  tray.style.marginTop = '6px';
-  for (const c of cards) tray.appendChild(c);
-  btn.addEventListener('click', () => {
-    const expanded = tray.style.display !== 'none';
-    tray.style.display = expanded ? 'none' : 'flex';
-    btn.setAttribute('aria-expanded', String(!expanded));
-    btn.textContent = expanded ? 'Posters ' : 'Hide posters ';
-    const newBadge = document.createElement('span'); newBadge.className = 'badge'; newBadge.textContent = `${cards.length}`; newBadge.style.marginLeft='6px';
-    btn.appendChild(newBadge);
+  // toggles
+  function toggleFlip() {
+    flipCard.classList.toggle('is-flipped');
+  }
+  flipCard.addEventListener('click', (e) => {
+    if (e.target.closest('a')) return;
+    toggleFlip();
   });
-  wrapper.appendChild(btn);
-  wrapper.appendChild(tray);
-  agentBubble.appendChild(wrapper);
-  if (typeof chatbox !== 'undefined') chatbox.scrollTop = chatbox.scrollHeight;
+  flipCard.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFlip(); }
+    if (e.key === 'Escape') flipCard.classList.remove('is-flipped');
+  });
+
+  return flipCard;
 }
 
+/* ----- Main: handle assistant reply, build and insert cards ----- */
 async function handleAssistantReplyWithManifest(data) {
   const raw = (typeof data.response === 'string') ? data.response : '';
-  const { manifest, assistantText } = parseManifestAndStrip(raw);
-  const assistantBubble = (typeof addMessage === 'function') ? addMessage('Agent', assistantText || raw || 'No response from AI.') : null;
-  if (!manifest) return;
-  const unmatched = [];
+  const { manifest, assistantTextClean, assistantTextRaw } = parseManifestAndStrip(raw);
+
+  const posterArea = document.getElementById('poster-area');
+  if (!posterArea) return;
+  // clear current cards for each request
+  posterArea.innerHTML = '';
+
+  if (!manifest) {
+    // fallback: show assistantTextClean in chat area as a message bubble
+    if (assistantTextClean) {
+      const bubbleWrap = document.createElement('div');
+      bubbleWrap.className = 'message-container';
+      const bubble = document.createElement('div');
+      bubble.className = 'agent-message';
+      bubble.innerHTML = window.marked ? marked.parse(assistantTextClean) : assistantTextClean;
+      bubbleWrap.appendChild(bubble);
+      const chatbox = document.getElementById('chatbox');
+      if (chatbox) chatbox.appendChild(bubbleWrap);
+    }
+    return;
+  }
+
+  const unmatchedCards = [];
   for (const m of manifest.movies) {
     if (!m || !m.title) continue;
-    const anchor = m.anchor_text || m.title;
-    const anchorId = m.anchor_id || null;
+    const movieSectionMarkdown = extractMovieSection(assistantTextRaw, m.anchor_text, m.anchor_id) || '';
     try {
       const movieData = await fetchMovieCombined(m.title);
-      const posterUrl = movieData.poster || (movieData.omdb && (movieData.omdb.Poster || movieData.omdb.Poster_URL)) || (movieData.tmdb && movieData.tmdb.poster_url) || null;
-      const hasMeta = (movieData.tmdb && movieData.tmdb.title) || (movieData.omdb && movieData.omdb.Title);
-      if (!posterUrl && !hasMeta) {
+      const hasMeta = movieData.tmdb?.title || movieData.omdb?.Title || movieData.poster;
+      if (!hasMeta) {
         console.debug('Skipping manifest entry (no poster/metadata):', m.title);
         continue;
       }
-      const card = buildPosterCard(m.title, movieData);
-      const matchEl = findElementForAnchor(assistantBubble, anchor, anchorId);
-      if (matchEl) {
-        const wrapper = document.createElement('div'); wrapper.className='poster-row inline-poster-row'; wrapper.style.justifyContent='center'; wrapper.style.marginTop='8px';
-        wrapper.appendChild(card);
-        matchEl.insertAdjacentElement('afterend', wrapper);
-        if (typeof chatbox !== 'undefined') chatbox.scrollTop = chatbox.scrollHeight;
-      } else {
-        unmatched.push(card);
-      }
+      const card = buildFlipCard(m, movieData, movieSectionMarkdown);
+      posterArea.appendChild(card);
     } catch (err) {
-      console.warn('Failed prefetch/insert for manifest entry', m.title, err);
+      console.warn('Failed to fetch/build card:', m.title, err);
+      const fallbackCard = document.createElement('div');
+      fallbackCard.className = 'poster-card';
+      fallbackCard.textContent = m.title;
+      unmatchedCards.push(fallbackCard);
     }
   }
-  if (unmatched.length > 0) appendCollapsedPosterTray(assistantBubble, unmatched);
+
+  if (unmatchedCards.length > 0) {
+    const trayWrapper = document.createElement('div');
+    trayWrapper.className = 'poster-collapsed-tray';
+    const btn = document.createElement('button'); btn.className = 'poster-tray-btn'; btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'Posters ';
+    const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = `${unmatchedCards.length}`; badge.style.marginLeft = '6px'; btn.appendChild(badge);
+    const tray = document.createElement('div'); tray.className = 'poster-row'; tray.style.display = 'none'; tray.style.marginTop = '6px';
+    for (const c of unmatchedCards) tray.appendChild(c);
+    btn.addEventListener('click', () => {
+      const expanded = tray.style.display !== 'none';
+      tray.style.display = expanded ? 'none' : 'flex';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      btn.textContent = expanded ? 'Posters ' : 'Hide posters ';
+      const newBadge = document.createElement('span'); newBadge.className = 'badge'; newBadge.textContent = `${unmatchedCards.length}`; newBadge.style.marginLeft = '6px';
+      btn.appendChild(newBadge);
+    });
+    trayWrapper.appendChild(btn); trayWrapper.appendChild(tray);
+    posterArea.appendChild(trayWrapper);
+  }
 }
 
-// Exports
+/* ----- Export to window (ensure globals exist for template) ----- */
 window.fetchMovieCombined = fetchMovieCombined;
-window.buildPosterCard = buildPosterCard;
 window.handleAssistantReplyWithManifest = handleAssistantReplyWithManifest;
 window.parseManifestAndStrip = parseManifestAndStrip;
+window.buildFlipCard = buildFlipCard;

@@ -24,7 +24,7 @@
   box-sizing: border-box;
 
   /* NOTE: updated to use cineman_hero.jpg */
-  background-image: url('/static/cineman_hero.jpg');
+  background-image: url('/static/background.jpg');
   background-position: center 10%;
   background-repeat: no-repeat;
   background-size: cover;

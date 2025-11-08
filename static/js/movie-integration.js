@@ -385,50 +385,88 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   
   front.appendChild(meta);
 
-  // BACK - full detailed content
+  // BACK - full detailed content with poster on left
   const back = document.createElement('div');
   back.className = 'flip-card-face flip-card-back';
   
-  // Add movie title and metadata at the top
+  // Create two-column layout container
+  const backLayout = document.createElement('div');
+  backLayout.style.display = 'flex';
+  backLayout.style.gap = '16px';
+  backLayout.style.height = '100%';
+  backLayout.style.overflow = 'hidden';
+  
+  // LEFT COLUMN - Poster
+  const leftColumn = document.createElement('div');
+  leftColumn.style.flex = '0 0 240px';
+  leftColumn.style.display = 'flex';
+  leftColumn.style.flexDirection = 'column';
+  
+  const backPoster = document.createElement('img');
+  backPoster.className = 'back-poster-image';
+  backPoster.src = posterUrl || '';
+  backPoster.alt = `${movie.title} poster`;
+  backPoster.style.width = '100%';
+  backPoster.style.borderRadius = '8px';
+  backPoster.style.objectFit = 'cover';
+  backPoster.style.maxHeight = '360px';
+  backPoster.onerror = () => { backPoster.style.display = 'none'; };
+  
+  leftColumn.appendChild(backPoster);
+  
+  // RIGHT COLUMN - Content
+  const rightColumn = document.createElement('div');
+  rightColumn.style.flex = '1';
+  rightColumn.style.display = 'flex';
+  rightColumn.style.flexDirection = 'column';
+  rightColumn.style.overflow = 'hidden';
+  
+  // Add movie title and metadata at the top of right column
   const backHeader = document.createElement('div');
   backHeader.className = 'back-header';
-  backHeader.style.textAlign = 'center';
-  backHeader.style.marginBottom = '16px';
+  backHeader.style.marginBottom = '12px';
   backHeader.style.borderBottom = '2px solid #e5e7eb';
-  backHeader.style.paddingBottom = '12px';
+  backHeader.style.paddingBottom = '10px';
   
   const backTitle = document.createElement('div');
   backTitle.style.fontWeight = '700';
-  backTitle.style.fontSize = '1.2rem';
-  backTitle.style.marginBottom = '6px';
+  backTitle.style.fontSize = '1.15rem';
+  backTitle.style.marginBottom = '4px';
   backTitle.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
   
   const backYearDir = document.createElement('div');
   backYearDir.style.color = '#6b7280';
-  backYearDir.style.fontSize = '0.9rem';
-  backYearDir.style.marginBottom = '8px';
+  backYearDir.style.fontSize = '0.85rem';
+  backYearDir.style.marginBottom = '6px';
   backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
   
   const backRatings = document.createElement('div');
-  backRatings.style.fontSize = '0.85rem';
+  backRatings.style.fontSize = '0.8rem';
   backRatings.style.color = '#374151';
+  backRatings.style.fontWeight = '600';
   if (imdb) backRatings.textContent = `IMDB: ${imdb}`;
   
   backHeader.appendChild(backTitle);
   backHeader.appendChild(backYearDir);
   if (imdb) backHeader.appendChild(backRatings);
-  back.appendChild(backHeader);
+  rightColumn.appendChild(backHeader);
   
   // Add the full formatted content
   const backContent = document.createElement('div');
   backContent.className = 'card-back-content';
   backContent.style.flex = '1';
   backContent.style.overflowY = 'auto';
+  backContent.style.paddingRight = '8px';
   
   // Use the full formatted content from formatModalContentForThreeSections
   const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
   backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
-  back.appendChild(backContent);
+  rightColumn.appendChild(backContent);
+  
+  // Assemble the layout
+  backLayout.appendChild(leftColumn);
+  backLayout.appendChild(rightColumn);
+  back.appendChild(backLayout);
   
   // Add action buttons to back side as well
   const backActionButtons = document.createElement('div');
@@ -609,10 +647,19 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   // Click to flip the card
   flipCard.addEventListener('click', (e) => {
     if (e.target.closest('a') || e.target.closest('.action-btn')) return;
+    
+    // Check if another card is already flipped
+    const posterRow = flipCard.closest('.poster-row');
+    const anyFlipped = posterRow && posterRow.querySelector('.flip-card.is-flipped:not(' + (flipCard.id || '.this-card') + ')');
+    
+    // If another card is flipped and this isn't it, don't allow flip
+    if (anyFlipped && !flipCard.classList.contains('is-flipped')) {
+      return;
+    }
+    
     const isFlipped = flipCard.classList.toggle('is-flipped');
     
     // Toggle backdrop on parent poster-row
-    const posterRow = flipCard.closest('.poster-row');
     if (posterRow) {
       if (isFlipped) {
         posterRow.classList.add('has-flipped-card');
@@ -629,8 +676,17 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   flipCard.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      const isFlipped = flipCard.classList.toggle('is-flipped');
+      
+      // Check if another card is already flipped
       const posterRow = flipCard.closest('.poster-row');
+      const anyFlipped = posterRow && posterRow.querySelector('.flip-card.is-flipped');
+      
+      // If another card is flipped and this isn't it, don't allow flip
+      if (anyFlipped && anyFlipped !== flipCard && !flipCard.classList.contains('is-flipped')) {
+        return;
+      }
+      
+      const isFlipped = flipCard.classList.toggle('is-flipped');
       if (posterRow) {
         if (isFlipped) {
           posterRow.classList.add('has-flipped-card');

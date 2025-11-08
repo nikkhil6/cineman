@@ -7,7 +7,7 @@
 (function(){})();
 
 /* ----- Config ----- */
-const CI_DEBUG = true; // set false to silence verbose logs in production
+const CI_DEBUG = false; // set false to silence verbose logs in production
 
 /* ----- Fetch helpers ----- */
 async function fetchMovieCombined(title) {

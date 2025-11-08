@@ -136,7 +136,7 @@ def clear_session():
         return jsonify({"status": "success", "message": "Session cleared successfully."})
     except Exception as e:
         print(f"Session clear error: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": "Failed to clear session. Please try again."}), 500
 
 
 if __name__ == '__main__':

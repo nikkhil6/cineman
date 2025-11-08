@@ -21,11 +21,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database
 db.init_app(app)
 
-# Create tables
-with app.app_context():
-    db.create_all()
-
 app.register_blueprint(api_bp, url_prefix="/api")
+
+# Initialize database tables
+def init_db():
+    """Initialize database tables."""
+    with app.app_context():
+        db.create_all()
 # Cache the chain instance globally (Phase 1 simplicity)
 # In Phase 3, we would manage memory here.
 try:
@@ -75,5 +77,6 @@ def chat():
 if __name__ == '__main__':
     # Run the server locally on http://127.0.0.1:5000
     # Note: Flask templates need a 'templates' folder.
+    init_db()
     app.run(debug=True)
 

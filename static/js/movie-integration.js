@@ -355,6 +355,34 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   if (rt_tomatometer) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT: ${rt_tomatometer}`; ratingRow.appendChild(rtBadge); }
   else if (rt_audience) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT-Aud: ${rt_audience}`; ratingRow.appendChild(rtBadge); }
   meta.appendChild(ratingRow);
+  
+  // Action buttons (like, dislike, watchlist)
+  const actionButtons = document.createElement('div');
+  actionButtons.className = 'action-buttons';
+  
+  const likeBtn = document.createElement('button');
+  likeBtn.className = 'action-btn like-btn';
+  likeBtn.innerHTML = '👍';
+  likeBtn.setAttribute('data-action', 'like');
+  likeBtn.title = 'Like this movie';
+  
+  const dislikeBtn = document.createElement('button');
+  dislikeBtn.className = 'action-btn dislike-btn';
+  dislikeBtn.innerHTML = '👎';
+  dislikeBtn.setAttribute('data-action', 'dislike');
+  dislikeBtn.title = 'Dislike this movie';
+  
+  const watchlistBtn = document.createElement('button');
+  watchlistBtn.className = 'action-btn watchlist-btn';
+  watchlistBtn.innerHTML = '📋';
+  watchlistBtn.setAttribute('data-action', 'watchlist');
+  watchlistBtn.title = 'Add to watchlist';
+  
+  actionButtons.appendChild(likeBtn);
+  actionButtons.appendChild(dislikeBtn);
+  actionButtons.appendChild(watchlistBtn);
+  meta.appendChild(actionButtons);
+  
   front.appendChild(meta);
 
   // BACK compact summary (single paragraph)
@@ -402,8 +430,86 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     if (CI_DEBUG) console.warn('[movie-integration] failed to set dataset on flipCard', e);
   }
 
+  // Handle action button clicks
+  const handleActionClick = async (action, button) => {
+    const isActive = button.classList.contains('active');
+    const newValue = !isActive;
+    
+    try {
+      const response = await fetch('/api/interaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          movie_title: movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title,
+          movie_year: year || '',
+          movie_poster_url: posterUrl || '',
+          director: director || '',
+          imdb_rating: imdb || '',
+          action: action,
+          value: newValue
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          // Update button states
+          if (action === 'like') {
+            button.classList.toggle('active', newValue);
+            if (newValue) dislikeBtn.classList.remove('active');
+          } else if (action === 'dislike') {
+            button.classList.toggle('active', newValue);
+            if (newValue) likeBtn.classList.remove('active');
+          } else if (action === 'watchlist') {
+            button.classList.toggle('active', newValue);
+          }
+          
+          // Update watchlist count
+          if (typeof window.updateWatchlistCount === 'function') {
+            window.updateWatchlistCount();
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update interaction:', err);
+    }
+  };
+  
+  likeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('like', likeBtn);
+  });
+  
+  dislikeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('dislike', dislikeBtn);
+  });
+  
+  watchlistBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('watchlist', watchlistBtn);
+  });
+  
+  // Load existing interaction state
+  (async () => {
+    try {
+      const title = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
+      const response = await fetch(`/api/interaction/${encodeURIComponent(title)}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.interaction) {
+          if (result.interaction.liked) likeBtn.classList.add('active');
+          if (result.interaction.disliked) dislikeBtn.classList.add('active');
+          if (result.interaction.in_watchlist) watchlistBtn.classList.add('active');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load interaction state:', err);
+    }
+  })();
+
   flipCard.addEventListener('click', (e) => {
-    if (e.target.closest('a')) return;
+    if (e.target.closest('a') || e.target.closest('.action-btn')) return;
     const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
     if (typeof window.openPosterModal === 'function') {
       window.openPosterModal(movie, movieData, fullHtml);

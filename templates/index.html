@@ -11,6 +11,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="{{ url_for('static', filename='js/movie-integration.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/watchlist.js') }}"></script>
 
   <style>
     :root{
@@ -60,8 +61,12 @@
       border: 1px solid rgba(0,0,0,0.04);
     }
 
-    .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); }
+    .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); justify-content:space-between; }
     .header-logo{ width:44px; height:44px; border-radius:8px; object-fit:cover; }
+    .header-left { display:flex; gap:12px; align-items:center; }
+    .watchlist-icon-btn { background:#2563eb; color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px; transition:all 0.2s; }
+    .watchlist-icon-btn:hover { background:#1d4ed8; transform:translateY(-1px); }
+    .watchlist-badge { background:#dc2626; color:#fff; border-radius:999px; padding:2px 6px; font-size:0.75rem; min-width:20px; text-align:center; }
 
     #chatbox { padding:18px; overflow-y:auto; flex:1 1 auto; }
 
@@ -103,6 +108,17 @@
     .poster-collapsed-tray { margin-top:12px; display:flex; flex-direction:column; gap:6px; }
     .poster-tray-btn { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:6px 10px; border:1px solid rgba(2,6,23,0.06); background:#fff; cursor:pointer; font-weight:600; }
 
+    /* Action buttons for like/dislike/watchlist */
+    .action-buttons { display:flex; gap:6px; justify-content:center; margin-top:10px; width:100%; }
+    .action-btn { padding:8px 12px; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:4px; flex:1; justify-content:center; }
+    .action-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+    .like-btn { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+    .like-btn.active { background:#16a34a; color:#fff; }
+    .dislike-btn { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .dislike-btn.active { background:#dc2626; color:#fff; }
+    .watchlist-btn { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+    .watchlist-btn.active { background:#2563eb; color:#fff; }
+
     .input-group-container { padding:12px 16px; border-top:1px solid rgba(0,0,0,0.04); background: rgba(255,255,255,0.96); display:flex; gap:10px; align-items:center; }
     .input-group-container input[type="text"] { flex:1; min-height:46px; border-radius:10px; }
 
@@ -136,6 +152,24 @@
     .poster-modal .modal-body h2 { margin-top:0; }
     .poster-modal .close-btn { position:absolute; right: 24px; top: 18px; border: none; background: transparent; font-size: 22px; cursor:pointer; color:#222; }
 
+    /* Watchlist modal styles */
+    .watchlist-modal-overlay { position:fixed; inset:0; background:rgba(3,6,18,0.6); display:none; align-items:center; justify-content:center; z-index:2000; padding:16px; }
+    .watchlist-modal-overlay.is-open { display:flex; }
+    .watchlist-modal { width:min(100%, 900px); max-height:calc(100vh - 48px); background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 30px 80px rgba(3,6,18,0.45); display:flex; flex-direction:column; }
+    .watchlist-modal-header { padding:20px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; background:#f9fafb; }
+    .watchlist-modal-header h2 { margin:0; font-size:1.5rem; }
+    .watchlist-modal-body { padding:20px; overflow-y:auto; flex:1; }
+    .watchlist-empty { text-align:center; padding:40px 20px; color:#6b7280; }
+    .watchlist-item { display:flex; gap:16px; padding:16px; border-radius:8px; border:1px solid #e5e7eb; margin-bottom:12px; background:#fff; transition:all 0.2s; }
+    .watchlist-item:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-1px); }
+    .watchlist-item-poster { width:80px; height:120px; object-fit:cover; border-radius:6px; flex-shrink:0; }
+    .watchlist-item-content { flex:1; }
+    .watchlist-item-title { font-weight:700; font-size:1.1rem; margin-bottom:4px; }
+    .watchlist-item-meta { color:#6b7280; font-size:0.9rem; margin-bottom:8px; }
+    .watchlist-item-actions { display:flex; gap:8px; margin-top:8px; }
+    .watchlist-remove-btn { background:#dc2626; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600; }
+    .watchlist-remove-btn:hover { background:#b91c1c; }
+
     @media (max-width:720px) {
       :root{ --card-width-desktop: var(--card-width-mobile); }
       .poster-image { height:220px; }
@@ -145,14 +179,22 @@
       .poster-modal { flex-direction: column; align-items: center; }
       .poster-modal .modal-poster { max-width: 86%; width: auto; }
       .card-back-content { line-height:1.4; }
+      .watchlist-item { flex-direction:column; }
+      .watchlist-item-poster { width:100%; height:auto; max-height:300px; }
     }
   </style>
 </head>
 <body>
   <div class="chat-container" role="main" aria-label="CineMan chat container">
     <div class="chat-header">
-      <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="header-logo" alt="CineMan" onerror="this.style.display='none'">
-      <span>🎬 CineMan: Your next watch is waiting</span>
+      <div class="header-left">
+        <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="header-logo" alt="CineMan" onerror="this.style.display='none'">
+        <span>🎬 CineMan: Your next watch is waiting</span>
+      </div>
+      <button class="watchlist-icon-btn" id="watchlist-btn" type="button">
+        📋 Watchlist
+        <span class="watchlist-badge" id="watchlist-count" style="display:none;">0</span>
+      </button>
     </div>
 
     <div id="chatbox" aria-live="polite" aria-atomic="false">
@@ -191,6 +233,22 @@
         <h2 id="modal-title"></h2>
         <div id="modal-meta" style="color:#666;margin-bottom:12px"></div>
         <div id="modal-content" class="card-back-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Watchlist Modal -->
+  <div id="watchlist-modal-overlay" class="watchlist-modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="watchlist-modal" id="watchlist-modal" role="document">
+      <div class="watchlist-modal-header">
+        <h2>📋 My Watchlist</h2>
+        <button class="close-btn" id="watchlist-modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="watchlist-modal-body" id="watchlist-modal-body">
+        <div class="watchlist-empty" id="watchlist-empty">
+          <p>Your watchlist is empty. Start adding movies you want to watch later!</p>
+        </div>
+        <div id="watchlist-items"></div>
       </div>
     </div>
   </div>

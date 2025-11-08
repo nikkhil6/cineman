@@ -87,8 +87,10 @@
     .poster-row { display:flex; gap:var(--poster-gap); flex-wrap:wrap; justify-content:center; align-items:flex-start; margin-top:10px; }
 
     /* flip card */
-    .flip-card { width: var(--card-width-desktop); perspective: 1200px; -webkit-perspective:1200px; display:block; outline:none; }
-    .flip-card-inner { position: relative; width:100%; transform-style: preserve-3d; transition: transform 520ms cubic-bezier(.2,.9,.3,1); box-sizing:border-box; min-height: 420px; }
+    .flip-card { width: var(--card-width-desktop); perspective: 1200px; -webkit-perspective:1200px; display:block; outline:none; cursor:pointer; transition: transform 0.2s ease; }
+    .flip-card:hover { transform: translateY(-4px); }
+    .flip-card:hover .flip-card-inner { box-shadow: var(--card-hover-shadow); }
+    .flip-card-inner { position: relative; width:100%; transform-style: preserve-3d; transition: transform 520ms cubic-bezier(.2,.9,.3,1); box-sizing:border-box; min-height: 480px; }
     .flip-card.is-flipped .flip-card-inner { transform: rotateY(180deg); }
     .flip-card-face { position:absolute; width:100%; height:100%; top:0; left:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius: var(--card-radius); overflow:hidden; background:#fff; display:flex; flex-direction:column; align-items:center; padding:10px; box-shadow: var(--card-shadow); }
     .flip-card-front { z-index:2; }
@@ -109,8 +111,8 @@
     .poster-tray-btn { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:6px 10px; border:1px solid rgba(2,6,23,0.06); background:#fff; cursor:pointer; font-weight:600; }
 
     /* Action buttons for like/dislike/watchlist */
-    .action-buttons { display:flex; gap:6px; justify-content:center; margin-top:10px; width:100%; }
-    .action-btn { padding:8px 12px; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:4px; flex:1; justify-content:center; }
+    .action-buttons { display:flex; gap:6px; justify-content:center; margin-top:12px; margin-bottom:4px; width:100%; padding:0 4px; }
+    .action-btn { padding:10px 14px; border:none; border-radius:8px; cursor:pointer; font-size:1rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:4px; flex:1; justify-content:center; min-height:40px; }
     .action-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
     .like-btn { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
     .like-btn.active { background:#16a34a; color:#fff; }

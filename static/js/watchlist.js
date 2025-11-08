@@ -142,30 +142,31 @@
     }
   }
   
-  // Event listeners
-  if (watchlistBtn) {
-    watchlistBtn.addEventListener('click', openWatchlistModal);
-  }
-  
-  if (watchlistCloseBtn) {
-    watchlistCloseBtn.addEventListener('click', closeWatchlistModal);
-  }
-  
-  if (watchlistModal) {
-    watchlistModal.addEventListener('click', (e) => {
-      if (e.target === watchlistModal) closeWatchlistModal();
-    });
-  }
-  
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && watchlistModal.classList.contains('is-open')) {
-      closeWatchlistModal();
-    }
-  });
-  
   // Initialize on DOM ready
   function init() {
     initElements();
+    
+    // Set up event listeners after elements are initialized
+    if (watchlistBtn) {
+      watchlistBtn.addEventListener('click', openWatchlistModal);
+    }
+    
+    if (watchlistCloseBtn) {
+      watchlistCloseBtn.addEventListener('click', closeWatchlistModal);
+    }
+    
+    if (watchlistModal) {
+      watchlistModal.addEventListener('click', (e) => {
+        if (e.target === watchlistModal) closeWatchlistModal();
+      });
+    }
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && watchlistModal && watchlistModal.classList.contains('is-open')) {
+        closeWatchlistModal();
+      }
+    });
+    
     updateWatchlistCount();
   }
   

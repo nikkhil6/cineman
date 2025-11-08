@@ -4,17 +4,35 @@ An intelligent movie recommendation agent powered by Google Gemini AI (via LangC
 
 ## Features
 
+### Core Features
 - 🤖 **AI-Powered Recommendations**: Conversational movie recommendations using Google Gemini AI
 - 🎯 **The Cinephile Agent**: Expert AI persona that provides curated movie suggestions
 - 🎨 **Interactive Web Interface**: Beautiful Flask-based chat interface for seamless interaction
 - 🎬 **Movie Data Integration**: 
   - TMDB API for movie posters and metadata
   - OMDb API for ratings, directors, and additional movie facts
+- 🔧 **LangChain Tools**: Extensible tool system for movie data retrieval
+- ✅ **Dependency Verification**: Built-in script to verify all dependencies are installed
+
+### User Interaction Features
 - 👍👎 **Like/Dislike System**: Express your opinion on recommended movies with simple thumbs up/down buttons
 - 📋 **Watchlist Management**: Save movies to watch later and access them anytime from the watchlist modal
 - 💾 **Session-Based Storage**: Your preferences (likes, dislikes, watchlist) are stored throughout your session using SQLite
-- 🔧 **LangChain Tools**: Extensible tool system for movie data retrieval
-- ✅ **Dependency Verification**: Built-in script to verify all dependencies are installed
+- 🎴 **Interactive Flip Cards**: Click movie posters to flip and see full details with smooth 3D animation
+- 📱 **Mobile-Optimized**: Swipe gestures for browsing movies on mobile devices
+- 🎯 **Modal View**: Flipped cards expand to center with blurred background for enhanced readability
+
+### Session Management Features
+- 🧠 **Conversation Memory**: AI remembers previous recommendations to avoid duplicates
+- 💬 **Chat History Tracking**: Maintains conversation context across messages
+- 🎬 **Movie Tracking**: Tracks all recommended movies in your session
+- 🔄 **New Session Button**: Clear history and start fresh anytime
+- 🎭 **Creative Recommendations**: Enhanced AI creativity (temperature 1.2) for varied suggestions
+
+### Deployment Options
+- ☁️ **Google Cloud Platform**: Deploy to App Engine or Cloud Run with automated workflows
+- 🐳 **Docker Support**: Containerized deployment ready for any platform
+- 🚀 **CI/CD Ready**: GitHub Actions workflows for automated deployment
 
 ## Architecture
 
@@ -98,13 +116,24 @@ Navigate to `http://127.0.0.1:5000` to access the chat interface
 
 1. **Enter your movie request** in the chat input (e.g., "I'm in the mood for a sci-fi movie with a clever plot twist")
 2. **Get AI recommendations** - The Cinephile agent will provide personalized movie suggestions
-3. **View detailed information** - Each recommendation includes plot, matching reasons, and awards
-4. **Interact with movies**:
+3. **View movie posters** - Each recommendation appears as an interactive poster card with hover effects
+4. **Click to flip** - Click anywhere on a poster to flip it with 3D animation and see full details
+5. **View detailed information** - Flipped cards show:
+   - Movie poster on the left
+   - Title, year, director, and IMDB rating
+   - The Quick Pitch
+   - Why It Matches Your Request
+   - Award & Prestige Highlights
+6. **Interact with movies** - Action buttons on both front and back of cards:
    - Click the 👍 button to like a movie
    - Click the 👎 button to dislike a movie
    - Click the 📋 button to add to your watchlist
-5. **Access your watchlist** - Click the "Watchlist" button in the header to view all saved movies
-6. **Manage your watchlist** - Remove movies from the watchlist modal when you've watched them
+7. **Close flipped view** - Click anywhere on the flipped card or backdrop to return to normal view
+8. **Mobile navigation** - On mobile, swipe left/right to browse through movie recommendations
+9. **Access your watchlist** - Click the "📋 Watchlist" button in the header to view all saved movies
+10. **Manage your watchlist** - Remove movies from the watchlist modal when you've watched them
+11. **Continue the conversation** - Ask for more recommendations - the AI remembers what it already suggested
+12. **Start fresh** - Click the "🔄 New Session" button to clear all history and begin anew
 
 ### Testing Individual Components
 
@@ -185,13 +214,28 @@ cineman/
 
 ## Technologies Used
 
+### Backend
 - **Flask**: Web framework for the chat interface
+- **Flask-SQLAlchemy**: ORM for database interactions
+- **SQLite**: Database for storing user preferences
 - **LangChain**: AI orchestration framework
 - **Google Gemini AI**: Large language model for recommendations
 - **TMDB API**: Movie database and poster images
 - **OMDb API**: Movie ratings and additional metadata
 - **Python Requests**: HTTP library for API calls
 - **Python-dotenv**: Environment variable management
+
+### Frontend
+- **HTML5/CSS3**: Modern web interface
+- **JavaScript**: Interactive poster cards and session management
+- **Bootstrap**: Responsive UI components
+- **CSS 3D Transforms**: Flip card animations
+
+### Deployment
+- **Docker**: Containerization for consistent deployment
+- **Google Cloud Platform**: App Engine and Cloud Run support
+- **GitHub Actions**: CI/CD workflows for automated deployment
+- **Gunicorn**: Production-grade WSGI server
 
 ## API Keys Setup
 
@@ -284,10 +328,24 @@ For detailed setup, monitoring, and troubleshooting, refer to **[GCP_DEPLOYMENT.
 
 The application can also be deployed to Render using Docker. See `Dockerfile` and `RENDER_DOCKER_SETUP.md` for Render-specific instructions.
 
-## Future Enhancements
+## Current Feature Set Summary
+
+This application now includes a complete movie recommendation experience:
+
+### ✅ Implemented Features
+- AI-powered conversational movie recommendations
+- Session memory to avoid duplicate suggestions
+- Like/dislike/watchlist functionality with SQLite storage
+- Interactive flip cards with 3D animations and modal view
+- Mobile-optimized navigation with swipe gestures
+- Session management with New Session button
+- GCP deployment support (App Engine and Cloud Run)
+- Automated CI/CD workflows
+- Comprehensive testing suite
+
+### 🚀 Future Enhancements
 
 Potential improvements:
-- Integration of movie tools into the LangChain agent
 - Persistent user accounts and cross-session preferences
 - Movie comparison features
 - Streaming service availability integration
@@ -295,6 +353,8 @@ Potential improvements:
 - Advanced filtering and sorting of watchlist
 - Movie recommendations based on viewing history and preferences
 - Export watchlist to external services
+- Multi-user support with authentication
+- Real-time collaboration features
 
 ## License
 

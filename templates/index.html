@@ -60,8 +60,11 @@
       border: 1px solid rgba(0,0,0,0.04);
     }
 
-    .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); }
+    .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; justify-content:space-between; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); }
     .header-logo{ width:44px; height:44px; border-radius:8px; object-fit:cover; }
+    .header-title{ display:flex; gap:12px; align-items:center; flex:1; }
+    .new-session-btn{ padding:6px 12px; border-radius:8px; border:1px solid rgba(0,112,201,0.2); background:#fff; color:#0070c9; cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.2s; }
+    .new-session-btn:hover{ background:rgba(0,112,201,0.05); }
 
     #chatbox { padding:18px; overflow-y:auto; flex:1 1 auto; }
 
@@ -151,8 +154,11 @@
 <body>
   <div class="chat-container" role="main" aria-label="CineMan chat container">
     <div class="chat-header">
-      <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="header-logo" alt="CineMan" onerror="this.style.display='none'">
-      <span>🎬 CineMan: Your next watch is waiting</span>
+      <div class="header-title">
+        <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="header-logo" alt="CineMan" onerror="this.style.display='none'">
+        <span>🎬 CineMan: Your next watch is waiting</span>
+      </div>
+      <button type="button" id="newSessionBtn" class="new-session-btn" title="Start a new session">🔄 New Session</button>
     </div>
 
     <div id="chatbox" aria-live="polite" aria-atomic="false">
@@ -358,6 +364,81 @@
         btn._sendAttached = true;
       }
     })();
+
+    // New Session button handler
+    const newSessionBtn = document.getElementById('newSessionBtn');
+    if (newSessionBtn) {
+      newSessionBtn.addEventListener('click', async () => {
+        if (!confirm('Start a new session? This will clear your chat history and movie recommendations.')) {
+          return;
+        }
+        
+        try {
+          const response = await fetch('/session/clear', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (response.ok) {
+            // Clear the chat box
+            if (chatbox) {
+              chatbox.innerHTML = '';
+              // Re-add initial greeting
+              const greetingContainer = document.createElement('div');
+              greetingContainer.className = 'message-container';
+              const avatar = document.createElement('img');
+              avatar.src = '/static/cineman_hero.jpg';
+              avatar.className = 'agent-avatar';
+              avatar.alt = 'CineMan';
+              avatar.onerror = function() { this.style.display = 'none'; };
+              greetingContainer.appendChild(avatar);
+              const greetingMsg = document.createElement('div');
+              greetingMsg.className = 'agent-message';
+              greetingMsg.textContent = "Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a suggestion below.";
+              greetingContainer.appendChild(greetingMsg);
+              chatbox.appendChild(greetingContainer);
+              
+              // Re-add suggestion chips
+              const suggestionRow = document.createElement('div');
+              suggestionRow.className = 'message-row';
+              suggestionRow.id = 'suggestion-row';
+              const suggestionsDiv = document.createElement('div');
+              suggestionsDiv.className = 'suggestions';
+              suggestionsDiv.id = 'suggestions';
+              const chips = [
+                'Sci‑fi with twists',
+                'Comedy for family',
+                'Classic drama'
+              ];
+              chips.forEach(text => {
+                const chip = document.createElement('button');
+                chip.className = 'chip';
+                chip.type = 'button';
+                chip.textContent = text;
+                chip.addEventListener('click', () => {
+                  if (userInput) userInput.value = text;
+                  if (sendButton) sendButton.disabled = false;
+                  userInput.focus();
+                });
+                suggestionsDiv.appendChild(chip);
+              });
+              suggestionRow.appendChild(suggestionsDiv);
+              chatbox.appendChild(suggestionRow);
+            }
+            
+            // Clear input field
+            if (userInput) userInput.value = '';
+            
+            console.log('Session cleared successfully');
+          } else {
+            alert('Failed to clear session. Please try again.');
+          }
+        } catch (err) {
+          console.error('Error clearing session:', err);
+          alert('Error clearing session. Please try again.');
+        }
+      });
+    }
 
     // initial greeting
     window.addEventListener('DOMContentLoaded', () => {

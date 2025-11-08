@@ -58,9 +58,9 @@ def movie_combined():
         rating = omdb.get("IMDb_Rating")
         rating_source = "OMDb/IMDb"
     else:
-        # If OMDb blocked or errored, include note so UI can show message
+        # If OMDb blocked or errored, note the status but don't expose error details
         if omdb.get("status") in ("forbidden", "error"):
-            note = {"omdb_status": omdb.get("status"), "omdb_error": omdb.get("error")}
+            note = "OMDb service unavailable"
         # Try TMDb vote_average fallback
         if tmdb.get("status") == "success" and tmdb.get("vote_average") is not None:
             rating = tmdb.get("vote_average")
@@ -69,10 +69,29 @@ def movie_combined():
             rating = None
             rating_source = None
 
+    # Remove detailed error messages from external API responses before returning
+    # Only include safe, non-sensitive fields
+    tmdb_safe = {
+        "status": tmdb.get("status"),
+        "poster_url": tmdb.get("poster_url"),
+        "title": tmdb.get("title"),
+        "year": tmdb.get("year"),
+        "vote_average": tmdb.get("vote_average")
+    }
+    
+    omdb_safe = {
+        "status": omdb.get("status"),
+        "Title": omdb.get("Title"),
+        "Year": omdb.get("Year"),
+        "Director": omdb.get("Director"),
+        "IMDb_Rating": omdb.get("IMDb_Rating"),
+        "Poster_URL": omdb.get("Poster_URL")
+    }
+
     combined = {
         "query": title,
-        "tmdb": tmdb,
-        "omdb": omdb,
+        "tmdb": tmdb_safe,
+        "omdb": omdb_safe,
         "rating": rating,
         "rating_source": rating_source,
         "note": note,
@@ -156,9 +175,11 @@ def movie_interaction():
     
     except Exception as e:
         db.session.rollback()
+        # Log the actual error for debugging
+        print(f"Error in movie_interaction: {e}")
         return jsonify({
             "status": "error",
-            "error": str(e)
+            "error": "An error occurred while processing your request."
         }), 500
 
 

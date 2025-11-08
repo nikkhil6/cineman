@@ -10,26 +10,27 @@
         crossorigin="anonymous">
 
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- movie-integration provides poster card building and manifest handling -->
   <script src="{{ url_for('static', filename='js/movie-integration.js') }}"></script>
 
   <style>
     :root{
-      --card-width-desktop: 200px;
-      --card-width-mobile: 140px;
-      --card-radius: 8px;
-      --card-shadow: 0 8px 24px rgba(8,20,40,0.06);
-      --card-hover-shadow: 0 14px 36px rgba(8,20,40,0.12);
-      --poster-gap: 12px;
+      --card-width-desktop: 220px;
+      --card-width-mobile: 150px;
+      --card-radius: 10px;
+      --card-shadow: 0 10px 36px rgba(8,20,40,0.08);
+      --card-hover-shadow: 0 18px 46px rgba(8,20,40,0.12);
+      --poster-gap: 14px;
+      --modal-max-width: 880px;
+      --modal-padding: 20px;
     }
 
-    html, body { height: 100%; margin: 0; }
+    html, body { height:100%; margin:0; }
 
     body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-image: url('/static/background.jpg');
       background-size: cover;
@@ -45,93 +46,105 @@
       pointer-events: none;
     }
 
-    .chat-container {
-      width: min(920px, 96vw);
-      max-width: 920px;
+    .chat-container{
+      width: min(960px, 96vw);
+      max-width: 960px;
       margin: 0;
       border-radius: 14px;
-      background: rgba(255,255,255,0.92);
-      box-shadow: 0 8px 32px rgba(2,16,34,0.08);
-      overflow: hidden;
-      max-height: 92vh;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 12px 40px rgba(2,16,34,0.08);
       display:flex;
       flex-direction:column;
+      max-height: 92vh;
+      overflow: hidden;
       border: 1px solid rgba(0,0,0,0.04);
     }
 
-    .chat-header {
-      padding: 12px 18px;
-      display:flex;
-      gap:12px;
-      align-items:center;
-      font-weight:700;
-      background: rgba(247,247,247,0.9);
-      border-bottom: 1px solid rgba(0,0,0,0.04);
-    }
-
+    .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); }
     .header-logo{ width:44px; height:44px; border-radius:8px; object-fit:cover; }
 
-    #chatbox {
-      padding: 20px;
-      overflow-y: auto;
-      scroll-behavior: smooth;
-      flex: 1 1 auto;
-    }
+    #chatbox { padding:18px; overflow-y:auto; flex:1 1 auto; }
 
+    /* Message layout */
     .message-container { margin-bottom: 15px; display:flex; gap:10px; align-items:flex-start; }
-    .message-container.user-container { flex-direction: row-reverse; }
-    .agent-avatar{ width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; }
-    .agent-message{ background: rgba(240,240,240,0.95); padding:12px 18px; border-radius:18px; max-width:85%; line-height:1.6; }
-    .user-message{ background:#0070c9; color:#fff; padding:12px 18px; border-radius:18px; max-width:85%; }
+    .message-container.user-container { justify-content: flex-end; } /* push user's bubble to the right */
+    .agent-avatar, .user-avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+    .agent-message{ background: rgba(240,240,240,0.95); padding:12px 18px; border-radius:18px; max-width:85%; line-height:1.6; margin-right:auto; }
+    .user-message{ background:#0070c9; color:#fff; padding:12px 18px; border-radius:18px; max-width:85%; margin-left:auto; }
+
     .loading-message{ background:#fff7d6; padding:10px 15px; border-radius:18px; max-width:45%; font-style:italic; color:#666; animation:pulse 1.2s infinite; }
     @keyframes pulse{ 0%{opacity:1} 50%{opacity:.6} 100%{opacity:1} }
 
     .suggestions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-    .chip{ background: rgba(0,112,201,0.08); color:#0070c9; padding:8px 12px; border-radius:999px; border:1px solid rgba(0,112,201,0.12); cursor:pointer; font-weight:600; }
+    .chip { background: rgba(0,112,201,0.08); color:#0070c9; padding:8px 12px; border-radius:999px; border:1px solid rgba(0,112,201,0.12); cursor:pointer; font-weight:600; }
 
-    /* Poster area (cards are the main highlight) */
-    #poster-area {
-      display:flex;
-      gap:var(--poster-gap);
-      flex-wrap:wrap;
-      justify-content:center;
-      align-items:flex-start;
-      margin-top: 10px;
-    }
+    /* poster row used inside an agent bubble (inserted into chat) */
+    .poster-row { display:flex; gap:var(--poster-gap); flex-wrap:wrap; justify-content:center; align-items:flex-start; margin-top:10px; }
 
-    /* poster card styling (used by movie-integration.js) */
-    .poster-card { width: var(--card-width-desktop); max-width:36vw; border-radius: var(--card-radius); overflow:hidden; background:#fff; padding:10px; box-shadow: var(--card-shadow); display:flex; flex-direction:column; align-items:center; transition: transform 180ms ease, box-shadow 180ms ease; }
-    .poster-card:hover{ transform: translateY(-6px); box-shadow: var(--card-hover-shadow); }
-    .poster-image{ width:100%; border-radius:6px; object-fit:cover; display:block; }
-    .poster-meta{ margin-top:8px; text-align:center; font-size:0.94rem; color:#111; }
-    .poster-meta .title{ font-weight:700; }
-    .poster-meta .year{ color:#6b7280; font-size:0.86rem; margin-top:4px; }
-    .poster-meta .dir{ color:#555; font-size:0.86rem; margin-top:6px; }
-    .rating-badge{ display:inline-block; margin-top:6px; padding:6px 10px; border-radius:999px; background:#f1f5f9; font-weight:600; font-size:0.86rem; color:#0f172a; margin-right:6px; }
+    /* flip card */
+    .flip-card { width: var(--card-width-desktop); perspective: 1200px; -webkit-perspective:1200px; display:block; outline:none; }
+    .flip-card-inner { position: relative; width:100%; transform-style: preserve-3d; transition: transform 520ms cubic-bezier(.2,.9,.3,1); box-sizing:border-box; min-height: 420px; }
+    .flip-card.is-flipped .flip-card-inner { transform: rotateY(180deg); }
+    .flip-card-face { position:absolute; width:100%; height:100%; top:0; left:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius: var(--card-radius); overflow:hidden; background:#fff; display:flex; flex-direction:column; align-items:center; padding:10px; box-shadow: var(--card-shadow); }
+    .flip-card-front { z-index:2; }
+    .flip-card-back { transform: rotateY(180deg); z-index:1; padding:12px; overflow:auto; background: linear-gradient(180deg,#ffffff,#fbfbfb); }
 
-    .poster-collapsed-tray { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+    .poster-image { width:100%; height:320px; object-fit:cover; border-radius:6px; display:block; }
+    .poster-meta { margin-top:10px; text-align:center; font-size:0.95rem; color:#111; }
+    .poster-meta .title { font-weight:700; }
+    .poster-meta .year { color:#6b7280; font-size:0.85rem; margin-top:4px; }
+    .poster-meta .dir { color:#555; font-size:0.86rem; margin-top:6px; }
+    .rating-badge { display:inline-block; margin-top:8px; padding:6px 10px; border-radius:999px; background:#f1f5f9; font-weight:600; font-size:0.86rem; color:#0f172a; margin-right:6px; }
+
+    .card-back-content { font-size:0.92rem; color:#111; line-height:1.6; }
+    .card-back-content h4 { margin:12px 0 6px 0; font-size:1rem; }
+    .card-back-content p { margin:6px 0; }
+
+    .poster-collapsed-tray { margin-top:12px; display:flex; flex-direction:column; gap:6px; }
     .poster-tray-btn { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:6px 10px; border:1px solid rgba(2,6,23,0.06); background:#fff; cursor:pointer; font-weight:600; }
 
-    .input-group-container {
-      padding: 12px 16px;
-      border-top: 1px solid rgba(0,0,0,0.04);
-      background: rgba(255,255,255,0.96);
-      display:flex;
-      gap:10px;
-      align-items:center;
-      flex-shrink:0;
-    }
-    .input-group-container input[type="text"] {
-      flex:1;
-      min-height:46px;
-      border-radius: 10px;
-    }
-    .btn-send { min-width:110px; }
+    .input-group-container { padding:12px 16px; border-top:1px solid rgba(0,0,0,0.04); background: rgba(255,255,255,0.96); display:flex; gap:10px; align-items:center; }
+    .input-group-container input[type="text"] { flex:1; min-height:46px; border-radius:10px; }
 
-    @media (max-width:720px){
+    /* Modal overlay (centered large view) */
+    .poster-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3,6,18,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 16px;
+    }
+    .poster-modal-overlay.is-open { display: flex; }
+    .poster-modal {
+      width: min(100%, var(--modal-max-width));
+      max-height: calc(100vh - 48px);
+      background: #fff;
+      border-radius: 12px;
+      overflow: auto;
+      padding: var(--modal-padding);
+      box-shadow: 0 30px 80px rgba(3,6,18,0.45);
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      position: relative;
+    }
+    .poster-modal .modal-poster { width: 360px; max-width: 40%; border-radius: 8px; object-fit:cover; }
+    .poster-modal .modal-body { flex: 1 1 auto; overflow:auto; }
+    .poster-modal .modal-body h2 { margin-top:0; }
+    .poster-modal .close-btn { position:absolute; right: 24px; top: 18px; border: none; background: transparent; font-size: 22px; cursor:pointer; color:#222; }
+
+    @media (max-width:720px) {
       :root{ --card-width-desktop: var(--card-width-mobile); }
-      #chatbox{ padding:14px; }
-      .chat-container { width: 96vw; height: 96vh; max-width: 96vw; max-height: 96vh; }
+      .poster-image { height:220px; }
+      .flip-card-inner { min-height: 320px; }
+      #chatbox { padding:14px; }
+      .chat-container { width:96vw; height:96vh; max-width:96vw; max-height:96vh; }
+      .poster-modal { flex-direction: column; align-items: center; }
+      .poster-modal .modal-poster { max-width: 86%; width: auto; }
+      .card-back-content { line-height:1.4; }
     }
   </style>
 </head>
@@ -142,7 +155,7 @@
       <span>🎬 CineMan: Your next watch is waiting</span>
     </div>
 
-    <div id="chatbox" class="clearfix" aria-live="polite" aria-atomic="false">
+    <div id="chatbox" aria-live="polite" aria-atomic="false">
       <!-- initial greeting -->
       <div class="message-container">
         <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
@@ -150,34 +163,45 @@
       </div>
 
       <!-- suggestion chips -->
-      <div class="message-container" id="suggestion-row">
-        <div class="suggestions" id="suggestions" aria-hidden="false">
+      <div class="message-row" id="suggestion-row">
+        <div class="suggestions" id="suggestions">
           <button class="chip" type="button">Sci‑fi with twists</button>
           <button class="chip" type="button">Comedy for family</button>
           <button class="chip" type="button">Classic drama</button>
         </div>
       </div>
 
-      <!-- Poster area - cards are created by the manifest handler -->
-      <div id="poster-area" role="list" aria-label="Recommended movies"></div>
+      <!-- Note: poster rows are inserted as part of an assistant message bubble by the JS handler.
+           We intentionally removed a fixed #poster-area container to ensure posters appear in correct order
+           (immediately after the user's message). -->
     </div>
 
     <div class="input-group-container d-flex">
-      <input type="text" id="userInput" class="form-control me-2" placeholder="Ask for a sci-fi thriller or a nostalgic comedy..." aria-label="Ask CineMan for a movie">
-      <!-- type="button" and no inline onclick attribute -->
+      <input type="text" id="userInput" class="form-control me-2" placeholder="Ask for a sci-fi thriller or a nostalgic comedy..." aria-label="Ask CineMan for a movie" />
       <button type="button" id="sendButton" class="btn btn-primary btn-send">Suggest</button>
     </div>
   </div>
 
+  <!-- Poster Modal: opened when user clicks a poster -->
+  <div id="poster-modal-overlay" class="poster-modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="poster-modal" id="poster-modal" role="document">
+      <button class="close-btn" id="poster-modal-close" aria-label="Close">✕</button>
+      <img src="" alt="poster" class="modal-poster" id="modal-poster-img" />
+      <div class="modal-body" id="modal-body">
+        <h2 id="modal-title"></h2>
+        <div id="modal-meta" style="color:#666;margin-bottom:12px"></div>
+        <div id="modal-content" class="card-back-content"></div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // -- Global helpers used by page and movie-integration.js
+    // page-level helpers (unchanged behavior)
     const chatbox = document.getElementById('chatbox');
     const userInput = document.getElementById('userInput');
     const sendButton = document.getElementById('sendButton');
     const suggestions = document.getElementById('suggestions');
-    const posterArea = document.getElementById('poster-area');
 
-    // addMessage: creates and appends chat bubbles; returns the message DIV element for insertion
     function addMessage(sender, message, isLoader = false) {
       const msgContainer = document.createElement('div');
       msgContainer.className = sender === 'User' ? 'message-container user-container' : 'message-container';
@@ -194,13 +218,16 @@
         msgContainer.appendChild(loadingAvatar);
       } else {
         msgDiv.className = sender === 'User' ? 'user-message' : 'agent-message';
+        const avatar = document.createElement('img');
+        avatar.className = sender === 'User' ? 'user-avatar' : 'agent-avatar';
+        avatar.alt = sender === 'User' ? 'You' : 'CineMan';
+        avatar.src = sender === 'User' ? '/static/user_avatar.png' : '/static/cineman_hero.jpg';
+        avatar.onerror = function() { this.style.display = 'none'; };
+
+        // Append avatar first; CSS aligns message appropriately (user to right)
+        msgContainer.appendChild(avatar);
+
         if (sender === 'Agent') {
-          const avatar = document.createElement('img');
-          avatar.src = '/static/cineman_hero.jpg';
-          avatar.className = 'agent-avatar';
-          avatar.alt = 'CineMan';
-          avatar.onerror = function() { this.style.display = 'none'; };
-          msgContainer.appendChild(avatar);
           msgDiv.innerHTML = marked.parse ? marked.parse(message || '') : (message || '');
         } else {
           msgDiv.textContent = message;
@@ -212,16 +239,16 @@
       if (chatbox) chatbox.scrollTop = chatbox.scrollHeight;
       return msgDiv;
     }
+    window.addMessage = addMessage;
 
-    // toggle input disabled state
     function toggleInput(disabled) {
       if (userInput) userInput.disabled = disabled;
       if (sendButton) sendButton.disabled = disabled;
       if (sendButton) sendButton.textContent = disabled ? 'Processing...' : 'Suggest';
       if (!disabled && userInput) userInput.focus();
     }
+    window.toggleInput = toggleInput;
 
-    // suggestions chips: fill input when clicked
     suggestions?.addEventListener('click', (e) => {
       const chip = e.target.closest('.chip');
       if (!chip) return;
@@ -230,18 +257,61 @@
       userInput.focus();
     });
 
-    // Main sendMessage implementation — define as a top-level function so it's global
+    // Poster modal helpers
+    const modalOverlay = document.getElementById('poster-modal-overlay');
+    const modalCloseBtn = document.getElementById('poster-modal-close');
+    const modalPosterImg = document.getElementById('modal-poster-img');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMeta = document.getElementById('modal-meta');
+    const modalContent = document.getElementById('modal-content');
+
+    function openPosterModal(movie, movieData, htmlOrMarkdown) {
+      const posterUrl = movieData.poster || (movieData.omdb && (movieData.omdb.Poster || movieData.omdb.Poster_URL)) || (movieData.tmdb && movieData.tmdb.poster_url) || '';
+      modalPosterImg.src = posterUrl;
+      modalPosterImg.alt = movie.title + ' poster';
+      modalTitle.textContent = movieData.tmdb?.title || movieData.omdb?.Title || movie.title;
+      const year = movieData.tmdb?.year || movieData.omdb?.Year || movie.year || '';
+      const director = movieData.director || (movieData.omdb && movieData.omdb.Director) || (movieData.tmdb && movieData.tmdb.director) || '';
+      modalMeta.textContent = `${year ? year + ' • ' : ''}${director ? 'Dir: ' + director : ''}`;
+
+      // If the handler passed HTML (contains <), set innerHTML directly, otherwise parse markdown
+      if (typeof htmlOrMarkdown === 'string' && /<\/?[a-z][\s\S]*>/i.test(htmlOrMarkdown)) {
+        modalContent.innerHTML = htmlOrMarkdown;
+      } else if (typeof htmlOrMarkdown === 'string' && window.marked) {
+        modalContent.innerHTML = marked.parse(htmlOrMarkdown);
+      } else {
+        modalContent.innerHTML = htmlOrMarkdown || '<div class="small">No summary available.</div>';
+      }
+
+      modalOverlay.classList.add('is-open');
+      modalOverlay.setAttribute('aria-hidden','false');
+      setTimeout(() => modalCloseBtn?.focus(), 80);
+    }
+
+    function closePosterModal() {
+      modalOverlay.classList.remove('is-open');
+      modalOverlay.setAttribute('aria-hidden','true');
+      modalPosterImg.src = '';
+      modalContent.innerHTML = '';
+    }
+
+    modalCloseBtn?.addEventListener('click', closePosterModal);
+    modalOverlay?.addEventListener('click', (e) => { if (e.target === modalOverlay) closePosterModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalOverlay.classList.contains('is-open')) closePosterModal(); });
+
+    // expose for the integration script
+    window.openPosterModal = openPosterModal;
+    window.closePosterModal = closePosterModal;
+
+    // sendMessage implementation (exposed)
     async function sendMessageImpl() {
-      console.log('sendMessageImpl invoked');
       const message = (userInput && userInput.value) ? userInput.value.trim() : '';
       if (!message) return;
-
-      // Render user message and clear input
+      // 1) Render the user's message (right side)
       addMessage('User', message);
       if (userInput) userInput.value = '';
       toggleInput(true);
-
-      // Loading bubble
+      // 2) show loader
       const loaderEl = addMessage('Agent', 'CineMan is thinking...', true);
 
       try {
@@ -250,19 +320,16 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message })
         });
-
         if (!response.ok) throw new Error(`Server returned ${response.status}`);
-
         const data = await response.json();
 
         // remove loader
         if (loaderEl && loaderEl.parentElement) loaderEl.parentElement.remove();
 
-        // If movie-integration handler exists use it; it will render poster cards (preferred)
+        // let movie-integration handle posters + assistant text
         if (window.handleAssistantReplyWithManifest && typeof window.handleAssistantReplyWithManifest === 'function') {
           await window.handleAssistantReplyWithManifest(data);
         } else {
-          // fallback: render assistant reply into a chat bubble
           addMessage('Agent', data.response || 'No response from AI.');
         }
       } catch (err) {
@@ -273,17 +340,13 @@
         toggleInput(false);
       }
     }
-
-    // Expose sendMessage globally (permanent fix)
     window.sendMessage = sendMessageImpl;
 
-    // Robustly attach click handler to the Suggest button
     (function attachSendButton() {
       const btn = document.getElementById('sendButton');
       if (!btn) return setTimeout(attachSendButton, 200);
       if (!btn._sendAttached) {
-        btn.addEventListener('click', (e) => { e.preventDefault(); try { window.sendMessage(); } catch (err) { console.error('sendButton handler error', err); } });
-        // Ensure Enter key also triggers send
+        btn.addEventListener('click', (e) => { e.preventDefault(); try { window.sendMessage(); } catch (err) { console.error(err); } });
         if (userInput) {
           userInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !btn.disabled) {
@@ -296,19 +359,10 @@
       }
     })();
 
-    // Make addMessage available in window as well (used by other scripts)
-    window.addMessage = addMessage;
-    window.toggleInput = toggleInput;
-
-    // If movie-integration.js hasn't exposed its handlers yet it's fine — handleAssistantReplyWithManifest is used when available
-    // You may want to ensure movie-integration.js sets window.handleAssistantReplyWithManifest (it does in the provided file)
-
-    // Initial greeting if none present
+    // initial greeting
     window.addEventListener('DOMContentLoaded', () => {
       const existingAgentMsgs = chatbox.querySelectorAll('.agent-message');
-      if (existingAgentMsgs.length === 0) {
-        addMessage('Agent', "CineMan reporting for duty! Ask: 'Recommend a nostalgic 80s movie.'");
-      }
+      if (existingAgentMsgs.length === 0) addMessage('Agent', "CineMan reporting for duty! Ask: 'Recommend a nostalgic 80s movie.'");
     });
   </script>
 </body>

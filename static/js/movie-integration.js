@@ -1,8 +1,13 @@
 // static/js/movie-integration.js
-// Manifest-driven poster flip-card UI and helpers.
-// This file intentionally exposes its main helpers on window so the page script can call them.
+// Manifest-driven poster UI and modal. v15.3
+// - Fix: improved findBestMovieSection to capture the full movie block (not just first paragraph)
+// - Keeps robust extraction, modal formatting, compact-summary fallback, and runtime debug from v15.2
+// - Exposes helpers on window and stores lastAssistantRaw for debugging
 
-(async () => {})();
+(function(){})();
+
+/* ----- Config ----- */
+const CI_DEBUG = true; // set false to silence verbose logs in production
 
 /* ----- Fetch helpers ----- */
 async function fetchMovieCombined(title) {
@@ -10,6 +15,17 @@ async function fetchMovieCombined(title) {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`Movie API returned ${resp.status}`);
   return resp.json();
+}
+
+/* ----- Utilities ----- */
+function normalizeForMatch(s) {
+  return (s || '').replace(/[\u2018\u2019\u201C\u201D"'`]/g, '').replace(/[^\w\s()\-:]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function (m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
 }
 
 /* ----- Data extraction helpers ----- */
@@ -40,7 +56,7 @@ function extractRatings(data) {
   return { imdb: imdb || null, rt_tomatometer: rtTom || null, rt_audience: rtAud || null };
 }
 
-/* ----- Manifest parsing and section extraction ----- */
+/* ----- Manifest parsing ----- */
 function parseManifestAndStrip(replyText) {
   if (!replyText || typeof replyText !== 'string') return { manifest: null, assistantTextClean: replyText || '', assistantTextRaw: '' };
   const twoNewlineIdx = replyText.lastIndexOf('\n\n{');
@@ -68,41 +84,224 @@ function parseManifestAndStrip(replyText) {
   return { manifest: null, assistantTextClean: replyText, assistantTextRaw: replyText };
 }
 
-function extractMovieSection(assistantRaw, movieAnchorText, movieAnchorId) {
-  if (!assistantRaw) return null;
-  let startIdx = -1;
-  if (movieAnchorText && assistantRaw.indexOf(movieAnchorText) !== -1) startIdx = assistantRaw.indexOf(movieAnchorText);
-  if (startIdx === -1 && movieAnchorId) {
-    const token1 = `(anchor:${movieAnchorId})`;
-    const token2 = `[anchor:${movieAnchorId}]`;
-    startIdx = assistantRaw.indexOf(token1);
-    if (startIdx === -1) startIdx = assistantRaw.indexOf(token2);
+/* ----- Section parsing & extraction ----- */
+function splitAssistantIntoSections(assistantRaw) {
+  const sections = [];
+  if (!assistantRaw) return sections;
+  const lines = assistantRaw.split(/\r?\n/);
+  let current = { header: null, content: [] };
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    if (/^#{1,6}\s*/.test(ln)) {
+      if (current.header || current.content.length) sections.push({ header: current.header, content: current.content.join('\n').trim() });
+      current = { header: ln.trim(), content: [] };
+      continue;
+    }
+    if (ln.trim() === '' && current.content.length > 0) {
+      if (current.header || current.content.join('\n').trim()) {
+        sections.push({ header: current.header, content: current.content.join('\n').trim() });
+        current = { header: null, content: [] };
+      }
+      continue;
+    }
+    current.content.push(ln);
   }
-  if (startIdx === -1 && movieAnchorText) {
-    const lower = assistantRaw.toLowerCase();
-    const found = lower.indexOf(movieAnchorText.toLowerCase());
-    if (found !== -1) startIdx = found;
-  }
-  if (startIdx === -1) return null;
-  const afterHeaderIdx = assistantRaw.indexOf('\n', startIdx);
-  let contentStart = afterHeaderIdx !== -1 ? afterHeaderIdx + 1 : startIdx;
-  let endIdx = assistantRaw.length;
-  const anchorPositions = [];
-  const anchorRegex = /\(anchor:([^)]+)\)|\[anchor:([^\]]+)\]|\n####/g;
-  let m;
-  while ((m = anchorRegex.exec(assistantRaw)) !== null) {
-    const pos = m.index;
-    if (pos > startIdx) anchorPositions.push(pos);
-  }
-  if (anchorPositions.length > 0) endIdx = Math.min(...anchorPositions);
-  const section = assistantRaw.slice(contentStart, endIdx).trim();
-  return section;
+  if (current.header || current.content.length) sections.push({ header: current.header, content: current.content.join('\n').trim() });
+  return sections;
 }
 
-/* ----- Build flip-card DOM (used by handleAssistantReplyWithManifest) ----- */
+/* ----- Helper: compute end index of current movie block (next anchor token or next header) ----- */
+function computeBlockEndIndex(assistantRaw, startIdx) {
+  const anchorOrHeaderRegex = /\(anchor:([^)]+)\)|\[anchor:([^\]]+)\]|\n####/g;
+  let m;
+  let end = assistantRaw.length;
+  while ((m = anchorOrHeaderRegex.exec(assistantRaw)) !== null) {
+    const pos = m.index;
+    if (pos > startIdx && pos < end) end = pos;
+  }
+  return end;
+}
+
+function findBestMovieSection(assistantRaw, movie) {
+  if (!assistantRaw) return '';
+
+  // Prefer anchor token-based extraction and capture until next anchor or header, not just first paragraph.
+  if (movie.anchor_id) {
+    const token1 = `(anchor:${movie.anchor_id})`;
+    const token2 = `[anchor:${movie.anchor_id}]`;
+    let idx = assistantRaw.indexOf(token1);
+    if (idx === -1) idx = assistantRaw.indexOf(token2);
+    if (idx !== -1) {
+      // find start of content after the header line (move to next newline after token)
+      let afterHeaderIdx = assistantRaw.indexOf('\n', idx);
+      let contentStart = afterHeaderIdx !== -1 ? afterHeaderIdx + 1 : idx;
+      // compute end as next anchor/header occurrence (so we capture multiple paragraphs/lines)
+      const endIdx = computeBlockEndIndex(assistantRaw, idx);
+      const section = assistantRaw.slice(contentStart, endIdx).trim();
+      if (section) return section;
+      // fallback: try to capture immediate paragraph if above failed
+      const m = assistantRaw.slice(contentStart).match(/([\s\S]*?)(?=\r?\n\r?\n|$)/);
+      if (m && m[1]) return m[1].trim();
+    }
+  }
+
+  // Anchor text exact substring: capture until next anchor/header
+  if (movie.anchor_text) {
+    const idx = assistantRaw.indexOf(movie.anchor_text);
+    if (idx !== -1) {
+      let afterHeaderIdx = assistantRaw.indexOf('\n', idx);
+      let contentStart = afterHeaderIdx !== -1 ? afterHeaderIdx + 1 : idx;
+      const endIdx = computeBlockEndIndex(assistantRaw, idx);
+      const section = assistantRaw.slice(contentStart, endIdx).trim();
+      if (section) return section;
+      const m = assistantRaw.slice(contentStart).match(/([\s\S]*?)(?=\r?\n\r?\n|$)/);
+      if (m && m[1]) return m[1].trim();
+    }
+  }
+
+  // Fuzzy header match: use split sections (headers) and prefer the section whose header best matches title
+  const sections = splitAssistantIntoSections(assistantRaw);
+  const titleNorm = normalizeForMatch(movie.title || movie.anchor_text || '');
+  if (titleNorm) {
+    for (const s of sections) {
+      if (!s.header) continue;
+      const headerNorm = normalizeForMatch(s.header);
+      if (headerNorm.includes(titleNorm) || titleNorm.includes(headerNorm)) return s.content || '';
+      const titleTokens = titleNorm.split(/\s+/).filter(Boolean);
+      const overlap = titleTokens.filter(t => headerNorm.includes(t)).length;
+      if (overlap >= Math.max(1, Math.floor(titleTokens.length / 2))) return s.content || '';
+    }
+  }
+
+  // Fallback: find the first paragraph after the title occurrence anywhere in the raw text
+  const rawLower = assistantRaw.toLowerCase();
+  const tLower = (movie.title || '').toLowerCase();
+  if (tLower && rawLower.indexOf(tLower) !== -1) {
+    const idx = rawLower.indexOf(tLower);
+    const after = assistantRaw.slice(idx);
+    const m = after.match(/(?:\r?\n)+([\s\S]*?)(?=\r?\n#{1,6}\s|\r?\n\s*\r?\n|$)/);
+    if (m && m[1]) return m[1].trim();
+  }
+
+  return '';
+}
+
+/* ----- Modal formatter for three labeled sections ----- */
+function formatModalContentForThreeSections(rawMarkdown) {
+  if (!rawMarkdown) return '<div class="small">No summary available.</div>';
+  const text = rawMarkdown.replace(/\r\n/g, '\n');
+
+  const labels = {
+    pitch: ['**The Quick Pitch:**', 'The Quick Pitch:', '**The Quick Pitch**:', 'The Quick Pitch'],
+    why: ['**Why It Matches Your Request:**', 'Why It Matches Your Request:', '**Why It Matches Your Request**:', 'Why It Matches Your Request'],
+    award: ['**Award & Prestige Highlight:**', 'Award & Prestige Highlight:', '**Award & Prestige Highlight**:', 'Award & Prestige Highlight', 'Award & Prestige']
+  };
+
+  function findLabelPos(labelVariants, src) {
+    for (const v of labelVariants) {
+      const i = src.indexOf(v);
+      if (i !== -1) return { pos: i, label: v };
+    }
+    for (const v of labelVariants) {
+      const re = new RegExp(escapeRegex(v), 'i');
+      const m = re.exec(src);
+      if (m) return { pos: m.index, label: m[0] };
+    }
+    return null;
+  }
+
+  const pPos = findLabelPos(labels.pitch, text);
+  const wPos = findLabelPos(labels.why, text);
+  const aPos = findLabelPos(labels.award, text);
+
+  if (!pPos && !wPos && !aPos) {
+    try { return window.marked ? marked.parse(text) : `<pre>${escapeHtml(text)}</pre>`; } catch (e) { return `<pre>${escapeHtml(text)}</pre>`; }
+  }
+
+  const found = [];
+  if (pPos) found.push({ key: 'pitch', pos: pPos.pos, label: 'The Quick Pitch' });
+  if (wPos) found.push({ key: 'why', pos: wPos.pos, label: 'Why It Matches Your Request' });
+  if (aPos) found.push({ key: 'award', pos: aPos.pos, label: 'Award & Prestige Highlight' });
+  found.sort((a,b) => a.pos - b.pos);
+
+  const sections = {};
+  for (let i = 0; i < found.length; i++) {
+    const start = found[i].pos;
+    const end = (i + 1 < found.length) ? found[i+1].pos : text.length;
+    const rawSlice = text.slice(start, end).trim();
+    const firstLineEnd = rawSlice.indexOf('\n');
+    let content;
+    if (firstLineEnd !== -1) {
+      content = rawSlice.slice(firstLineEnd + 1).trim();
+      if (!content) {
+        const labelText = rawSlice.split(/\n/)[0];
+        content = rawSlice.slice(labelText.length).trim();
+      }
+    } else {
+      content = rawSlice.replace(/^.*?:\s*/, '').trim();
+    }
+    sections[found[i].key] = content || '';
+  }
+
+  let out = '';
+  if (sections.pitch) out += `<h4>The Quick Pitch</h4>${window.marked ? marked.parse(sections.pitch) : '<p>'+escapeHtml(sections.pitch)+'</p>'}\n`;
+  if (sections.why) out += `<h4>Why It Matches Your Request</h4>${window.marked ? marked.parse(sections.why) : '<p>'+escapeHtml(sections.why)+'</p>'}\n`;
+  if (sections.award) out += `<h4>Award & Prestige Highlight</h4>${window.marked ? marked.parse(sections.award) : '<p>'+escapeHtml(sections.award)+'</p>'}\n`;
+
+  if (!sections.pitch && (sections.why || sections.award)) {
+    const remaining = text;
+    out = window.marked ? marked.parse(remaining) : '<p>'+escapeHtml(remaining)+'</p>';
+  }
+
+  return out || (window.marked ? marked.parse(text) : '<pre>' + escapeHtml(text) + '</pre>');
+}
+
+/* ----- Compact summary extractor for card backs ----- */
+function extractCompactSummary(movieMarkdown, movieData) {
+  // 1) If movieMarkdown looks like HTML, parse and return first <p> text
+  try {
+    if (typeof movieMarkdown === 'string' && /<\/?[a-z][\s\S]*>/i.test(movieMarkdown)) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(movieMarkdown, 'text/html');
+      const p = doc.querySelector('p');
+      if (p && p.textContent.trim()) return p.textContent.trim();
+      const blocks = Array.from(doc.body.querySelectorAll('h1,h2,h3,h4,div,li'));
+      for (const b of blocks) if (b.textContent && b.textContent.trim()) return b.textContent.trim().slice(0,300);
+      const text = doc.body.textContent || '';
+      if (text.trim()) return text.trim().split(/\n{1,2}/)[0].trim().slice(0,300);
+    }
+  } catch (e) {
+    if (CI_DEBUG) console.warn('extractCompactSummary: HTML parse failed', e);
+  }
+
+  // 2) If movieMarkdown is markdown/plain text: return first non-empty paragraph
+  if (typeof movieMarkdown === 'string' && movieMarkdown.trim()) {
+    const para = movieMarkdown.split(/\r?\n\r?\n/).find(p => p && p.trim().length > 0);
+    if (para && para.trim()) return para.trim().slice(0, 300);
+    const first = movieMarkdown.trim().replace(/\s+/g,' ').slice(0,300);
+    if (first) return first;
+  }
+
+  // 3) Fallback to movieData fields
+  if (movieData) {
+    if (movieData.tmdb && movieData.tmdb.overview) {
+      const t = movieData.tmdb.overview.trim();
+      if (t) return t.split(/\r?\n\r?\n/)[0].slice(0,300);
+    }
+    if (movieData.omdb && (movieData.omdb.Plot || movieData.omdb.Plot)) {
+      const t = (movieData.omdb.Plot || '').trim();
+      if (t) return t.split(/\r?\n\r?\n/)[0].slice(0,300);
+    }
+    if (movieData.note && String(movieData.note).trim()) return String(movieData.note).trim().slice(0,300);
+  }
+
+  return '';
+}
+
+/* ----- Build flip card DOM (click opens modal which receives formatted HTML) ----- */
 function buildFlipCard(movie, movieData, movieMarkdown) {
-  const { imdb, rt_tomatometer, rt_audience } = extractRatings(movieData);
-  const director = extractDirector(movieData);
+  const { imdb, rt_tomatometer, rt_audience } = extractRatings(movieData || {});
+  const director = extractDirector(movieData || {});
 
   const flipCard = document.createElement('div');
   flipCard.className = 'flip-card';
@@ -116,13 +315,15 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   // FRONT
   const front = document.createElement('div');
   front.className = 'flip-card-face flip-card-front';
-  const posterUrl = movieData.poster || (movieData.omdb && (movieData.omdb.Poster || movieData.omdb.Poster_URL)) || (movieData.tmdb && movieData.tmdb.poster_url) || null;
+
+  const posterUrl = movieData?.poster || (movieData?.omdb && (movieData.omdb.Poster || movieData.omdb.Poster_URL)) || (movieData?.tmdb && movieData.tmdb.poster_url) || null;
+  let img = null;
   if (posterUrl) {
-    const img = document.createElement('img');
+    img = document.createElement('img');
     img.className = 'poster-image';
     img.src = posterUrl;
     img.alt = `${movie.title} poster`;
-    img.onerror = () => { img.style.display = 'none'; };
+    img.onerror = () => { img.style.display = 'none'; adjustInnerHeight(); };
     front.appendChild(img);
   } else {
     const placeholder = document.createElement('div');
@@ -135,25 +336,14 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     front.appendChild(placeholder);
   }
 
+  // meta block
   const meta = document.createElement('div');
   meta.className = 'poster-meta';
-  const titleEl = document.createElement('div');
-  titleEl.className = 'title';
-  titleEl.textContent = movieData.tmdb?.title || movieData.omdb?.Title || movie.title;
+  const titleEl = document.createElement('div'); titleEl.className = 'title'; titleEl.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
   meta.appendChild(titleEl);
-  const year = movieData.tmdb?.year || movieData.omdb?.Year || movie.year || '';
-  if (year) {
-    const yEl = document.createElement('div');
-    yEl.className = 'year';
-    yEl.textContent = year;
-    meta.appendChild(yEl);
-  }
-  if (director) {
-    const dEl = document.createElement('div');
-    dEl.className = 'dir';
-    dEl.textContent = `Dir: ${director}`;
-    meta.appendChild(dEl);
-  }
+  const year = movieData?.tmdb?.year || movieData?.omdb?.Year || movie.year || '';
+  if (year) { const yEl = document.createElement('div'); yEl.className = 'year'; yEl.textContent = year; meta.appendChild(yEl); }
+  if (director) { const dEl = document.createElement('div'); dEl.className = 'dir'; dEl.textContent = `Dir: ${director}`; meta.appendChild(dEl); }
 
   const ratingRow = document.createElement('div');
   ratingRow.style.marginTop = '8px';
@@ -161,122 +351,190 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   ratingRow.style.justifyContent = 'center';
   ratingRow.style.flexWrap = 'wrap';
   ratingRow.style.gap = '8px';
-  if (imdb) {
-    const imdbBadge = document.createElement('div');
-    imdbBadge.className = 'rating-badge';
-    imdbBadge.textContent = `IMDB: ${imdb}`;
-    ratingRow.appendChild(imdbBadge);
-  }
-  if (rt_tomatometer) {
-    const rtBadge = document.createElement('div');
-    rtBadge.className = 'rating-badge';
-    rtBadge.textContent = `RT: ${rt_tomatometer}`;
-    ratingRow.appendChild(rtBadge);
-  } else if (rt_audience) {
-    const rtBadge = document.createElement('div');
-    rtBadge.className = 'rating-badge';
-    rtBadge.textContent = `RT-Aud: ${rt_audience}`;
-    ratingRow.appendChild(rtBadge);
-  }
+  if (imdb) { const imdbBadge = document.createElement('div'); imdbBadge.className = 'rating-badge'; imdbBadge.textContent = `IMDB: ${imdb}`; ratingRow.appendChild(imdbBadge); }
+  if (rt_tomatometer) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT: ${rt_tomatometer}`; ratingRow.appendChild(rtBadge); }
+  else if (rt_audience) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT-Aud: ${rt_audience}`; ratingRow.appendChild(rtBadge); }
   meta.appendChild(ratingRow);
   front.appendChild(meta);
 
-  // BACK
+  // BACK compact summary (single paragraph)
   const back = document.createElement('div');
   back.className = 'flip-card-face flip-card-back';
-  back.style.overflow = 'auto';
   const backContent = document.createElement('div');
   backContent.className = 'card-back-content';
-  backContent.innerHTML = movieMarkdown ? (window.marked ? marked.parse(movieMarkdown) : movieMarkdown) : '<div class="small">No summary available.</div>';
+
+  const compact = extractCompactSummary(movieMarkdown, movieData);
+  backContent.innerHTML = compact ? (window.marked ? marked.parse(compact) : '<p>'+escapeHtml(compact)+'</p>') : '<div class="small">No summary available.</div>';
   back.appendChild(backContent);
 
   inner.appendChild(front);
   inner.appendChild(back);
 
-  // toggles
-  function toggleFlip() {
-    flipCard.classList.toggle('is-flipped');
+  function adjustInnerHeight() {
+    requestAnimationFrame(() => {
+      const rect = front.getBoundingClientRect();
+      if (rect && rect.height && rect.height > 0) {
+        inner.style.minHeight = Math.ceil(rect.height) + 'px';
+        back.style.height = inner.style.minHeight;
+        front.style.height = inner.style.minHeight;
+      }
+    });
   }
+  if (img) {
+    if (img.complete && img.naturalHeight) adjustInnerHeight();
+    else { img.addEventListener('load', adjustInnerHeight); img.addEventListener('error', adjustInnerHeight); }
+  } else adjustInnerHeight();
+
+  // store debug data on the DOM node and log if debug enabled
+  try {
+    flipCard.dataset.extracted = (movieMarkdown || '').slice(0, 1000);
+    flipCard.dataset.compact = (compact || '').slice(0, 1000);
+    if (CI_DEBUG) {
+      console.debug('[movie-integration] buildFlipCard:', {
+        title: movie.title,
+        extractedSnippet: flipCard.dataset.extracted,
+        compactSnippet: flipCard.dataset.compact,
+        poster: posterUrl ? posterUrl : '<no poster>',
+        tmdbTitle: movieData?.tmdb?.title || '',
+      });
+    }
+  } catch (e) {
+    if (CI_DEBUG) console.warn('[movie-integration] failed to set dataset on flipCard', e);
+  }
+
   flipCard.addEventListener('click', (e) => {
     if (e.target.closest('a')) return;
-    toggleFlip();
+    const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
+    if (typeof window.openPosterModal === 'function') {
+      window.openPosterModal(movie, movieData, fullHtml);
+    } else {
+      flipCard.classList.toggle('is-flipped');
+    }
   });
+
   flipCard.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFlip(); }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
+      if (typeof window.openPosterModal === 'function') window.openPosterModal(movie, movieData, fullHtml);
+      else flipCard.classList.toggle('is-flipped');
+    }
     if (e.key === 'Escape') flipCard.classList.remove('is-flipped');
   });
 
   return flipCard;
 }
 
-/* ----- Main: handle assistant reply, build and insert cards ----- */
+/* ----- Main handler: insert posters as an agent message bubble THEN append assistant text ----- */
 async function handleAssistantReplyWithManifest(data) {
   const raw = (typeof data.response === 'string') ? data.response : '';
   const { manifest, assistantTextClean, assistantTextRaw } = parseManifestAndStrip(raw);
 
-  const posterArea = document.getElementById('poster-area');
-  if (!posterArea) return;
-  // clear current cards for each request
-  posterArea.innerHTML = '';
+  // store for debugging convenience
+  window.lastAssistantRaw = assistantTextRaw || '';
+  window.lastManifest = manifest || null;
+  if (CI_DEBUG) {
+    console.debug('[movie-integration] handleAssistantReplyWithManifest invoked', {
+      manifest,
+      assistantTextClean: assistantTextClean ? assistantTextClean.slice(0,800) : '',
+      assistantTextRaw: assistantTextRaw ? assistantTextRaw.slice(0,800) : ''
+    });
+  }
 
-  if (!manifest) {
-    // fallback: show assistantTextClean in chat area as a message bubble
-    if (assistantTextClean) {
-      const bubbleWrap = document.createElement('div');
-      bubbleWrap.className = 'message-container';
-      const bubble = document.createElement('div');
-      bubble.className = 'agent-message';
-      bubble.innerHTML = window.marked ? marked.parse(assistantTextClean) : assistantTextClean;
-      bubbleWrap.appendChild(bubble);
-      const chatbox = document.getElementById('chatbox');
-      if (chatbox) chatbox.appendChild(bubbleWrap);
-    }
+  const chatbox = document.getElementById('chatbox');
+  if (!chatbox) {
+    if (CI_DEBUG) console.warn('[movie-integration] chatbox element not found');
     return;
   }
 
-  const unmatchedCards = [];
+  // build agent poster bubble
+  const posterBubbleWrap = document.createElement('div');
+  posterBubbleWrap.className = 'message-container';
+  const avatar = document.createElement('img');
+  avatar.className = 'agent-avatar';
+  avatar.src = '/static/cineman_hero.jpg';
+  avatar.alt = 'CineMan';
+  avatar.onerror = function() { this.style.display = 'none'; };
+  posterBubbleWrap.appendChild(avatar);
+
+  const posterBubble = document.createElement('div');
+  posterBubble.className = 'agent-message';
+
+  const posterRow = document.createElement('div');
+  posterRow.className = 'poster-row';
+  posterBubble.appendChild(posterRow);
+  posterBubbleWrap.appendChild(posterBubble);
+
+  // append posters bubble so it appears immediately after user's message
+  chatbox.appendChild(posterBubbleWrap);
+  chatbox.scrollTop = chatbox.scrollHeight;
+
+  if (!manifest) {
+    // no manifest -> append assistant text and exit
+    if (assistantTextClean && typeof window.addMessage === 'function') window.addMessage('Agent', assistantTextClean);
+    return;
+  }
+
+  const unmatched = [];
   for (const m of manifest.movies) {
     if (!m || !m.title) continue;
-    const movieSectionMarkdown = extractMovieSection(assistantTextRaw, m.anchor_text, m.anchor_id) || '';
+    const movieSectionMarkdown = findBestMovieSection(assistantTextRaw, m) || findBestMovieSection(assistantTextClean, m) || '';
+    if (CI_DEBUG) console.debug('[movie-integration] extracted per-movie markdown for', m.title, movieSectionMarkdown ? movieSectionMarkdown.slice(0,300) : '<empty>');
     try {
       const movieData = await fetchMovieCombined(m.title);
+      if (CI_DEBUG) console.debug('[movie-integration] fetched movieData for', m.title, { hasPoster: !!movieData.poster, tmdbTitle: movieData.tmdb?.title || null });
       const hasMeta = movieData.tmdb?.title || movieData.omdb?.Title || movieData.poster;
-      if (!hasMeta) {
-        console.debug('Skipping manifest entry (no poster/metadata):', m.title);
-        continue;
-      }
+      if (!hasMeta) { if (CI_DEBUG) console.debug('Skipping manifest entry (no poster/metadata):', m.title); continue; }
       const card = buildFlipCard(m, movieData, movieSectionMarkdown);
-      posterArea.appendChild(card);
+      try { card.dataset.extracted = (movieSectionMarkdown || '').slice(0, 1000); } catch (e) {}
+      posterRow.appendChild(card);
     } catch (err) {
       console.warn('Failed to fetch/build card:', m.title, err);
       const fallbackCard = document.createElement('div');
       fallbackCard.className = 'poster-card';
       fallbackCard.textContent = m.title;
-      unmatchedCards.push(fallbackCard);
+      unmatched.push(fallbackCard);
     }
   }
 
-  if (unmatchedCards.length > 0) {
+  if (unmatched.length > 0) {
     const trayWrapper = document.createElement('div');
     trayWrapper.className = 'poster-collapsed-tray';
     const btn = document.createElement('button'); btn.className = 'poster-tray-btn'; btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'Posters ';
-    const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = `${unmatchedCards.length}`; badge.style.marginLeft = '6px'; btn.appendChild(badge);
+    const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = `${unmatched.length}`; badge.style.marginLeft = '6px'; btn.appendChild(badge);
     const tray = document.createElement('div'); tray.className = 'poster-row'; tray.style.display = 'none'; tray.style.marginTop = '6px';
-    for (const c of unmatchedCards) tray.appendChild(c);
+    for (const c of unmatched) tray.appendChild(c);
     btn.addEventListener('click', () => {
       const expanded = tray.style.display !== 'none';
       tray.style.display = expanded ? 'none' : 'flex';
       btn.setAttribute('aria-expanded', String(!expanded));
       btn.textContent = expanded ? 'Posters ' : 'Hide posters ';
-      const newBadge = document.createElement('span'); newBadge.className = 'badge'; newBadge.textContent = `${unmatchedCards.length}`; newBadge.style.marginLeft = '6px';
-      btn.appendChild(newBadge);
     });
     trayWrapper.appendChild(btn); trayWrapper.appendChild(tray);
-    posterArea.appendChild(trayWrapper);
+    posterRow.appendChild(trayWrapper);
   }
+
+  // After posters are in view, append the assistant's textual reply (ensures posters appear before text)
+  try {
+    if (assistantTextClean && typeof window.addMessage === 'function') {
+      window.addMessage('Agent', assistantTextClean);
+    } else if (assistantTextClean) {
+      const wrap = document.createElement('div');
+      wrap.className = 'message-container';
+      const bubble = document.createElement('div');
+      bubble.className = 'agent-message';
+      bubble.innerHTML = window.marked ? marked.parse(assistantTextClean) : assistantTextClean;
+      wrap.appendChild(bubble);
+      chatbox.appendChild(wrap);
+    }
+  } catch (err) {
+    console.warn('Failed to render assistantTextClean in chat area', err);
+  }
+
+  chatbox.scrollTop = chatbox.scrollHeight;
 }
 
-/* ----- Export to window (ensure globals exist for template) ----- */
+/* ----- Export helpers ----- */
 window.fetchMovieCombined = fetchMovieCombined;
 window.handleAssistantReplyWithManifest = handleAssistantReplyWithManifest;
 window.parseManifestAndStrip = parseManifestAndStrip;

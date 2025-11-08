@@ -4,17 +4,22 @@
 (function() {
   'use strict';
   
-  // Get modal elements
-  const watchlistModal = document.getElementById('watchlist-modal-overlay');
-  const watchlistBtn = document.getElementById('watchlist-btn');
-  const watchlistCloseBtn = document.getElementById('watchlist-modal-close');
-  const watchlistBody = document.getElementById('watchlist-modal-body');
-  const watchlistItems = document.getElementById('watchlist-items');
-  const watchlistEmpty = document.getElementById('watchlist-empty');
-  const watchlistCount = document.getElementById('watchlist-count');
+  // Get modal elements - will be initialized after DOM loads
+  let watchlistModal, watchlistBtn, watchlistCloseBtn, watchlistBody, watchlistItems, watchlistEmpty, watchlistCount;
+  
+  function initElements() {
+    watchlistModal = document.getElementById('watchlist-modal-overlay');
+    watchlistBtn = document.getElementById('watchlist-btn');
+    watchlistCloseBtn = document.getElementById('watchlist-modal-close');
+    watchlistBody = document.getElementById('watchlist-modal-body');
+    watchlistItems = document.getElementById('watchlist-items');
+    watchlistEmpty = document.getElementById('watchlist-empty');
+    watchlistCount = document.getElementById('watchlist-count');
+  }
   
   // Open watchlist modal
   function openWatchlistModal() {
+    if (!watchlistModal) return;
     loadWatchlist();
     watchlistModal.classList.add('is-open');
     watchlistModal.setAttribute('aria-hidden', 'false');
@@ -22,6 +27,7 @@
   
   // Close watchlist modal
   function closeWatchlistModal() {
+    if (!watchlistModal) return;
     watchlistModal.classList.remove('is-open');
     watchlistModal.setAttribute('aria-hidden', 'true');
   }
@@ -44,6 +50,8 @@
   
   // Render watchlist items
   function renderWatchlist(items) {
+    if (!watchlistItems || !watchlistEmpty) return;
+    
     if (!items || items.length === 0) {
       watchlistEmpty.style.display = 'block';
       watchlistItems.innerHTML = '';
@@ -120,11 +128,13 @@
       const data = await response.json();
       if (data.status === 'success') {
         const count = data.watchlist.length;
-        if (count > 0) {
-          watchlistCount.textContent = count;
-          watchlistCount.style.display = 'inline-block';
-        } else {
-          watchlistCount.style.display = 'none';
+        if (watchlistCount) {
+          if (count > 0) {
+            watchlistCount.textContent = count;
+            watchlistCount.style.display = 'inline-block';
+          } else {
+            watchlistCount.style.display = 'none';
+          }
         }
       }
     } catch (err) {
@@ -153,10 +163,18 @@
     }
   });
   
-  // Initialize watchlist count on page load
-  document.addEventListener('DOMContentLoaded', () => {
+  // Initialize on DOM ready
+  function init() {
+    initElements();
     updateWatchlistCount();
-  });
+  }
+  
+  // Initialize watchlist count on page load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
   
   // Expose functions globally
   window.updateWatchlistCount = updateWatchlistCount;

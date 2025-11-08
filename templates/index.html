@@ -87,14 +87,48 @@
     .poster-row { display:flex; gap:var(--poster-gap); flex-wrap:wrap; justify-content:center; align-items:flex-start; margin-top:10px; }
 
     /* flip card */
-    .flip-card { width: var(--card-width-desktop); perspective: 1200px; -webkit-perspective:1200px; display:block; outline:none; cursor:pointer; transition: transform 0.2s ease; }
-    .flip-card:hover { transform: translateY(-4px); }
+    .flip-card { width: var(--card-width-desktop); perspective: 1200px; -webkit-perspective:1200px; display:block; outline:none; cursor:pointer; transition: all 0.3s ease; position: relative; z-index: 1; }
+    .flip-card:hover:not(.is-flipped) { transform: translateY(-4px); }
     .flip-card:hover .flip-card-inner { box-shadow: var(--card-hover-shadow); }
-    .flip-card-inner { position: relative; width:100%; transform-style: preserve-3d; transition: transform 520ms cubic-bezier(.2,.9,.3,1); box-sizing:border-box; min-height: 480px; }
-    .flip-card.is-flipped .flip-card-inner { transform: rotateY(180deg); }
+    .flip-card-inner { position: relative; width:100%; transform-style: preserve-3d; transition: all 520ms cubic-bezier(.2,.9,.3,1); box-sizing:border-box; min-height: 480px; }
+    
+    /* When flipped, expand to larger size and center */
+    .flip-card.is-flipped { 
+      position: fixed; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      width: min(600px, 90vw); 
+      z-index: 3000; 
+      max-height: 85vh;
+    }
+    .flip-card.is-flipped .flip-card-inner { 
+      transform: rotateY(180deg); 
+      min-height: auto;
+      max-height: 85vh;
+    }
+    
+    /* Backdrop blur when card is flipped */
+    .poster-row::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 2999;
+    }
+    .poster-row.has-flipped-card::after {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
     .flip-card-face { position:absolute; width:100%; height:100%; top:0; left:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius: var(--card-radius); overflow:hidden; background:#fff; display:flex; flex-direction:column; align-items:center; padding:10px; box-shadow: var(--card-shadow); }
     .flip-card-front { z-index:2; }
-    .flip-card-back { transform: rotateY(180deg); z-index:1; padding:12px; overflow:auto; background: linear-gradient(180deg,#ffffff,#fbfbfb); }
+    .flip-card-back { transform: rotateY(180deg); z-index:1; padding:16px; overflow-y:auto; background: linear-gradient(180deg,#ffffff,#fbfbfb); }
 
     .poster-image { width:100%; height:320px; object-fit:cover; border-radius:6px; display:block; }
     .poster-meta { margin-top:10px; text-align:center; font-size:0.95rem; color:#111; }
@@ -112,7 +146,7 @@
 
     /* Action buttons for like/dislike/watchlist */
     .action-buttons { display:flex; gap:6px; justify-content:center; margin-top:12px; margin-bottom:4px; width:100%; padding:0 4px; }
-    .action-btn { padding:10px 14px; border:none; border-radius:8px; cursor:pointer; font-size:1rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:4px; flex:1; justify-content:center; min-height:40px; }
+    .action-btn { padding:8px 10px; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:4px; flex:1; justify-content:center; min-height:36px; }
     .action-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
     .like-btn { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
     .like-btn.active { background:#16a34a; color:#fff; }
@@ -120,6 +154,10 @@
     .dislike-btn.active { background:#dc2626; color:#fff; }
     .watchlist-btn { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
     .watchlist-btn.active { background:#2563eb; color:#fff; }
+    
+    /* Smaller buttons on back side for better content visibility */
+    .flip-card-back .action-buttons { margin-top: 10px; position: sticky; bottom: 0; background: linear-gradient(180deg, transparent, #fbfbfb 20%); padding-top: 12px; padding-bottom: 8px; }
+    .flip-card-back .action-btn { min-height: 32px; padding: 6px 8px; font-size: 0.85rem; }
 
     .input-group-container { padding:12px 16px; border-top:1px solid rgba(0,0,0,0.04); background: rgba(255,255,255,0.96); display:flex; gap:10px; align-items:center; }
     .input-group-container input[type="text"] { flex:1; min-height:46px; border-radius:10px; }

@@ -385,14 +385,49 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   
   front.appendChild(meta);
 
-  // BACK compact summary (single paragraph)
+  // BACK - full detailed content
   const back = document.createElement('div');
   back.className = 'flip-card-face flip-card-back';
+  
+  // Add movie title and metadata at the top
+  const backHeader = document.createElement('div');
+  backHeader.className = 'back-header';
+  backHeader.style.textAlign = 'center';
+  backHeader.style.marginBottom = '16px';
+  backHeader.style.borderBottom = '2px solid #e5e7eb';
+  backHeader.style.paddingBottom = '12px';
+  
+  const backTitle = document.createElement('div');
+  backTitle.style.fontWeight = '700';
+  backTitle.style.fontSize = '1.2rem';
+  backTitle.style.marginBottom = '6px';
+  backTitle.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
+  
+  const backYearDir = document.createElement('div');
+  backYearDir.style.color = '#6b7280';
+  backYearDir.style.fontSize = '0.9rem';
+  backYearDir.style.marginBottom = '8px';
+  backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
+  
+  const backRatings = document.createElement('div');
+  backRatings.style.fontSize = '0.85rem';
+  backRatings.style.color = '#374151';
+  if (imdb) backRatings.textContent = `IMDB: ${imdb}`;
+  
+  backHeader.appendChild(backTitle);
+  backHeader.appendChild(backYearDir);
+  if (imdb) backHeader.appendChild(backRatings);
+  back.appendChild(backHeader);
+  
+  // Add the full formatted content
   const backContent = document.createElement('div');
   backContent.className = 'card-back-content';
-
-  const compact = extractCompactSummary(movieMarkdown, movieData);
-  backContent.innerHTML = compact ? (window.marked ? marked.parse(compact) : '<p>'+escapeHtml(compact)+'</p>') : '<div class="small">No summary available.</div>';
+  backContent.style.flex = '1';
+  backContent.style.overflowY = 'auto';
+  
+  // Use the full formatted content from formatModalContentForThreeSections
+  const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
+  backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
   back.appendChild(backContent);
   
   // Add action buttons to back side as well
@@ -574,19 +609,64 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   // Click to flip the card
   flipCard.addEventListener('click', (e) => {
     if (e.target.closest('a') || e.target.closest('.action-btn')) return;
-    flipCard.classList.toggle('is-flipped');
+    const isFlipped = flipCard.classList.toggle('is-flipped');
+    
+    // Toggle backdrop on parent poster-row
+    const posterRow = flipCard.closest('.poster-row');
+    if (posterRow) {
+      if (isFlipped) {
+        posterRow.classList.add('has-flipped-card');
+        // Prevent scrolling when card is flipped
+        document.body.style.overflow = 'hidden';
+      } else {
+        posterRow.classList.remove('has-flipped-card');
+        document.body.style.overflow = '';
+      }
+    }
   });
 
   // Keyboard navigation
   flipCard.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      flipCard.classList.toggle('is-flipped');
+      const isFlipped = flipCard.classList.toggle('is-flipped');
+      const posterRow = flipCard.closest('.poster-row');
+      if (posterRow) {
+        if (isFlipped) {
+          posterRow.classList.add('has-flipped-card');
+          document.body.style.overflow = 'hidden';
+        } else {
+          posterRow.classList.remove('has-flipped-card');
+          document.body.style.overflow = '';
+        }
+      }
     }
     if (e.key === 'Escape') {
       flipCard.classList.remove('is-flipped');
+      const posterRow = flipCard.closest('.poster-row');
+      if (posterRow) {
+        posterRow.classList.remove('has-flipped-card');
+        document.body.style.overflow = '';
+      }
     }
   });
+  
+  // Click backdrop to close
+  const handleBackdropClick = (e) => {
+    const posterRow = flipCard.closest('.poster-row');
+    if (posterRow && posterRow.classList.contains('has-flipped-card')) {
+      if (!flipCard.contains(e.target) && e.target !== flipCard) {
+        flipCard.classList.remove('is-flipped');
+        posterRow.classList.remove('has-flipped-card');
+        document.body.style.overflow = '';
+      }
+    }
+  };
+  
+  // Add backdrop click handler after a short delay to prevent immediate closing
+  setTimeout(() => {
+    document.addEventListener('click', handleBackdropClick);
+  }, 100);
 
   return flipCard;
 }

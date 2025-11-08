@@ -18,8 +18,26 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-pro
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour
 
-# Configure SQLite database for movie interactions
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'cineman.db')
+# Configure database for movie interactions
+# In GCP, use Cloud SQL or fallback to in-memory SQLite
+# In local development, use file-based SQLite
+if os.getenv('GAE_ENV', '').startswith('standard') or os.getenv('CLOUD_RUN_SERVICE'):
+    # Running on GCP - use in-memory SQLite or Cloud SQL
+    # For Cloud SQL, set DATABASE_URL environment variable
+    database_url = os.getenv('DATABASE_URL')
+    if database_url:
+        # Use Cloud SQL (PostgreSQL/MySQL)
+        app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    else:
+        # Fallback to in-memory SQLite on GCP (data not persisted between instances)
+        # Note: This is for testing. For production, use Cloud SQL.
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/cineman.db'
+        print("⚠️  WARNING: Using temporary SQLite database. Data will not persist between deployments.")
+        print("⚠️  For production, configure Cloud SQL and set DATABASE_URL environment variable.")
+else:
+    # Local development - use file-based SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'cineman.db')
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database

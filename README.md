@@ -308,6 +308,11 @@ To add new movie data tools:
 
 This application can be easily deployed to GCP using either App Engine or Cloud Run. See the **[GCP Deployment Guide](GCP_DEPLOYMENT.md)** for complete instructions.
 
+**Important:** The database configuration automatically adapts to the environment:
+- **Local Development**: Uses SQLite file (`cineman.db`)
+- **GCP Deployment**: Uses SQLite in `/tmp` (temporary) or Cloud SQL (recommended for production)
+- See **[GCP Database Setup Guide](GCP_DATABASE_SETUP.md)** for persistent database configuration
+
 **Quick Deploy to App Engine:**
 ```bash
 gcloud app deploy --set-env-vars \

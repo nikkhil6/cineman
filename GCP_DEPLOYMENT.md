@@ -99,6 +99,28 @@ Or visit: `https://YOUR_PROJECT_ID.uc.r.appspot.com`
 gcloud app logs tail -s default
 ```
 
+### Step 6: Database Configuration (Important!)
+
+By default, the app uses a temporary SQLite database in `/tmp` which means:
+- ⚠️ **Data is lost when instances restart**
+- ⚠️ **Each instance has its own database**
+
+**For production use with persistent data**, configure Cloud SQL:
+See the **[GCP Database Setup Guide](GCP_DATABASE_SETUP.md)** for detailed instructions.
+
+**Quick Setup:**
+```bash
+# Create Cloud SQL instance
+gcloud sql instances create cineman-db --database-version=POSTGRES_15 --tier=db-f1-micro --region=us-central1
+
+# Then deploy with DATABASE_URL
+gcloud app deploy --set-env-vars \
+  DATABASE_URL="postgresql://user:pass@/cineman?host=/cloudsql/PROJECT:REGION:cineman-db",\
+  GEMINI_API_KEY=your_key,\
+  TMDB_API_KEY=your_key,\
+  OMDB_API_KEY=your_key
+```
+
 ### Managing Your App Engine Deployment
 
 **Update environment variables:**

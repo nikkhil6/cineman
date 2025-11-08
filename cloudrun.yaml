@@ -1,0 +1,49 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: cineman
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: '0'
+        autoscaling.knative.dev/maxScale: '10'
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/PROJECT_ID/cineman:latest
+        ports:
+        - name: http1
+          containerPort: 8000
+        env:
+        # Environment variables should be set using gcloud CLI or GCP Console
+        # Example: gcloud run services update cineman --set-env-vars GEMINI_API_KEY=your_key
+        - name: PORT
+          value: "8000"
+        # Uncomment and set these via gcloud or Secret Manager (recommended)
+        # - name: GEMINI_API_KEY
+        #   value: "your_gemini_api_key"
+        # - name: TMDB_API_KEY
+        #   value: "your_tmdb_api_key"
+        # - name: OMDB_API_KEY
+        #   value: "your_omdb_api_key"
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 0
+          periodSeconds: 5
+          failureThreshold: 10

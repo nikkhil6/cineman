@@ -1,0 +1,30 @@
+runtime: python311
+
+# App Engine Standard environment for Flask applications
+entrypoint: gunicorn -b :$PORT cineman.app:app --workers 2 --timeout 120
+
+# Instance scaling configuration
+automatic_scaling:
+  target_cpu_utilization: 0.65
+  min_instances: 0
+  max_instances: 10
+
+# Environment variables - Set these in GCP Console or using gcloud CLI
+# DO NOT commit actual API keys to version control
+env_variables:
+  # Set via: gcloud app deploy --set-env-vars GEMINI_API_KEY=your_key
+  # Or configure in GCP Console: App Engine -> Settings -> Environment Variables
+  # GEMINI_API_KEY: "your_gemini_api_key_here"
+  # TMDB_API_KEY: "your_tmdb_api_key_here"  
+  # OMDB_API_KEY: "your_omdb_api_key_here"
+
+# Health check configuration
+# App Engine will call /health endpoint to verify the app is running
+handlers:
+- url: /.*
+  script: auto
+  secure: always
+
+# Enable API for monitoring
+inbound_services:
+- warmup

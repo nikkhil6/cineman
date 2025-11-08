@@ -244,6 +244,32 @@ To add new movie data tools:
 - Check that port 5000 is available
 - Verify all dependencies are installed
 
+## Deployment
+
+### Deploy to Google Cloud Platform (GCP)
+
+This application can be easily deployed to GCP using either App Engine or Cloud Run. See the **[GCP Deployment Guide](GCP_DEPLOYMENT.md)** for complete instructions.
+
+**Quick Deploy to App Engine:**
+```bash
+gcloud app deploy --set-env-vars \
+  GEMINI_API_KEY=your_key,\
+  TMDB_API_KEY=your_key,\
+  OMDB_API_KEY=your_key
+```
+
+**Quick Deploy to Cloud Run:**
+```bash
+gcloud builds submit --tag gcr.io/PROJECT_ID/cineman
+gcloud run deploy cineman --image gcr.io/PROJECT_ID/cineman --allow-unauthenticated
+```
+
+For detailed setup, monitoring, and troubleshooting, refer to **[GCP_DEPLOYMENT.md](GCP_DEPLOYMENT.md)**.
+
+### Deploy to Render
+
+The application can also be deployed to Render using Docker. See `Dockerfile` and `RENDER_DOCKER_SETUP.md` for Render-specific instructions.
+
 ## Future Enhancements
 
 Potential improvements:

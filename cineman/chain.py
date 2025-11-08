@@ -1,9 +1,11 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import HumanMessage, AIMessage
 import os
 import sys
+from typing import List, Dict
 
 # Helper function to load the prompt content
 def load_prompt_from_file(filepath):
@@ -40,9 +42,10 @@ def get_recommendation_chain():
 
     # 1. Define the LLM (Gemini as the Brain)
     # **FIX:** Pass google_api_key explicitly to bypass Default Credentials Error.
+    # Increase temperature to 1.2 for more creativity and variety
     llm = ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", 
-        temperature=1.0,
+        temperature=1.2,
         google_api_key=gemini_api_key
     ) 
 
@@ -53,11 +56,11 @@ def get_recommendation_chain():
     # Escape braces in system prompt so LangChain won't try to interpret JSON braces as variables.
     SAFE_SYSTEM_PROMPT = escape_braces_for_prompt(SYSTEM_PROMPT_CONTENT)
 
-    # 2. Define the Prompt
-    # Keep the human template as an actual variable placeholder: "{user_input}"
+    # 2. Define the Prompt with chat history support
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", SAFE_SYSTEM_PROMPT),
+            MessagesPlaceholder(variable_name="chat_history", optional=True),
             ("human", "{user_input}"),
         ]
     )
@@ -69,6 +72,34 @@ def get_recommendation_chain():
     chain = prompt | llm | parser
     
     return chain
+
+
+def build_session_context(chat_history: List[Dict[str, str]], recommended_movies: List[str]) -> str:
+    """Build a context string from session history for the AI."""
+    context_parts = []
+    
+    if recommended_movies:
+        context_parts.append(
+            f"\n\nIMPORTANT SESSION CONTEXT:\n"
+            f"Previously recommended movies in this session (DO NOT recommend these again):\n"
+            f"{', '.join(recommended_movies)}\n"
+            f"Please provide DIFFERENT and DIVERSE recommendations that are not in this list."
+        )
+    
+    return "".join(context_parts)
+
+
+def format_chat_history(chat_history: List[Dict[str, str]]) -> List:
+    """Convert chat history dicts to LangChain message objects."""
+    messages = []
+    for msg in chat_history:
+        role = msg.get("role", "")
+        content = msg.get("content", "")
+        if role == "user":
+            messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            messages.append(AIMessage(content=content))
+    return messages
 
 # --- SAMPLE TEST EXECUTION ---
 if __name__ == "__main__":

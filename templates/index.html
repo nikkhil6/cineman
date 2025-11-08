@@ -64,6 +64,7 @@
     .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); justify-content:space-between; }
     .header-logo{ width:44px; height:44px; border-radius:8px; object-fit:cover; }
     .header-left { display:flex; gap:12px; align-items:center; }
+    .header-right { display:flex; gap:10px; align-items:center; }
     .watchlist-icon-btn { background:#2563eb; color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px; transition:all 0.2s; }
     .watchlist-icon-btn:hover { background:#1d4ed8; transform:translateY(-1px); }
     .watchlist-badge { background:#dc2626; color:#fff; border-radius:999px; padding:2px 6px; font-size:0.75rem; min-width:20px; text-align:center; }
@@ -251,10 +252,15 @@
         <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="header-logo" alt="CineMan" onerror="this.style.display='none'">
         <span>🎬 CineMan: Your next watch is waiting</span>
       </div>
-      <button class="watchlist-icon-btn" id="watchlist-btn" type="button">
-        📋 Watchlist
-        <span class="watchlist-badge" id="watchlist-count" style="display:none;">0</span>
-      </button>
+      <div class="header-right">
+        <button class="watchlist-icon-btn" id="new-session-btn" type="button" style="margin-right: 10px;">
+          🔄 New Session
+        </button>
+        <button class="watchlist-icon-btn" id="watchlist-btn" type="button">
+          📋 Watchlist
+          <span class="watchlist-badge" id="watchlist-count" style="display:none;">0</span>
+        </button>
+      </div>
     </div>
 
     <div id="chatbox" aria-live="polite" aria-atomic="false">
@@ -474,6 +480,51 @@
           });
         }
         btn._sendAttached = true;
+      }
+    })();
+
+    // New Session button handler
+    (() => {
+      const newSessionBtn = document.getElementById('new-session-btn');
+      if (newSessionBtn) {
+        newSessionBtn.addEventListener('click', async () => {
+          if (!confirm('Are you sure you want to start a new session? This will clear your chat history and recommended movies.')) {
+            return;
+          }
+          
+          try {
+            const response = await fetch('/session/clear', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+              // Clear the chatbox
+              const chatbox = document.getElementById('chatbox');
+              chatbox.innerHTML = `
+                <div class="message-container">
+                  <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
+                  <div class="agent-message">Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a suggestion below.</div>
+                </div>
+                <div class="message-row" id="suggestion-row">
+                  <div class="suggestions" id="suggestions">
+                    <button class="chip" type="button">Sci‑fi with twists</button>
+                    <button class="chip" type="button">Comedy for family</button>
+                    <button class="chip" type="button">Classic drama</button>
+                  </div>
+                </div>
+              `;
+              
+              // Reload the page to reinitialize everything
+              window.location.reload();
+            } else {
+              alert('Failed to clear session. Please try again.');
+            }
+          } catch (error) {
+            console.error('Error clearing session:', error);
+            alert('An error occurred while clearing the session.');
+          }
+        });
       }
     })();
 

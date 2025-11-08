@@ -10,6 +10,9 @@ An intelligent movie recommendation agent powered by Google Gemini AI (via LangC
 - 🎬 **Movie Data Integration**: 
   - TMDB API for movie posters and metadata
   - OMDb API for ratings, directors, and additional movie facts
+- 👍👎 **Like/Dislike System**: Express your opinion on recommended movies with simple thumbs up/down buttons
+- 📋 **Watchlist Management**: Save movies to watch later and access them anytime from the watchlist modal
+- 💾 **Session-Based Storage**: Your preferences (likes, dislikes, watchlist) are stored throughout your session using SQLite
 - 🔧 **LangChain Tools**: Extensible tool system for movie data retrieval
 - ✅ **Dependency Verification**: Built-in script to verify all dependencies are installed
 
@@ -96,6 +99,12 @@ Navigate to `http://127.0.0.1:5000` to access the chat interface
 1. **Enter your movie request** in the chat input (e.g., "I'm in the mood for a sci-fi movie with a clever plot twist")
 2. **Get AI recommendations** - The Cinephile agent will provide personalized movie suggestions
 3. **View detailed information** - Each recommendation includes plot, matching reasons, and awards
+4. **Interact with movies**:
+   - Click the 👍 button to like a movie
+   - Click the 👎 button to dislike a movie
+   - Click the 📋 button to add to your watchlist
+5. **Access your watchlist** - Click the "Watchlist" button in the header to view all saved movies
+6. **Manage your watchlist** - Remove movies from the watchlist modal when you've watched them
 
 ### Testing Individual Components
 
@@ -112,6 +121,11 @@ python tests/test_omdb.py
 **Test the recommendation chain:**
 ```bash
 python -m cineman.chain
+```
+
+**Test movie interactions (like/dislike/watchlist):**
+```bash
+python tests/test_interactions.py
 ```
 
 ## Project Structure
@@ -248,12 +262,13 @@ To add new movie data tools:
 
 Potential improvements:
 - Integration of movie tools into the LangChain agent
-- Persistent user preferences and chat history
+- Persistent user accounts and cross-session preferences
 - Movie comparison features
-- Watchlist functionality
 - Streaming service availability integration
-- User ratings and reviews
-- Movie recommendations based on viewing history
+- Social features - share watchlist with friends
+- Advanced filtering and sorting of watchlist
+- Movie recommendations based on viewing history and preferences
+- Export watchlist to external services
 
 ## License
 

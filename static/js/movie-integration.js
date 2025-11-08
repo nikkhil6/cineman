@@ -644,31 +644,38 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     }
   })();
 
-  // Click to flip the card
+  // Click to flip the card or close if already flipped
   flipCard.addEventListener('click', (e) => {
     if (e.target.closest('a') || e.target.closest('.action-btn')) return;
     
-    // Check if another card is already flipped
     const posterRow = flipCard.closest('.poster-row');
-    const anyFlipped = posterRow && posterRow.querySelector('.flip-card.is-flipped:not(' + (flipCard.id || '.this-card') + ')');
     
-    // If another card is flipped and this isn't it, don't allow flip
-    if (anyFlipped && !flipCard.classList.contains('is-flipped')) {
-      return;
-    }
-    
-    const isFlipped = flipCard.classList.toggle('is-flipped');
-    
-    // Toggle backdrop on parent poster-row
-    if (posterRow) {
-      if (isFlipped) {
-        posterRow.classList.add('has-flipped-card');
-        // Prevent scrolling when card is flipped
-        document.body.style.overflow = 'hidden';
-      } else {
+    // If this card is flipped, ANY click on it should close it
+    if (flipCard.classList.contains('is-flipped')) {
+      flipCard.classList.remove('is-flipped');
+      if (posterRow) {
         posterRow.classList.remove('has-flipped-card');
         document.body.style.overflow = '';
       }
+      return;
+    }
+    
+    // Check if another card is already flipped
+    const anyFlipped = posterRow && posterRow.querySelector('.flip-card.is-flipped');
+    
+    // If another card is flipped and this isn't it, don't allow flip
+    if (anyFlipped) {
+      return;
+    }
+    
+    // Flip this card
+    flipCard.classList.add('is-flipped');
+    
+    // Toggle backdrop on parent poster-row
+    if (posterRow) {
+      posterRow.classList.add('has-flipped-card');
+      // Prevent scrolling when card is flipped
+      document.body.style.overflow = 'hidden';
     }
   });
 
@@ -723,6 +730,52 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   setTimeout(() => {
     document.addEventListener('click', handleBackdropClick);
   }, 100);
+  
+  // Touch/swipe support for mobile navigation between posters
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchEndX = 0;
+  let touchEndY = 0;
+  
+  flipCard.addEventListener('touchstart', (e) => {
+    // Only handle swipes when card is NOT flipped
+    if (flipCard.classList.contains('is-flipped')) return;
+    
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  
+  flipCard.addEventListener('touchend', (e) => {
+    // Only handle swipes when card is NOT flipped
+    if (flipCard.classList.contains('is-flipped')) return;
+    
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    
+    // Check if it's a horizontal swipe (more horizontal than vertical)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      const posterRow = flipCard.closest('.poster-row');
+      if (!posterRow) return;
+      
+      const allCards = Array.from(posterRow.querySelectorAll('.flip-card'));
+      const currentIndex = allCards.indexOf(flipCard);
+      
+      if (deltaX > 0) {
+        // Swipe right - go to previous card
+        if (currentIndex > 0) {
+          allCards[currentIndex - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      } else {
+        // Swipe left - go to next card
+        if (currentIndex < allCards.length - 1) {
+          allCards[currentIndex + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }
+    }
+  }, { passive: true });
 
   return flipCard;
 }

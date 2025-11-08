@@ -84,7 +84,27 @@
     .chip { background: rgba(0,112,201,0.08); color:#0070c9; padding:8px 12px; border-radius:999px; border:1px solid rgba(0,112,201,0.12); cursor:pointer; font-weight:600; }
 
     /* poster row used inside an agent bubble (inserted into chat) */
-    .poster-row { display:flex; gap:var(--poster-gap); flex-wrap:wrap; justify-content:center; align-items:flex-start; margin-top:10px; }
+    .poster-row { display:flex; gap:var(--poster-gap); flex-wrap:wrap; justify-content:center; align-items:flex-start; margin-top:10px; scroll-behavior: smooth; }
+    
+    /* Mobile: horizontal scrolling for poster cards */
+    @media (max-width: 768px) {
+      .poster-row { 
+        flex-wrap: nowrap; 
+        overflow-x: auto; 
+        overflow-y: hidden;
+        justify-content: flex-start;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        padding: 10px 0;
+      }
+      .flip-card { 
+        flex-shrink: 0; 
+        scroll-snap-align: center;
+      }
+      /* Hide scrollbar but keep functionality */
+      .poster-row::-webkit-scrollbar { display: none; }
+      .poster-row { -ms-overflow-style: none; scrollbar-width: none; }
+    }
 
     /* flip card */
     .flip-card { width: var(--card-width-desktop); perspective: 1200px; -webkit-perspective:1200px; display:block; outline:none; cursor:pointer; transition: all 0.3s ease; position: relative; z-index: 1; }

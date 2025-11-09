@@ -302,6 +302,21 @@ function extractCompactSummary(movieMarkdown, movieData) {
 function buildFlipCard(movie, movieData, movieMarkdown) {
   const { imdb, rt_tomatometer, rt_audience } = extractRatings(movieData || {});
   const director = extractDirector(movieData || {});
+  
+  // Debug logging for ratings
+  if (CI_DEBUG || (!imdb && !rt_tomatometer && !rt_audience)) {
+    console.log('[Ratings Debug]', {
+      title: movie.title,
+      imdb: imdb || 'N/A',
+      rt_tomatometer: rt_tomatometer || 'N/A', 
+      rt_audience: rt_audience || 'N/A',
+      rawData: {
+        imdb_rating: movieData?.imdb_rating,
+        rt_tomatometer: movieData?.rt_tomatometer,
+        omdb: movieData?.omdb,
+      }
+    });
+  }
 
   const flipCard = document.createElement('div');
   flipCard.className = 'flip-card';
@@ -351,21 +366,195 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   ratingRow.style.justifyContent = 'center';
   ratingRow.style.flexWrap = 'wrap';
   ratingRow.style.gap = '8px';
-  if (imdb) { const imdbBadge = document.createElement('div'); imdbBadge.className = 'rating-badge'; imdbBadge.textContent = `IMDB: ${imdb}`; ratingRow.appendChild(imdbBadge); }
-  if (rt_tomatometer) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT: ${rt_tomatometer}`; ratingRow.appendChild(rtBadge); }
-  else if (rt_audience) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT-Aud: ${rt_audience}`; ratingRow.appendChild(rtBadge); }
-  meta.appendChild(ratingRow);
+  
+  let hasRatings = false;
+  
+  if (imdb) { 
+    const imdbBadge = document.createElement('div'); 
+    imdbBadge.className = 'rating-badge'; 
+    imdbBadge.textContent = `⭐ ${imdb}`; 
+    imdbBadge.title = 'IMDB Rating';
+    ratingRow.appendChild(imdbBadge); 
+    hasRatings = true;
+  }
+  if (rt_tomatometer) { 
+    const rtBadge = document.createElement('div'); 
+    rtBadge.className = 'rating-badge'; 
+    rtBadge.textContent = `🍅 ${rt_tomatometer}`; 
+    rtBadge.title = 'Rotten Tomatoes';
+    ratingRow.appendChild(rtBadge); 
+    hasRatings = true;
+  }
+  else if (rt_audience) { 
+    const rtBadge = document.createElement('div'); 
+    rtBadge.className = 'rating-badge'; 
+    rtBadge.textContent = `🍅 ${rt_audience}`; 
+    rtBadge.title = 'Rotten Tomatoes Audience';
+    ratingRow.appendChild(rtBadge); 
+    hasRatings = true;
+  }
+  
+  // Only append rating row if there are ratings to show
+  if (hasRatings) {
+    meta.appendChild(ratingRow);
+  }
+  
+  // Action buttons (like, dislike, watchlist)
+  const actionButtons = document.createElement('div');
+  actionButtons.className = 'action-buttons';
+  
+  const likeBtn = document.createElement('button');
+  likeBtn.className = 'action-btn like-btn';
+  likeBtn.innerHTML = '👍';
+  likeBtn.setAttribute('data-action', 'like');
+  likeBtn.title = 'Like this movie';
+  
+  const dislikeBtn = document.createElement('button');
+  dislikeBtn.className = 'action-btn dislike-btn';
+  dislikeBtn.innerHTML = '👎';
+  dislikeBtn.setAttribute('data-action', 'dislike');
+  dislikeBtn.title = 'Dislike this movie';
+  
+  const watchlistBtn = document.createElement('button');
+  watchlistBtn.className = 'action-btn watchlist-btn';
+  watchlistBtn.innerHTML = '📋';
+  watchlistBtn.setAttribute('data-action', 'watchlist');
+  watchlistBtn.title = 'Add to watchlist';
+  
+  actionButtons.appendChild(likeBtn);
+  actionButtons.appendChild(dislikeBtn);
+  actionButtons.appendChild(watchlistBtn);
+  meta.appendChild(actionButtons);
+  
   front.appendChild(meta);
 
-  // BACK compact summary (single paragraph)
+  // BACK - full detailed content with poster on left
   const back = document.createElement('div');
   back.className = 'flip-card-face flip-card-back';
+  
+  // Create two-column layout container
+  const backLayout = document.createElement('div');
+  backLayout.style.display = 'flex';
+  backLayout.style.gap = '16px';
+  backLayout.style.height = '100%';
+  backLayout.style.overflow = 'hidden';
+  
+  // LEFT COLUMN - Poster
+  const leftColumn = document.createElement('div');
+  leftColumn.style.flex = '0 0 240px';
+  leftColumn.style.display = 'flex';
+  leftColumn.style.flexDirection = 'column';
+  
+  const backPoster = document.createElement('img');
+  backPoster.className = 'back-poster-image';
+  backPoster.src = posterUrl || '';
+  backPoster.alt = `${movie.title} poster`;
+  backPoster.style.width = '100%';
+  backPoster.style.borderRadius = '8px';
+  backPoster.style.objectFit = 'cover';
+  backPoster.style.maxHeight = '360px';
+  backPoster.onerror = () => { backPoster.style.display = 'none'; };
+  
+  leftColumn.appendChild(backPoster);
+  
+  // RIGHT COLUMN - Content
+  const rightColumn = document.createElement('div');
+  rightColumn.style.flex = '1';
+  rightColumn.style.display = 'flex';
+  rightColumn.style.flexDirection = 'column';
+  rightColumn.style.overflow = 'hidden';
+  
+  // Add movie title and metadata at the top of right column
+  const backHeader = document.createElement('div');
+  backHeader.className = 'back-header';
+  backHeader.style.marginBottom = '12px';
+  backHeader.style.borderBottom = '2px solid #e5e7eb';
+  backHeader.style.paddingBottom = '10px';
+  
+  const backTitle = document.createElement('div');
+  backTitle.style.fontWeight = '700';
+  backTitle.style.fontSize = '1.15rem';
+  backTitle.style.marginBottom = '4px';
+  backTitle.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
+  
+  const backYearDir = document.createElement('div');
+  backYearDir.style.color = '#6b7280';
+  backYearDir.style.fontSize = '0.85rem';
+  backYearDir.style.marginBottom = '6px';
+  backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
+  
+  const backRatings = document.createElement('div');
+  backRatings.style.fontSize = '0.8rem';
+  backRatings.style.color = '#374151';
+  backRatings.style.fontWeight = '600';
+  backRatings.style.display = 'flex';
+  backRatings.style.gap = '10px';
+  backRatings.style.flexWrap = 'wrap';
+  
+  if (imdb) {
+    const imdbSpan = document.createElement('span');
+    imdbSpan.textContent = `⭐ IMDB: ${imdb}`;
+    backRatings.appendChild(imdbSpan);
+  }
+  if (rt_tomatometer) {
+    const rtSpan = document.createElement('span');
+    rtSpan.textContent = `🍅 RT: ${rt_tomatometer}`;
+    backRatings.appendChild(rtSpan);
+  } else if (rt_audience) {
+    const rtSpan = document.createElement('span');
+    rtSpan.textContent = `🍅 RT-Aud: ${rt_audience}`;
+    backRatings.appendChild(rtSpan);
+  }
+  
+  backHeader.appendChild(backTitle);
+  backHeader.appendChild(backYearDir);
+  if (imdb || rt_tomatometer || rt_audience) backHeader.appendChild(backRatings);
+  rightColumn.appendChild(backHeader);
+  
+  // Add the full formatted content
   const backContent = document.createElement('div');
   backContent.className = 'card-back-content';
-
-  const compact = extractCompactSummary(movieMarkdown, movieData);
-  backContent.innerHTML = compact ? (window.marked ? marked.parse(compact) : '<p>'+escapeHtml(compact)+'</p>') : '<div class="small">No summary available.</div>';
-  back.appendChild(backContent);
+  backContent.style.flex = '1';
+  backContent.style.overflowY = 'auto';
+  backContent.style.paddingRight = '8px';
+  
+  // Use the full formatted content from formatModalContentForThreeSections
+  const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
+  backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
+  rightColumn.appendChild(backContent);
+  
+  // Assemble the layout
+  backLayout.appendChild(leftColumn);
+  backLayout.appendChild(rightColumn);
+  back.appendChild(backLayout);
+  
+  // Add action buttons to back side as well
+  const backActionButtons = document.createElement('div');
+  backActionButtons.className = 'action-buttons';
+  backActionButtons.style.marginTop = '12px';
+  
+  const backLikeBtn = document.createElement('button');
+  backLikeBtn.className = 'action-btn like-btn';
+  backLikeBtn.innerHTML = '👍';
+  backLikeBtn.setAttribute('data-action', 'like');
+  backLikeBtn.title = 'Like this movie';
+  
+  const backDislikeBtn = document.createElement('button');
+  backDislikeBtn.className = 'action-btn dislike-btn';
+  backDislikeBtn.innerHTML = '👎';
+  backDislikeBtn.setAttribute('data-action', 'dislike');
+  backDislikeBtn.title = 'Dislike this movie';
+  
+  const backWatchlistBtn = document.createElement('button');
+  backWatchlistBtn.className = 'action-btn watchlist-btn';
+  backWatchlistBtn.innerHTML = '📋';
+  backWatchlistBtn.setAttribute('data-action', 'watchlist');
+  backWatchlistBtn.title = 'Add to watchlist';
+  
+  backActionButtons.appendChild(backLikeBtn);
+  backActionButtons.appendChild(backDislikeBtn);
+  backActionButtons.appendChild(backWatchlistBtn);
+  back.appendChild(backActionButtons);
 
   inner.appendChild(front);
   inner.appendChild(back);
@@ -402,25 +591,251 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     if (CI_DEBUG) console.warn('[movie-integration] failed to set dataset on flipCard', e);
   }
 
+  // Handle action button clicks - sync both front and back buttons
+  const handleActionClick = async (action, frontBtn, backBtn) => {
+    const isActive = frontBtn.classList.contains('active');
+    const newValue = !isActive;
+    
+    try {
+      const response = await fetch('/api/interaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          movie_title: movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title,
+          movie_year: year || '',
+          movie_poster_url: posterUrl || '',
+          director: director || '',
+          imdb_rating: imdb || '',
+          action: action,
+          value: newValue
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.status === 'success') {
+          // Update button states on both front and back
+          if (action === 'like') {
+            frontBtn.classList.toggle('active', newValue);
+            backBtn.classList.toggle('active', newValue);
+            if (newValue) {
+              dislikeBtn.classList.remove('active');
+              backDislikeBtn.classList.remove('active');
+            }
+          } else if (action === 'dislike') {
+            frontBtn.classList.toggle('active', newValue);
+            backBtn.classList.toggle('active', newValue);
+            if (newValue) {
+              likeBtn.classList.remove('active');
+              backLikeBtn.classList.remove('active');
+            }
+          } else if (action === 'watchlist') {
+            frontBtn.classList.toggle('active', newValue);
+            backBtn.classList.toggle('active', newValue);
+          }
+          
+          // Update watchlist count
+          if (typeof window.updateWatchlistCount === 'function') {
+            window.updateWatchlistCount();
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to update interaction:', err);
+    }
+  };
+  
+  // Add click handlers for front buttons
+  likeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('like', likeBtn, backLikeBtn);
+  });
+  
+  dislikeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('dislike', dislikeBtn, backDislikeBtn);
+  });
+  
+  watchlistBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('watchlist', watchlistBtn, backWatchlistBtn);
+  });
+  
+  // Add click handlers for back buttons
+  backLikeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('like', likeBtn, backLikeBtn);
+  });
+  
+  backDislikeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('dislike', dislikeBtn, backDislikeBtn);
+  });
+  
+  backWatchlistBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    handleActionClick('watchlist', watchlistBtn, backWatchlistBtn);
+  });
+  
+  // Load existing interaction state and sync both front and back buttons
+  (async () => {
+    try {
+      const title = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
+      const response = await fetch(`/api/interaction/${encodeURIComponent(title)}`);
+      if (response.ok) {
+        const result = await response.json();
+        if (result.interaction) {
+          if (result.interaction.liked) {
+            likeBtn.classList.add('active');
+            backLikeBtn.classList.add('active');
+          }
+          if (result.interaction.disliked) {
+            dislikeBtn.classList.add('active');
+            backDislikeBtn.classList.add('active');
+          }
+          if (result.interaction.in_watchlist) {
+            watchlistBtn.classList.add('active');
+            backWatchlistBtn.classList.add('active');
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load interaction state:', err);
+    }
+  })();
+
+  // Click to flip the card or close if already flipped
   flipCard.addEventListener('click', (e) => {
-    if (e.target.closest('a')) return;
-    const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
-    if (typeof window.openPosterModal === 'function') {
-      window.openPosterModal(movie, movieData, fullHtml);
-    } else {
-      flipCard.classList.toggle('is-flipped');
+    if (e.target.closest('a') || e.target.closest('.action-btn')) return;
+    
+    const posterRow = flipCard.closest('.poster-row');
+    
+    // If this card is flipped, ANY click on it should close it
+    if (flipCard.classList.contains('is-flipped')) {
+      flipCard.classList.remove('is-flipped');
+      if (posterRow) {
+        posterRow.classList.remove('has-flipped-card');
+        document.body.style.overflow = '';
+      }
+      return;
+    }
+    
+    // Check if another card is already flipped
+    const anyFlipped = posterRow && posterRow.querySelector('.flip-card.is-flipped');
+    
+    // If another card is flipped and this isn't it, don't allow flip
+    if (anyFlipped) {
+      return;
+    }
+    
+    // Flip this card
+    flipCard.classList.add('is-flipped');
+    
+    // Toggle backdrop on parent poster-row
+    if (posterRow) {
+      posterRow.classList.add('has-flipped-card');
+      // Prevent scrolling when card is flipped
+      document.body.style.overflow = 'hidden';
     }
   });
 
+  // Keyboard navigation
   flipCard.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
-      if (typeof window.openPosterModal === 'function') window.openPosterModal(movie, movieData, fullHtml);
-      else flipCard.classList.toggle('is-flipped');
+      
+      // Check if another card is already flipped
+      const posterRow = flipCard.closest('.poster-row');
+      const anyFlipped = posterRow && posterRow.querySelector('.flip-card.is-flipped');
+      
+      // If another card is flipped and this isn't it, don't allow flip
+      if (anyFlipped && anyFlipped !== flipCard && !flipCard.classList.contains('is-flipped')) {
+        return;
+      }
+      
+      const isFlipped = flipCard.classList.toggle('is-flipped');
+      if (posterRow) {
+        if (isFlipped) {
+          posterRow.classList.add('has-flipped-card');
+          document.body.style.overflow = 'hidden';
+        } else {
+          posterRow.classList.remove('has-flipped-card');
+          document.body.style.overflow = '';
+        }
+      }
     }
-    if (e.key === 'Escape') flipCard.classList.remove('is-flipped');
+    if (e.key === 'Escape') {
+      flipCard.classList.remove('is-flipped');
+      const posterRow = flipCard.closest('.poster-row');
+      if (posterRow) {
+        posterRow.classList.remove('has-flipped-card');
+        document.body.style.overflow = '';
+      }
+    }
   });
+  
+  // Click backdrop to close
+  const handleBackdropClick = (e) => {
+    const posterRow = flipCard.closest('.poster-row');
+    if (posterRow && posterRow.classList.contains('has-flipped-card')) {
+      if (!flipCard.contains(e.target) && e.target !== flipCard) {
+        flipCard.classList.remove('is-flipped');
+        posterRow.classList.remove('has-flipped-card');
+        document.body.style.overflow = '';
+      }
+    }
+  };
+  
+  // Add backdrop click handler after a short delay to prevent immediate closing
+  setTimeout(() => {
+    document.addEventListener('click', handleBackdropClick);
+  }, 100);
+  
+  // Touch/swipe support for mobile navigation between posters
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchEndX = 0;
+  let touchEndY = 0;
+  
+  flipCard.addEventListener('touchstart', (e) => {
+    // Only handle swipes when card is NOT flipped
+    if (flipCard.classList.contains('is-flipped')) return;
+    
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  
+  flipCard.addEventListener('touchend', (e) => {
+    // Only handle swipes when card is NOT flipped
+    if (flipCard.classList.contains('is-flipped')) return;
+    
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+    
+    // Check if it's a horizontal swipe (more horizontal than vertical)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+      const posterRow = flipCard.closest('.poster-row');
+      if (!posterRow) return;
+      
+      const allCards = Array.from(posterRow.querySelectorAll('.flip-card'));
+      const currentIndex = allCards.indexOf(flipCard);
+      
+      if (deltaX > 0) {
+        // Swipe right - go to previous card
+        if (currentIndex > 0) {
+          allCards[currentIndex - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      } else {
+        // Swipe left - go to next card
+        if (currentIndex < allCards.length - 1) {
+          allCards[currentIndex + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }
+    }
+  }, { passive: true });
 
   return flipCard;
 }

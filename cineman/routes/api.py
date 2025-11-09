@@ -1,8 +1,18 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
+from cineman.models import db, MovieInteraction
+from sqlalchemy.exc import IntegrityError
+import uuid
 
 bp = Blueprint("api", __name__)
+
+
+def get_or_create_session_id():
+    """Get or create a session ID for the current user."""
+    if 'session_id' not in session:
+        session['session_id'] = str(uuid.uuid4())
+    return session['session_id']
 
 
 @bp.route("/movie/poster", methods=["GET"])
@@ -48,9 +58,9 @@ def movie_combined():
         rating = omdb.get("IMDb_Rating")
         rating_source = "OMDb/IMDb"
     else:
-        # If OMDb blocked or errored, include note so UI can show message
+        # If OMDb blocked or errored, note the status but don't expose error details
         if omdb.get("status") in ("forbidden", "error"):
-            note = {"omdb_status": omdb.get("status"), "omdb_error": omdb.get("error")}
+            note = "OMDb service unavailable"
         # Try TMDb vote_average fallback
         if tmdb.get("status") == "success" and tmdb.get("vote_average") is not None:
             rating = tmdb.get("vote_average")
@@ -59,12 +69,177 @@ def movie_combined():
             rating = None
             rating_source = None
 
+    # Remove detailed error messages from external API responses before returning
+    # Only include safe, non-sensitive fields
+    tmdb_safe = {
+        "status": tmdb.get("status"),
+        "poster_url": tmdb.get("poster_url"),
+        "title": tmdb.get("title"),
+        "year": tmdb.get("year"),
+        "vote_average": tmdb.get("vote_average")
+    }
+    
+    omdb_safe = {
+        "status": omdb.get("status"),
+        "Title": omdb.get("Title"),
+        "Year": omdb.get("Year"),
+        "Director": omdb.get("Director"),
+        "IMDb_Rating": omdb.get("IMDb_Rating"),
+        "Poster_URL": omdb.get("Poster_URL")
+    }
+
     combined = {
         "query": title,
-        "tmdb": tmdb,
-        "omdb": omdb,
+        "tmdb": tmdb_safe,
+        "omdb": omdb_safe,
         "rating": rating,
         "rating_source": rating_source,
         "note": note,
     }
     return jsonify(combined)
+
+
+@bp.route("/interaction", methods=["POST"])
+def movie_interaction():
+    """
+    POST /api/interaction
+    Handle like, dislike, and watchlist actions for movies.
+    
+    Expected JSON body:
+    {
+        "movie_title": "Inception",
+        "movie_year": "2010",
+        "movie_poster_url": "https://...",
+        "director": "Christopher Nolan",
+        "imdb_rating": "8.8",
+        "action": "like" | "dislike" | "watchlist",
+        "value": true | false
+    }
+    """
+    session_id = get_or_create_session_id()
+    data = request.get_json()
+    
+    if not data or 'movie_title' not in data or 'action' not in data:
+        return jsonify({
+            "status": "error", 
+            "error": "Missing required fields: movie_title and action"
+        }), 400
+    
+    movie_title = data.get('movie_title')
+    action = data.get('action')
+    value = data.get('value', True)
+    
+    # Validate action
+    if action not in ['like', 'dislike', 'watchlist']:
+        return jsonify({
+            "status": "error",
+            "error": "Invalid action. Must be 'like', 'dislike', or 'watchlist'"
+        }), 400
+    
+    try:
+        # Find or create interaction record
+        interaction = MovieInteraction.query.filter_by(
+            session_id=session_id,
+            movie_title=movie_title
+        ).first()
+        
+        if not interaction:
+            interaction = MovieInteraction(
+                session_id=session_id,
+                movie_title=movie_title,
+                movie_year=data.get('movie_year'),
+                movie_poster_url=data.get('movie_poster_url'),
+                director=data.get('director'),
+                imdb_rating=data.get('imdb_rating')
+            )
+            db.session.add(interaction)
+        
+        # Update the appropriate field based on action
+        if action == 'like':
+            interaction.liked = value
+            if value:  # If liking, remove dislike
+                interaction.disliked = False
+        elif action == 'dislike':
+            interaction.disliked = value
+            if value:  # If disliking, remove like
+                interaction.liked = False
+        elif action == 'watchlist':
+            interaction.in_watchlist = value
+        
+        db.session.commit()
+        
+        return jsonify({
+            "status": "success",
+            "interaction": interaction.to_dict()
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        # Log the actual error for debugging
+        print(f"Error in movie_interaction: {e}")
+        return jsonify({
+            "status": "error",
+            "error": "An error occurred while processing your request."
+        }), 500
+
+
+@bp.route("/interaction/<movie_title>", methods=["GET"])
+def get_movie_interaction(movie_title):
+    """
+    GET /api/interaction/<movie_title>
+    Get the current user's interaction status for a specific movie.
+    """
+    session_id = get_or_create_session_id()
+    
+    interaction = MovieInteraction.query.filter_by(
+        session_id=session_id,
+        movie_title=movie_title
+    ).first()
+    
+    if interaction:
+        return jsonify({
+            "status": "success",
+            "interaction": interaction.to_dict()
+        })
+    else:
+        return jsonify({
+            "status": "success",
+            "interaction": None
+        })
+
+
+@bp.route("/watchlist", methods=["GET"])
+def get_watchlist():
+    """
+    GET /api/watchlist
+    Get all movies in the current user's watchlist.
+    """
+    session_id = get_or_create_session_id()
+    
+    watchlist = MovieInteraction.query.filter_by(
+        session_id=session_id,
+        in_watchlist=True
+    ).order_by(MovieInteraction.created_at.desc()).all()
+    
+    return jsonify({
+        "status": "success",
+        "watchlist": [movie.to_dict() for movie in watchlist]
+    })
+
+
+@bp.route("/interactions", methods=["GET"])
+def get_all_interactions():
+    """
+    GET /api/interactions
+    Get all movie interactions (likes, dislikes, watchlist) for the current session.
+    """
+    session_id = get_or_create_session_id()
+    
+    interactions = MovieInteraction.query.filter_by(
+        session_id=session_id
+    ).order_by(MovieInteraction.created_at.desc()).all()
+    
+    return jsonify({
+        "status": "success",
+        "interactions": [interaction.to_dict() for interaction in interactions]
+    })

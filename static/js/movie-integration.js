@@ -351,9 +351,27 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   ratingRow.style.justifyContent = 'center';
   ratingRow.style.flexWrap = 'wrap';
   ratingRow.style.gap = '8px';
-  if (imdb) { const imdbBadge = document.createElement('div'); imdbBadge.className = 'rating-badge'; imdbBadge.textContent = `IMDB: ${imdb}`; ratingRow.appendChild(imdbBadge); }
-  if (rt_tomatometer) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT: ${rt_tomatometer}`; ratingRow.appendChild(rtBadge); }
-  else if (rt_audience) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT-Aud: ${rt_audience}`; ratingRow.appendChild(rtBadge); }
+  if (imdb) { 
+    const imdbBadge = document.createElement('div'); 
+    imdbBadge.className = 'rating-badge'; 
+    imdbBadge.textContent = `⭐ ${imdb}`; 
+    imdbBadge.title = 'IMDB Rating';
+    ratingRow.appendChild(imdbBadge); 
+  }
+  if (rt_tomatometer) { 
+    const rtBadge = document.createElement('div'); 
+    rtBadge.className = 'rating-badge'; 
+    rtBadge.textContent = `🍅 ${rt_tomatometer}`; 
+    rtBadge.title = 'Rotten Tomatoes';
+    ratingRow.appendChild(rtBadge); 
+  }
+  else if (rt_audience) { 
+    const rtBadge = document.createElement('div'); 
+    rtBadge.className = 'rating-badge'; 
+    rtBadge.textContent = `🍅 ${rt_audience}`; 
+    rtBadge.title = 'Rotten Tomatoes Audience';
+    ratingRow.appendChild(rtBadge); 
+  }
   meta.appendChild(ratingRow);
   
   // Action buttons (like, dislike, watchlist)
@@ -444,11 +462,28 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backRatings.style.fontSize = '0.8rem';
   backRatings.style.color = '#374151';
   backRatings.style.fontWeight = '600';
-  if (imdb) backRatings.textContent = `IMDB: ${imdb}`;
+  backRatings.style.display = 'flex';
+  backRatings.style.gap = '10px';
+  backRatings.style.flexWrap = 'wrap';
+  
+  if (imdb) {
+    const imdbSpan = document.createElement('span');
+    imdbSpan.textContent = `⭐ IMDB: ${imdb}`;
+    backRatings.appendChild(imdbSpan);
+  }
+  if (rt_tomatometer) {
+    const rtSpan = document.createElement('span');
+    rtSpan.textContent = `🍅 RT: ${rt_tomatometer}`;
+    backRatings.appendChild(rtSpan);
+  } else if (rt_audience) {
+    const rtSpan = document.createElement('span');
+    rtSpan.textContent = `🍅 RT-Aud: ${rt_audience}`;
+    backRatings.appendChild(rtSpan);
+  }
   
   backHeader.appendChild(backTitle);
   backHeader.appendChild(backYearDir);
-  if (imdb) backHeader.appendChild(backRatings);
+  if (imdb || rt_tomatometer || rt_audience) backHeader.appendChild(backRatings);
   rightColumn.appendChild(backHeader);
   
   // Add the full formatted content

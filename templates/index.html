@@ -59,6 +59,7 @@
       max-height: 92vh;
       overflow: hidden;
       border: 1px solid rgba(0,0,0,0.04);
+      /* Note: Fixed position elements escape overflow:hidden */
     }
 
     .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); justify-content:space-between; }
@@ -324,7 +325,7 @@
       :root{ --card-width-desktop: var(--card-width-mobile); }
       .poster-image { height:220px; }
       .flip-card-inner { min-height: 320px; }
-      #chatbox { padding:14px; overflow: visible; }
+      #chatbox { padding:14px; }
       .chat-container { width:96vw; height:96vh; max-width:96vw; max-height:96vh; }
       .poster-modal { flex-direction: column; align-items: center; }
       .poster-modal .modal-poster { max-width: 86%; width: auto; }
@@ -348,10 +349,29 @@
         -webkit-overflow-scrolling: touch;
       }
       
-      /* Ensure chat container doesn't clip fixed elements */
-      .chat-container { overflow: visible; }
-      .agent-message { overflow: visible; }
-      .message-container { overflow: visible; }
+      /* Hide hover tooltip on mobile/touch devices */
+      .flip-card:hover:not(.is-flipped)::after {
+        display: none;
+      }
+      
+      /* Add tap indicator for mobile */
+      .flip-card:not(.is-flipped)::before {
+        content: '👆 Tap to view details';
+        position: absolute;
+        bottom: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(37, 99, 235, 0.9);
+        color: white;
+        padding: 4px 10px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 5;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
     }
   </style>
 </head>

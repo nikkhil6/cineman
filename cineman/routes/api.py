@@ -41,6 +41,7 @@ def movie_combined():
     GET /api/movie?title=Inception
     Combines TMDb poster lookup and OMDb facts into one payload.
     Prefers OMDb IMDb rating if available; falls back to TMDb vote_average.
+    Returns a consistent schema with top-level fields for easier frontend consumption.
     """
     title = request.args.get("title", "").strip()
     if not title:
@@ -69,6 +70,22 @@ def movie_combined():
             rating = None
             rating_source = None
 
+    # Extract Rotten Tomatoes ratings from OMDb if available
+    rt_tomatometer = None
+    rt_audience = None
+    if omdb.get("status") == "success" and omdb.get("raw"):
+        ratings_array = omdb.get("raw", {}).get("Ratings", [])
+        for r in ratings_array:
+            source = r.get("Source", "")
+            value = r.get("Value", "")
+            if "Rotten Tomatoes" in source and not rt_tomatometer:
+                rt_tomatometer = value
+            # OMDb doesn't typically provide audience score separately in standard API
+            # This is a placeholder for future enhancement
+    
+    # Determine poster URL (prefer TMDb, fallback to OMDb)
+    poster_url = tmdb.get("poster_url") or omdb.get("Poster_URL") or None
+
     # Remove detailed error messages from external API responses before returning
     # Only include safe, non-sensitive fields
     tmdb_safe = {
@@ -88,8 +105,14 @@ def movie_combined():
         "Poster_URL": omdb.get("Poster_URL")
     }
 
+    # Consistent top-level schema for frontend consumption
     combined = {
         "query": title,
+        "poster": poster_url,
+        "imdb_rating": rating if rating_source == "OMDb/IMDb" else None,
+        "rt_tomatometer": rt_tomatometer,
+        "rt_audience": rt_audience,
+        "director": omdb.get("Director"),
         "tmdb": tmdb_safe,
         "omdb": omdb_safe,
         "rating": rating,

@@ -1,60 +1,73 @@
 import requests
 import os
+from typing import Dict, Any
 from langchain.tools import tool
 
-# Get API Key and Base URL from environment
-TMDB_API_KEY = os.getenv("TMDB_API_KEY") 
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
-# Base URL for fetching high-resolution images
-IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500" 
+IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
-# --- 1. CORE PYTHON FUNCTION (CALLABLE DIRECTLY) ---
-def get_movie_poster_core(title: str) -> str:
+
+def get_movie_poster_core(title: str) -> Dict[str, Any]:
     """
-    Core function that executes the API call.
-    This can be called directly for local testing.
+    Core TMDb lookup. Searches TMDb for `title` and returns a dict with keys:
+      - status: "success" | "not_found" | "error"
+      - poster_url: full URL or empty string
+      - year: release year (YYYY) or empty
+      - title: matched title from TMDb
+      - tmdb_id: TMDb movie id
+      - vote_average: TMDb vote_average (float) when available
+      - vote_count: TMDb vote_count (int) when available
+
+    This function is intended to be called programmatically by server routes.
     """
     if not TMDB_API_KEY:
-        return '{"error": "TMDb API Key not configured."}'
+        return {"status": "error", "error": "TMDb API Key not configured."}
 
-    # 1. Search for the movie title to get its ID
     search_url = f"{TMDB_BASE_URL}/search/movie"
     params = {"api_key": TMDB_API_KEY, "query": title}
-    
+
     try:
-        search_response = requests.get(search_url, params=params, timeout=5).json()
-        
-        # Check if results exist and grab the top one
-        if not search_response.get("results") or len(search_response["results"]) == 0:
-            return '{"status": "Movie not found on TMDb.", "poster_url": ""}'
-            
-        first_result = search_response["results"][0]
+        r = requests.get(search_url, params=params, timeout=6)
+        r.raise_for_status()
+        search_response = r.json()
+
+        results = search_response.get("results") or []
+        if len(results) == 0:
+            return {"status": "not_found", "poster_url": "", "title": title}
+
+        first_result = results[0]
         poster_path = first_result.get("poster_path")
+        tmdb_id = first_result.get("id")
+        matched_title = first_result.get("title")
+        year = (first_result.get("release_date") or "")[:4]
+        vote_average = first_result.get("vote_average")
+        vote_count = first_result.get("vote_count")
 
-        if poster_path:
-            # 2. Construct the full poster URL and extract the year
-            poster_url = f"{IMAGE_BASE_URL}{poster_path}"
-            year = first_result.get("release_date", "")[:4]
+        poster_url = f"{IMAGE_BASE_URL}{poster_path}" if poster_path else ""
 
-            return f'{{"status": "success", "poster_url": "{poster_url}", "year": "{year}"}}'
-        else:
-            return '{"status": "Poster not available.", "poster_url": ""}'
-
+        return {
+            "status": "success",
+            "poster_url": poster_url,
+            "year": year,
+            "title": matched_title,
+            "tmdb_id": tmdb_id,
+            "vote_average": vote_average,
+            "vote_count": vote_count,
+        }
     except Exception as e:
-        return f'{{"status": "API connection failed.", "error": "{str(e)}"}}'
+        return {"status": "error", "error": str(e)}
 
-# --- 2. LANGCHAIN TOOL WRAPPER (NOT CALLABLE DIRECTLY) ---
+
 @tool
-def get_movie_poster(title: str) -> str:
+def get_movie_poster(title: str) -> Dict[str, Any]:
     """
-    Searches The Movie Database (TMDb) for a movie title and returns its poster URL 
-    and release year. Use this to find the visual asset for a recommendation.
-    
+    LangChain tool: Get a movie poster and basic TMDb metadata.
+
     Args:
-        title (str): The movie title provided by the LLM (e.g., 'Inception').
-        
+      title (str): Movie title to search for (e.g., "Inception").
+
     Returns:
-        str: A JSON string containing the poster URL, year, and status.
+      dict: Same structure as get_movie_poster_core result.
     """
-    # Calls the core, testable function
     return get_movie_poster_core(title)

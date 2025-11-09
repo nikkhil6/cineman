@@ -1,365 +1,630 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎬 CineMan: Your next watch is waiting</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎬 CineMan: Your next watch is waiting</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        crossorigin="anonymous">
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="{{ url_for('static', filename='js/movie-integration.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/watchlist.js') }}"></script>
+
+  <style>
+    :root{
+      --card-width-desktop: 220px;
+      --card-width-mobile: 150px;
+      --card-radius: 10px;
+      --card-shadow: 0 10px 36px rgba(8,20,40,0.08);
+      --card-hover-shadow: 0 18px 46px rgba(8,20,40,0.12);
+      --poster-gap: 14px;
+      --modal-max-width: 880px;
+      --modal-padding: 20px;
+    }
+
+    html, body { height:100%; margin:0; }
+
+    body {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-image: url('/static/background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.06);
+      pointer-events: none;
+    }
+
+    .chat-container{
+      width: min(960px, 96vw);
+      max-width: 960px;
+      margin: 0;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 12px 40px rgba(2,16,34,0.08);
+      display:flex;
+      flex-direction:column;
+      max-height: 92vh;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.04);
+      /* Note: Fixed position elements escape overflow:hidden */
+    }
+
+    .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); justify-content:space-between; }
+    .header-logo{ width:44px; height:44px; border-radius:8px; object-fit:cover; }
+    .header-left { display:flex; gap:12px; align-items:center; }
+    .header-right { display:flex; gap:10px; align-items:center; }
+    .watchlist-icon-btn { background:#2563eb; color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px; transition:all 0.2s; }
+    .watchlist-icon-btn:hover { background:#1d4ed8; transform:translateY(-1px); }
+    .watchlist-badge { background:#dc2626; color:#fff; border-radius:999px; padding:2px 6px; font-size:0.75rem; min-width:20px; text-align:center; }
+
+    #chatbox { padding:18px; overflow-y:auto; flex:1 1 auto; }
+
+    /* Message layout */
+    .message-container { margin-bottom: 15px; display:flex; gap:10px; align-items:flex-start; }
+    .message-container.user-container { justify-content: flex-end; } /* push user's bubble to the right */
+    .agent-avatar, .user-avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+    .agent-message{ background: rgba(240,240,240,0.95); padding:12px 18px; border-radius:18px; max-width:85%; line-height:1.6; margin-right:auto; }
+    .user-message{ background:#0070c9; color:#fff; padding:12px 18px; border-radius:18px; max-width:85%; margin-left:auto; }
+
+    .loading-message{ background:#fff7d6; padding:10px 15px; border-radius:18px; max-width:45%; font-style:italic; color:#666; animation:pulse 1.2s infinite; }
+    @keyframes pulse{ 0%{opacity:1} 50%{opacity:.6} 100%{opacity:1} }
+
+    .suggestions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .chip { background: rgba(0,112,201,0.08); color:#0070c9; padding:8px 12px; border-radius:999px; border:1px solid rgba(0,112,201,0.12); cursor:pointer; font-weight:600; }
+
+    /* poster row used inside an agent bubble (inserted into chat) */
+    .poster-row { display:flex; gap:var(--poster-gap); flex-wrap:wrap; justify-content:center; align-items:flex-start; margin-top:10px; scroll-behavior: smooth; }
     
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" 
-          rel="stylesheet" 
-          crossorigin="anonymous">
+    /* Mobile: horizontal scrolling for poster cards */
+    @media (max-width: 768px) {
+      .poster-row { 
+        flex-wrap: nowrap; 
+        overflow-x: auto; 
+        overflow-y: hidden;
+        justify-content: flex-start;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        padding: 10px 0;
+      }
+      .flip-card { 
+        flex-shrink: 0; 
+        scroll-snap-align: center;
+      }
+      /* Hide scrollbar but keep functionality */
+      .poster-row::-webkit-scrollbar { display: none; }
+      .poster-row { -ms-overflow-style: none; scrollbar-width: none; }
+    }
+
+    /* flip card */
+    .flip-card { 
+      width: var(--card-width-desktop); 
+      perspective: 1200px; 
+      -webkit-perspective:1200px; 
+      display:block; 
+      outline:none; 
+      cursor:pointer; 
+      transition: transform 0.3s ease, box-shadow 0.3s ease; 
+      position: relative; 
+      z-index: 1; 
+    }
+    .flip-card:hover:not(.is-flipped) { 
+      transform: translateY(-6px) scale(1.02); 
+      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+    .flip-card:hover:not(.is-flipped)::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid rgba(37, 99, 235, 0.4);
+      border-radius: var(--card-radius);
+      pointer-events: none;
+      z-index: 10;
+      animation: pulseGlow 1.5s ease-in-out infinite;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { border-color: rgba(37, 99, 235, 0.4); }
+      50% { border-color: rgba(37, 99, 235, 0.7); }
+    }
+
+    .flip-card-inner { 
+      position: relative; 
+      width:100%; 
+      transform-style: preserve-3d; 
+      transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1); 
+      box-sizing:border-box; 
+      min-height: 480px; 
+    }
     
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    /* When flipped, expand to larger size and center */
+    .flip-card.is-flipped { 
+      position: fixed; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      width: min(800px, 90vw); 
+      z-index: 3000; 
+      max-height: 90vh;
+      overflow: visible;
+    }
+    .flip-card.is-flipped .flip-card-inner { 
+      transform: rotateY(180deg); 
+      min-height: auto;
+      max-height: 90vh;
+      overflow: visible;
+    }
+    
+    /* Backdrop blur when card is flipped */
+    .poster-row::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 2999;
+    }
+    .poster-row.has-flipped-card::after {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .flip-card-face { 
+      position:absolute; 
+      width:100%; 
+      height:100%; 
+      top:0; 
+      left:0; 
+      backface-visibility:hidden; 
+      -webkit-backface-visibility:hidden; 
+      border-radius: var(--card-radius); 
+      overflow:hidden; 
+      background:#fff; 
+      display:flex; 
+      flex-direction:column; 
+      padding:10px; 
+      box-shadow: var(--card-shadow); 
+    }
+    .flip-card-front { z-index:2; align-items:center; }
+    .flip-card-back { 
+      transform: rotateY(180deg); 
+      z-index:1; 
+      padding:16px; 
+      overflow-y: auto; 
+      overflow-x: hidden;
+      background: linear-gradient(180deg,#ffffff,#fbfbfb); 
+      align-items:stretch; 
+    }
 
-    <style>
-        /* General Styles */
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; 
-            background-color: #f5f5f5;
-            /* hero/background image (JPG) - kept on body for backward compatibility */
-            background-image: url('/static/background.jpg');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            /* avoid fixed attachment on mobile (causes many mobile browsers to ignore the image) */
-            background-attachment: scroll;
-            position: relative;
-            min-height: 100vh;
-        }
-        
-        /* Very subtle transparent overlay for better contrast */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(245, 245, 245, 0.08);
-            z-index: 0;
-            pointer-events: none;
-        }
+    .poster-image { width:100%; height:320px; object-fit:cover; border-radius:6px; display:block; }
+    .poster-meta { margin-top:10px; text-align:center; font-size:0.95rem; color:#111; }
+    .poster-meta .title { font-weight:700; }
+    .poster-meta .year { color:#6b7280; font-size:0.85rem; margin-top:4px; }
+    .poster-meta .dir { color:#555; font-size:0.86rem; margin-top:6px; }
+    .rating-badge { 
+      display:inline-flex; 
+      align-items: center;
+      gap: 4px;
+      margin-top:8px; 
+      padding:6px 12px; 
+      border-radius:999px; 
+      background: linear-gradient(135deg, #fff9e6 0%, #fef3c7 100%); 
+      font-weight:700; 
+      font-size:0.86rem; 
+      color:#0f172a; 
+      margin-right:6px; 
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
 
-        /* Container that sits on top of background */
-        .chat-container { 
-            max-width: 920px; 
-            margin: 40px auto; 
-            box-shadow: 0 8px 24px rgba(2,16,34,0.08);
-            border-radius: 14px;
-            /* make the card slightly translucent so the background image shows through */
-            background: rgba(255, 255, 255, 0.92);
-            backdrop-filter: blur(6px); /* gives frosted glass effect */
-            -webkit-backdrop-filter: blur(6px);
-            overflow: hidden;
-            min-height: 640px;
-            position: relative;
-            z-index: 10;
-            border: 1px solid rgba(0,0,0,0.04);
-        }
-        
-        /* Header */
-        .chat-header {
-            padding: 12px 20px;
-            background-color: rgba(247,247,247,0.9);
-            color: #1d1d1f;
-            border-bottom: 1px solid rgba(0,0,0,0.04);
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .header-logo {
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            object-fit: cover;
-            border: 2px solid rgba(0,0,0,0.04);
-            background: #fff;
-            flex-shrink: 0;
-        }
+    .card-back-content { font-size:0.92rem; color:#111; line-height:1.6; }
+    .card-back-content h4 { margin:12px 0 6px 0; font-size:1rem; }
+    .card-back-content p { margin:6px 0; }
 
-        /* Chat Box Styling - transparent so background is visible behind messages */
-        #chatbox { 
-            height: 520px; 
-            overflow-y: auto; 
-            padding: 20px; 
-            background-color: transparent;
-            scroll-behavior: smooth; /* SMOOTH SCROLLING (Improvement 2) */
-        }
-        
-        /* Message Bubbles */
-        .message-container { 
-            margin-bottom: 15px; 
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            clear: both;
-        }
-        
-        .message-container.user-container {
-            flex-direction: row-reverse;
-        }
-        
-        /* Agent Avatar */
-        .agent-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #ddd;
-            flex-shrink: 0;
-            background: #fff;
-        }
-        
-        /* Agent Bubble (Clean Neutral Gray) */
-        .agent-message { 
-            background-color: rgba(240,240,240,0.95);
-            color: #1d1d1f;
-            padding: 12px 18px; 
-            border-radius: 18px;
-            max-width: 85%; 
-            line-height: 1.6;
-            flex: 1;
-            box-shadow: 0 6px 18px rgba(2,16,34,0.03);
-        }
-        /* User Bubble (Primary Color) */
-        .user-message { 
-            background-color: #0070c9;
-            color: white; 
-            padding: 12px 18px; 
-            border-radius: 18px; 
-            max-width: 85%; 
-            line-height: 1.6;
-        }
-        
-        /* Agent Content Formatting */
-        .agent-message h3 { font-size: 1.2rem; color: #1d1d1f; font-weight: 700; margin-top: 10px; margin-bottom: 8px; }
-        .agent-message strong { font-weight: 600; color: #1d1d1f; }
+    .poster-collapsed-tray { margin-top:12px; display:flex; flex-direction:column; gap:6px; }
+    .poster-tray-btn { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:6px 10px; border:1px solid rgba(2,6,23,0.06); background:#fff; cursor:pointer; font-weight:600; }
 
-        /* Loading Indicator Style (REFINED LOADING STATE - Improvement 3) */
-        .loading-message {
-            background-color: #fff7d6; /* Light, unobtrusive yellow */
-            padding: 10px 15px;
-            border-radius: 18px;
-            max-width: 45%;
-            font-style: italic;
-            color: #666;
-            animation: pulse 1.2s infinite;
-        }
-        
-        .loading-container {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; transform: translateY(0); }
-            50% { opacity: 0.6; transform: translateY(2px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
+    /* Action buttons for like/dislike/watchlist */
+    .action-buttons { display:flex; gap:6px; justify-content:center; margin-top:12px; margin-bottom:4px; width:100%; padding:0 4px; }
+    .action-btn { padding:8px 10px; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:4px; flex:1; justify-content:center; min-height:36px; }
+    .action-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+    .like-btn { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
+    .like-btn.active { background:#16a34a; color:#fff; }
+    .dislike-btn { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
+    .dislike-btn.active { background:#dc2626; color:#fff; }
+    .watchlist-btn { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
+    .watchlist-btn.active { background:#2563eb; color:#fff; }
+    
+    /* Smaller buttons on back side for better content visibility */
+    .flip-card-back .action-buttons { margin-top: 10px; position: sticky; bottom: 0; background: linear-gradient(180deg, transparent, #fbfbfb 20%); padding-top: 12px; padding-bottom: 8px; }
+    .flip-card-back .action-btn { min-height: 32px; padding: 6px 8px; font-size: 0.85rem; }
 
-        /* Suggestion chips */
-        .suggestions {
-            display:flex;
-            gap:10px;
-            flex-wrap:wrap;
-            margin-top:12px;
-        }
-        .chip {
-            background: rgba(0,112,201,0.08);
-            color: #0070c9;
-            padding:8px 12px;
-            border-radius: 999px;
-            cursor:pointer;
-            border:1px solid rgba(0,112,201,0.12);
-            font-weight:600;
-            font-size: 0.95rem;
-        }
-        .chip:active { transform: translateY(1px); }
+    .input-group-container { padding:12px 16px; border-top:1px solid rgba(0,0,0,0.04); background: rgba(255,255,255,0.96); display:flex; gap:10px; align-items:center; }
+    .input-group-container input[type="text"] { flex:1; min-height:46px; border-radius:10px; }
 
-        /* Input Area: Thin Border, Clean Controls */
-        .input-group-container {
-            padding: 12px 16px;
-            border-top: 1px solid rgba(0,0,0,0.04);
-            background: rgba(255,255,255,0.96);
-            display:flex;
-            gap:10px;
-            align-items:center;
-        }
-        .input-group-container input[type="text"] {
-            flex:1;
-            min-height:46px;
-            border-radius: 10px;
-        }
-        .btn-send { min-width:110px; }
+    /* Modal overlay (centered large view) */
+    .poster-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3,6,18,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 16px;
+    }
+    .poster-modal-overlay.is-open { display: flex; }
+    .poster-modal {
+      width: min(100%, var(--modal-max-width));
+      max-height: calc(100vh - 48px);
+      background: #fff;
+      border-radius: 12px;
+      overflow: auto;
+      padding: var(--modal-padding);
+      box-shadow: 0 30px 80px rgba(3,6,18,0.45);
+      display: flex;
+      gap: 18px;
+      align-items: flex-start;
+      position: relative;
+    }
+    .poster-modal .modal-poster { width: 360px; max-width: 40%; border-radius: 8px; object-fit:cover; }
+    .poster-modal .modal-body { flex: 1 1 auto; overflow:auto; }
+    .poster-modal .modal-body h2 { margin-top:0; }
+    .poster-modal .close-btn { position:absolute; right: 24px; top: 18px; border: none; background: transparent; font-size: 22px; cursor:pointer; color:#222; }
 
-        /* Mobile adjustments */
-        @media (max-width: 720px) {
-          .chat-container { margin: 20px; min-height: 560px; }
-          #chatbox { height: 420px; padding: 14px; }
-          .header-logo { width:40px; height:40px; }
-        }
-        @media (max-width: 420px) {
-          /* switch to smaller background reference or emblem if needed */
-          body {
-            background-position: center top;
-            background-size: cover;
-          }
-          #chatbox { height: 360px; }
-        }
-    </style>
+    /* Watchlist modal styles */
+    .watchlist-modal-overlay { position:fixed; inset:0; background:rgba(3,6,18,0.6); display:none; align-items:center; justify-content:center; z-index:2000; padding:16px; }
+    .watchlist-modal-overlay.is-open { display:flex; }
+    .watchlist-modal { width:min(100%, 900px); max-height:calc(100vh - 48px); background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 30px 80px rgba(3,6,18,0.45); display:flex; flex-direction:column; }
+    .watchlist-modal-header { padding:20px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; background:#f9fafb; }
+    .watchlist-modal-header h2 { margin:0; font-size:1.5rem; }
+    .watchlist-modal-body { padding:20px; overflow-y:auto; flex:1; }
+    .watchlist-empty { text-align:center; padding:40px 20px; color:#6b7280; }
+    .watchlist-item { display:flex; gap:16px; padding:16px; border-radius:8px; border:1px solid #e5e7eb; margin-bottom:12px; background:#fff; transition:all 0.2s; }
+    .watchlist-item:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-1px); }
+    .watchlist-item-poster { width:80px; height:120px; object-fit:cover; border-radius:6px; flex-shrink:0; }
+    .watchlist-item-content { flex:1; }
+    .watchlist-item-title { font-weight:700; font-size:1.1rem; margin-bottom:4px; }
+    .watchlist-item-meta { color:#6b7280; font-size:0.9rem; margin-bottom:8px; }
+    .watchlist-item-actions { display:flex; gap:8px; margin-top:8px; }
+    .watchlist-remove-btn { background:#dc2626; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600; }
+    .watchlist-remove-btn:hover { background:#b91c1c; }
+
+    @media (max-width:720px) {
+      :root{ --card-width-desktop: var(--card-width-mobile); }
+      .poster-image { height:220px; }
+      .flip-card-inner { min-height: 320px; }
+      #chatbox { padding:14px; }
+      .chat-container { width:96vw; height:96vh; max-width:96vw; max-height:96vh; }
+      .poster-modal { flex-direction: column; align-items: center; }
+      .poster-modal .modal-poster { max-width: 86%; width: auto; }
+      .card-back-content { line-height:1.4; }
+      .watchlist-item { flex-direction:column; }
+      .watchlist-item-poster { width:100%; height:auto; max-height:300px; }
+      
+      /* Mobile-specific flipped card styling */
+      .flip-card.is-flipped { 
+        width: 95vw;
+        max-height: 95vh;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .flip-card.is-flipped .flip-card-inner {
+        max-height: 95vh;
+      }
+      .flip-card.is-flipped .flip-card-back {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+
+    }
+  </style>
 </head>
 <body>
-    <div class="chat-container" role="main" aria-label="CineMan chat container">
-        <div class="chat-header">
-            <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" alt="CineMan" class="header-logo" onerror="this.style.display='none'">
-            <span>🎬 CineMan: Your next watch is waiting</span>
+  <div class="chat-container" role="main" aria-label="CineMan chat container">
+    <div class="chat-header">
+      <div class="header-left">
+        <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="header-logo" alt="CineMan" onerror="this.style.display='none'">
+        <span>🎬 CineMan: Your next watch is waiting</span>
+      </div>
+      <div class="header-right">
+        <button class="watchlist-icon-btn" id="new-session-btn" type="button" style="margin-right: 10px;">
+          🔄 New Session
+        </button>
+        <button class="watchlist-icon-btn" id="watchlist-btn" type="button">
+          📋 Watchlist
+          <span class="watchlist-badge" id="watchlist-count" style="display:none;">0</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="chatbox" aria-live="polite" aria-atomic="false">
+      <!-- initial greeting -->
+      <div class="message-container">
+        <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
+        <div class="agent-message">Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a suggestion below.</div>
+      </div>
+
+      <!-- suggestion chips -->
+      <div class="message-row" id="suggestion-row">
+        <div class="suggestions" id="suggestions">
+          <button class="chip" type="button">Sci‑fi with twists</button>
+          <button class="chip" type="button">Comedy for family</button>
+          <button class="chip" type="button">Classic drama</button>
         </div>
+      </div>
 
-        <div id="chatbox" class="clearfix" aria-live="polite" aria-atomic="false">
-            <!-- initial greeting -->
-            <div class="message-container">
-                <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
-                <div class="agent-message">Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a suggestion below.</div>
-            </div>
+      <!-- Note: poster rows are inserted as part of an assistant message bubble by the JS handler.
+           We intentionally removed a fixed #poster-area container to ensure posters appear in correct order
+           (immediately after the user's message). -->
+    </div>
 
-            <!-- suggestion chips -->
-            <div class="message-container" id="suggestion-row">
-                <div class="suggestions" id="suggestions" aria-hidden="false">
+    <div class="input-group-container d-flex">
+      <input type="text" id="userInput" class="form-control me-2" placeholder="Ask for a sci-fi thriller or a nostalgic comedy..." aria-label="Ask CineMan for a movie" />
+      <button type="button" id="sendButton" class="btn btn-primary btn-send">Suggest</button>
+    </div>
+  </div>
+
+  <!-- Poster Modal: opened when user clicks a poster -->
+  <div id="poster-modal-overlay" class="poster-modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="poster-modal" id="poster-modal" role="document">
+      <button class="close-btn" id="poster-modal-close" aria-label="Close">✕</button>
+      <img src="" alt="poster" class="modal-poster" id="modal-poster-img" />
+      <div class="modal-body" id="modal-body">
+        <h2 id="modal-title"></h2>
+        <div id="modal-meta" style="color:#666;margin-bottom:12px"></div>
+        <div id="modal-content" class="card-back-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Watchlist Modal -->
+  <div id="watchlist-modal-overlay" class="watchlist-modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="watchlist-modal" id="watchlist-modal" role="document">
+      <div class="watchlist-modal-header">
+        <h2>📋 My Watchlist</h2>
+        <button class="close-btn" id="watchlist-modal-close" aria-label="Close">✕</button>
+      </div>
+      <div class="watchlist-modal-body" id="watchlist-modal-body">
+        <div class="watchlist-empty" id="watchlist-empty">
+          <p>Your watchlist is empty. Start adding movies you want to watch later!</p>
+        </div>
+        <div id="watchlist-items"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // page-level helpers (unchanged behavior)
+    const chatbox = document.getElementById('chatbox');
+    const userInput = document.getElementById('userInput');
+    const sendButton = document.getElementById('sendButton');
+    const suggestions = document.getElementById('suggestions');
+
+    function addMessage(sender, message, isLoader = false) {
+      const msgContainer = document.createElement('div');
+      msgContainer.className = sender === 'User' ? 'message-container user-container' : 'message-container';
+      const msgDiv = document.createElement('div');
+
+      if (isLoader) {
+        msgDiv.className = 'loading-message';
+        msgDiv.textContent = message;
+        const loadingAvatar = document.createElement('img');
+        loadingAvatar.src = '/static/cineman_hero.jpg';
+        loadingAvatar.className = 'agent-avatar';
+        loadingAvatar.alt = 'CineMan';
+        loadingAvatar.onerror = function() { this.style.display = 'none'; };
+        msgContainer.appendChild(loadingAvatar);
+      } else {
+        msgDiv.className = sender === 'User' ? 'user-message' : 'agent-message';
+        const avatar = document.createElement('img');
+        avatar.className = sender === 'User' ? 'user-avatar' : 'agent-avatar';
+        avatar.alt = sender === 'User' ? 'You' : 'CineMan';
+        avatar.src = sender === 'User' ? '/static/user_avatar.png' : '/static/cineman_hero.jpg';
+        avatar.onerror = function() { this.style.display = 'none'; };
+
+        // Append avatar first; CSS aligns message appropriately (user to right)
+        msgContainer.appendChild(avatar);
+
+        if (sender === 'Agent') {
+          msgDiv.innerHTML = marked.parse ? marked.parse(message || '') : (message || '');
+        } else {
+          msgDiv.textContent = message;
+        }
+      }
+
+      msgContainer.appendChild(msgDiv);
+      if (chatbox) chatbox.appendChild(msgContainer);
+      if (chatbox) chatbox.scrollTop = chatbox.scrollHeight;
+      return msgDiv;
+    }
+    window.addMessage = addMessage;
+
+    function toggleInput(disabled) {
+      if (userInput) userInput.disabled = disabled;
+      if (sendButton) sendButton.disabled = disabled;
+      if (sendButton) sendButton.textContent = disabled ? 'Processing...' : 'Suggest';
+      if (!disabled && userInput) userInput.focus();
+    }
+    window.toggleInput = toggleInput;
+
+    suggestions?.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      if (userInput) userInput.value = chip.textContent.trim();
+      if (sendButton) sendButton.disabled = false;
+      userInput.focus();
+    });
+
+    // Poster modal helpers
+    const modalOverlay = document.getElementById('poster-modal-overlay');
+    const modalCloseBtn = document.getElementById('poster-modal-close');
+    const modalPosterImg = document.getElementById('modal-poster-img');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMeta = document.getElementById('modal-meta');
+    const modalContent = document.getElementById('modal-content');
+
+    function openPosterModal(movie, movieData, htmlOrMarkdown) {
+      const posterUrl = movieData.poster || (movieData.omdb && (movieData.omdb.Poster || movieData.omdb.Poster_URL)) || (movieData.tmdb && movieData.tmdb.poster_url) || '';
+      modalPosterImg.src = posterUrl;
+      modalPosterImg.alt = movie.title + ' poster';
+      modalTitle.textContent = movieData.tmdb?.title || movieData.omdb?.Title || movie.title;
+      const year = movieData.tmdb?.year || movieData.omdb?.Year || movie.year || '';
+      const director = movieData.director || (movieData.omdb && movieData.omdb.Director) || (movieData.tmdb && movieData.tmdb.director) || '';
+      modalMeta.textContent = `${year ? year + ' • ' : ''}${director ? 'Dir: ' + director : ''}`;
+
+      // If the handler passed HTML (contains <), set innerHTML directly, otherwise parse markdown
+      if (typeof htmlOrMarkdown === 'string' && /<\/?[a-z][\s\S]*>/i.test(htmlOrMarkdown)) {
+        modalContent.innerHTML = htmlOrMarkdown;
+      } else if (typeof htmlOrMarkdown === 'string' && window.marked) {
+        modalContent.innerHTML = marked.parse(htmlOrMarkdown);
+      } else {
+        modalContent.innerHTML = htmlOrMarkdown || '<div class="small">No summary available.</div>';
+      }
+
+      modalOverlay.classList.add('is-open');
+      modalOverlay.setAttribute('aria-hidden','false');
+      setTimeout(() => modalCloseBtn?.focus(), 80);
+    }
+
+    function closePosterModal() {
+      modalOverlay.classList.remove('is-open');
+      modalOverlay.setAttribute('aria-hidden','true');
+      modalPosterImg.src = '';
+      modalContent.innerHTML = '';
+    }
+
+    modalCloseBtn?.addEventListener('click', closePosterModal);
+    modalOverlay?.addEventListener('click', (e) => { if (e.target === modalOverlay) closePosterModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modalOverlay.classList.contains('is-open')) closePosterModal(); });
+
+    // expose for the integration script
+    window.openPosterModal = openPosterModal;
+    window.closePosterModal = closePosterModal;
+
+    // sendMessage implementation (exposed)
+    async function sendMessageImpl() {
+      const message = (userInput && userInput.value) ? userInput.value.trim() : '';
+      if (!message) return;
+      // 1) Render the user's message (right side)
+      addMessage('User', message);
+      if (userInput) userInput.value = '';
+      toggleInput(true);
+      // 2) show loader
+      const loaderEl = addMessage('Agent', 'CineMan is thinking...', true);
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+        if (!response.ok) throw new Error(`Server returned ${response.status}`);
+        const data = await response.json();
+
+        // remove loader
+        if (loaderEl && loaderEl.parentElement) loaderEl.parentElement.remove();
+
+        // let movie-integration handle posters + assistant text
+        if (window.handleAssistantReplyWithManifest && typeof window.handleAssistantReplyWithManifest === 'function') {
+          await window.handleAssistantReplyWithManifest(data);
+        } else {
+          addMessage('Agent', data.response || 'No response from AI.');
+        }
+      } catch (err) {
+        if (loaderEl && loaderEl.parentElement) loaderEl.parentElement.remove();
+        console.error('sendMessageImpl error:', err);
+        addMessage('Agent', 'Error: Could not connect to the AI service. Please restart the Flask server.');
+      } finally {
+        toggleInput(false);
+      }
+    }
+    window.sendMessage = sendMessageImpl;
+
+    (function attachSendButton() {
+      const btn = document.getElementById('sendButton');
+      if (!btn) return setTimeout(attachSendButton, 200);
+      if (!btn._sendAttached) {
+        btn.addEventListener('click', (e) => { e.preventDefault(); try { window.sendMessage(); } catch (err) { console.error(err); } });
+        if (userInput) {
+          userInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !btn.disabled) {
+              e.preventDefault();
+              window.sendMessage();
+            }
+          });
+        }
+        btn._sendAttached = true;
+      }
+    })();
+
+    // New Session button handler
+    (() => {
+      const newSessionBtn = document.getElementById('new-session-btn');
+      if (newSessionBtn) {
+        newSessionBtn.addEventListener('click', async () => {
+          if (!confirm('Are you sure you want to start a new session? This will clear your chat history and recommended movies.')) {
+            return;
+          }
+          
+          try {
+            const response = await fetch('/session/clear', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+              // Clear the chatbox
+              const chatbox = document.getElementById('chatbox');
+              chatbox.innerHTML = `
+                <div class="message-container">
+                  <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
+                  <div class="agent-message">Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a suggestion below.</div>
+                </div>
+                <div class="message-row" id="suggestion-row">
+                  <div class="suggestions" id="suggestions">
                     <button class="chip" type="button">Sci‑fi with twists</button>
                     <button class="chip" type="button">Comedy for family</button>
                     <button class="chip" type="button">Classic drama</button>
+                  </div>
                 </div>
-            </div>
-        </div>
-        
-        <div class="input-group-container d-flex">
-            <input type="text" id="userInput" 
-                   class="form-control me-2" 
-                   placeholder="Ask for a sci-fi thriller or a nostalgic comedy..." 
-                   aria-label="Ask CineMan for a movie"
-                   onkeydown="if(event.keyCode==13 && !document.getElementById('sendButton').disabled) sendMessage()">
-            <button onclick="sendMessage()" class="btn btn-primary btn-send" id="sendButton">Suggest</button>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" 
-            crossorigin="anonymous"></script>
-
-    <script>
-        const chatbox = document.getElementById('chatbox');
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
-        const suggestions = document.getElementById('suggestions');
-
-        function addMessage(sender, message, isLoader = false) {
-            const msgContainer = document.createElement('div');
-            msgContainer.className = sender === 'User' ? 'message-container user-container' : 'message-container';
-            
-            const msgDiv = document.createElement('div');
-            
-            if (isLoader) {
-                msgDiv.className = 'loading-message';
-                msgDiv.textContent = message;
-                // Add avatar for loading state too
-                const loadingAvatar = document.createElement('img');
-                loadingAvatar.src = '/static/cineman_hero.jpg';
-                loadingAvatar.className = 'agent-avatar';
-                loadingAvatar.alt = 'CineMan';
-                loadingAvatar.onerror = function() { this.style.display = 'none'; };
-                msgContainer.appendChild(loadingAvatar);
+              `;
+              
+              // Reload the page to reinitialize everything
+              window.location.reload();
             } else {
-                msgDiv.className = sender === 'User' ? 'user-message' : 'agent-message';
-                
-                if (sender === 'Agent') {
-                    // Add avatar for agent messages
-                    const avatar = document.createElement('img');
-                    avatar.src = '/static/cineman_hero.jpg';
-                    avatar.className = 'agent-avatar';
-                    avatar.alt = 'CineMan';
-                    avatar.onerror = function() { this.style.display = 'none'; };
-                    msgContainer.appendChild(avatar);
-                    
-                    // Render Markdown content
-                    msgDiv.innerHTML = marked.parse(message || '');
-                } else {
-                    msgDiv.textContent = message;
-                }
+              alert('Failed to clear session. Please try again.');
             }
-            
-            msgContainer.appendChild(msgDiv);
-            chatbox.appendChild(msgContainer);
-            chatbox.scrollTop = chatbox.scrollHeight; // SMOOTH SCROLLING
-            return msgDiv; 
-        }
-
-        // DISABLE/ENABLE INPUT while processing
-        function toggleInput(disabled) {
-            userInput.disabled = disabled;
-            sendButton.disabled = disabled;
-            sendButton.textContent = disabled ? 'Processing...' : 'Suggest';
-            if (!disabled) userInput.focus();
-        }
-
-        // Suggestion chips: populate input, focus, and optionally submit
-        suggestions?.addEventListener('click', (e) => {
-            const chip = e.target.closest('.chip');
-            if (!chip) return;
-            const text = chip.textContent.trim();
-            userInput.value = text;
-            userInput.focus();
-            // Optional: auto-send on long press or Ctrl+click — currently only fills input
+          } catch (error) {
+            console.error('Error clearing session:', error);
+            alert('An error occurred while clearing the session.');
+          }
         });
+      }
+    })();
 
-        async function sendMessage() {
-            const message = userInput.value.trim();
-            if (!message) return;
-
-            // 1. Display User Message and Disable Input
-            addMessage('User', message);
-            userInput.value = '';
-            toggleInput(true); // Disable input
-
-            // 2. Display Loading State (keeps parent container so we can remove it)
-            const loaderElement = addMessage('Agent', 'CineMan is thinking...', true);
-
-            try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: message })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Non-200 response');
-                }
-                const data = await response.json();
-                
-                // 3. Remove Loader
-                if (loaderElement && loaderElement.parentElement) loaderElement.parentElement.remove(); 
-                
-                // 4. Add the agent's response
-                addMessage('Agent', data.response || 'No response from AI.');
-
-            } catch (error) {
-                if (loaderElement && loaderElement.parentElement) loaderElement.parentElement.remove();
-                addMessage('Agent', 'Error: Could not connect to the AI service. Please restart the Flask server.');
-                console.error('API Error:', error);
-            } finally {
-                // 5. Re-enable Input
-                toggleInput(false); 
-            }
-        }
-        
-        // Show welcome message only if no messages were added server-side
-        window.addEventListener('DOMContentLoaded', () => {
-            // If the chatbox is empty (server didn't render greeting), add one
-            const existingAgentMsgs = chatbox.querySelectorAll('.agent-message');
-            if (existingAgentMsgs.length === 0) {
-                addMessage('Agent', "CineMan reporting for duty! Ask: 'Recommend a nostalgic 80s movie.'");
-            }
-        });
-    </script>
+    // initial greeting
+    window.addEventListener('DOMContentLoaded', () => {
+      const existingAgentMsgs = chatbox.querySelectorAll('.agent-message');
+      if (existingAgentMsgs.length === 0) addMessage('Agent', "CineMan reporting for duty! Ask: 'Recommend a nostalgic 80s movie.'");
+    });
+  </script>
 </body>
 </html>

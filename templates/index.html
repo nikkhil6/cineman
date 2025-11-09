@@ -198,14 +198,21 @@
       backface-visibility:hidden; 
       -webkit-backface-visibility:hidden; 
       border-radius: var(--card-radius); 
-      overflow:hidden; 
       background:#fff; 
       display:flex; 
       flex-direction:column; 
       padding:10px; 
       box-shadow: var(--card-shadow); 
     }
-    .flip-card-front { z-index:2; align-items:center; overflow:hidden; }
+    .flip-card-front { 
+      z-index:2; 
+      align-items:center; 
+      overflow: visible; 
+    }
+    .flip-card-front .poster-image {
+      border-radius:6px; 
+      overflow:hidden;
+    }
     .flip-card-back { 
       transform: rotateY(180deg); 
       z-index:1; 

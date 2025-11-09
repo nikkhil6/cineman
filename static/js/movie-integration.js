@@ -704,6 +704,11 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     }
   })();
 
+  // Store original parent and position for restoration
+  let originalParent = null;
+  let originalNextSibling = null;
+  let placeholderDiv = null;
+  
   // Click to flip the card or close if already flipped
   flipCard.addEventListener('click', (e) => {
     if (e.target.closest('a') || e.target.closest('.action-btn')) return;
@@ -713,6 +718,16 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     // If this card is flipped, ANY click on it should close it
     if (flipCard.classList.contains('is-flipped')) {
       flipCard.classList.remove('is-flipped');
+      
+      // Restore card to original position
+      if (originalParent && placeholderDiv) {
+        originalParent.insertBefore(flipCard, placeholderDiv);
+        placeholderDiv.remove();
+        placeholderDiv = null;
+        originalParent = null;
+        originalNextSibling = null;
+      }
+      
       if (posterRow) {
         posterRow.classList.remove('has-flipped-card');
         document.body.style.overflow = '';
@@ -727,6 +742,21 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     if (anyFlipped) {
       return;
     }
+    
+    // Save original position
+    originalParent = flipCard.parentNode;
+    originalNextSibling = flipCard.nextSibling;
+    
+    // Create placeholder to maintain layout
+    placeholderDiv = document.createElement('div');
+    placeholderDiv.style.width = flipCard.offsetWidth + 'px';
+    placeholderDiv.style.height = flipCard.offsetHeight + 'px';
+    placeholderDiv.style.display = 'inline-block';
+    placeholderDiv.style.visibility = 'hidden';
+    
+    // Insert placeholder and move card to body
+    originalParent.insertBefore(placeholderDiv, flipCard);
+    document.body.appendChild(flipCard);
     
     // Flip this card
     flipCard.classList.add('is-flipped');
@@ -753,23 +783,64 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
         return;
       }
       
-      const isFlipped = flipCard.classList.toggle('is-flipped');
-      if (posterRow) {
-        if (isFlipped) {
+      const isFlipped = flipCard.classList.contains('is-flipped');
+      
+      if (!isFlipped) {
+        // Flipping - save position and move to body
+        originalParent = flipCard.parentNode;
+        originalNextSibling = flipCard.nextSibling;
+        
+        placeholderDiv = document.createElement('div');
+        placeholderDiv.style.width = flipCard.offsetWidth + 'px';
+        placeholderDiv.style.height = flipCard.offsetHeight + 'px';
+        placeholderDiv.style.display = 'inline-block';
+        placeholderDiv.style.visibility = 'hidden';
+        
+        originalParent.insertBefore(placeholderDiv, flipCard);
+        document.body.appendChild(flipCard);
+        
+        flipCard.classList.add('is-flipped');
+        
+        if (posterRow) {
           posterRow.classList.add('has-flipped-card');
           document.body.style.overflow = 'hidden';
-        } else {
+        }
+      } else {
+        // Unflipping - restore position
+        flipCard.classList.remove('is-flipped');
+        
+        if (originalParent && placeholderDiv) {
+          originalParent.insertBefore(flipCard, placeholderDiv);
+          placeholderDiv.remove();
+          placeholderDiv = null;
+          originalParent = null;
+          originalNextSibling = null;
+        }
+        
+        if (posterRow) {
           posterRow.classList.remove('has-flipped-card');
           document.body.style.overflow = '';
         }
       }
     }
     if (e.key === 'Escape') {
-      flipCard.classList.remove('is-flipped');
-      const posterRow = flipCard.closest('.poster-row');
-      if (posterRow) {
-        posterRow.classList.remove('has-flipped-card');
-        document.body.style.overflow = '';
+      if (flipCard.classList.contains('is-flipped')) {
+        flipCard.classList.remove('is-flipped');
+        
+        // Restore card to original position
+        if (originalParent && placeholderDiv) {
+          originalParent.insertBefore(flipCard, placeholderDiv);
+          placeholderDiv.remove();
+          placeholderDiv = null;
+          originalParent = null;
+          originalNextSibling = null;
+        }
+        
+        const posterRow = flipCard.closest('.poster-row');
+        if (posterRow) {
+          posterRow.classList.remove('has-flipped-card');
+          document.body.style.overflow = '';
+        }
       }
     }
   });

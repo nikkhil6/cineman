@@ -138,23 +138,7 @@
       0%, 100% { border-color: rgba(37, 99, 235, 0.4); }
       50% { border-color: rgba(37, 99, 235, 0.7); }
     }
-    .flip-card:hover:not(.is-flipped)::after {
-      content: '👆 Click to flip';
-      position: absolute;
-      bottom: 50px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(37, 99, 235, 0.95);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      white-space: nowrap;
-      pointer-events: none;
-      z-index: 11;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
+
     .flip-card-inner { 
       position: relative; 
       width:100%; 
@@ -349,29 +333,7 @@
         -webkit-overflow-scrolling: touch;
       }
       
-      /* Hide hover tooltip on mobile/touch devices */
-      .flip-card:hover:not(.is-flipped)::after {
-        display: none;
-      }
-      
-      /* Add tap indicator for mobile */
-      .flip-card:not(.is-flipped)::before {
-        content: '👆 Tap to view details';
-        position: absolute;
-        bottom: 8px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(37, 99, 235, 0.9);
-        color: white;
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        white-space: nowrap;
-        pointer-events: none;
-        z-index: 5;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      }
+
     }
   </style>
 </head>

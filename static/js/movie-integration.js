@@ -302,6 +302,21 @@ function extractCompactSummary(movieMarkdown, movieData) {
 function buildFlipCard(movie, movieData, movieMarkdown) {
   const { imdb, rt_tomatometer, rt_audience } = extractRatings(movieData || {});
   const director = extractDirector(movieData || {});
+  
+  // Debug logging for ratings
+  if (CI_DEBUG || (!imdb && !rt_tomatometer && !rt_audience)) {
+    console.log('[Ratings Debug]', {
+      title: movie.title,
+      imdb: imdb || 'N/A',
+      rt_tomatometer: rt_tomatometer || 'N/A', 
+      rt_audience: rt_audience || 'N/A',
+      rawData: {
+        imdb_rating: movieData?.imdb_rating,
+        rt_tomatometer: movieData?.rt_tomatometer,
+        omdb: movieData?.omdb,
+      }
+    });
+  }
 
   const flipCard = document.createElement('div');
   flipCard.className = 'flip-card';
@@ -351,12 +366,16 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   ratingRow.style.justifyContent = 'center';
   ratingRow.style.flexWrap = 'wrap';
   ratingRow.style.gap = '8px';
+  
+  let hasRatings = false;
+  
   if (imdb) { 
     const imdbBadge = document.createElement('div'); 
     imdbBadge.className = 'rating-badge'; 
     imdbBadge.textContent = `⭐ ${imdb}`; 
     imdbBadge.title = 'IMDB Rating';
     ratingRow.appendChild(imdbBadge); 
+    hasRatings = true;
   }
   if (rt_tomatometer) { 
     const rtBadge = document.createElement('div'); 
@@ -364,6 +383,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     rtBadge.textContent = `🍅 ${rt_tomatometer}`; 
     rtBadge.title = 'Rotten Tomatoes';
     ratingRow.appendChild(rtBadge); 
+    hasRatings = true;
   }
   else if (rt_audience) { 
     const rtBadge = document.createElement('div'); 
@@ -371,8 +391,13 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     rtBadge.textContent = `🍅 ${rt_audience}`; 
     rtBadge.title = 'Rotten Tomatoes Audience';
     ratingRow.appendChild(rtBadge); 
+    hasRatings = true;
   }
-  meta.appendChild(ratingRow);
+  
+  // Only append rating row if there are ratings to show
+  if (hasRatings) {
+    meta.appendChild(ratingRow);
+  }
   
   // Action buttons (like, dislike, watchlist)
   const actionButtons = document.createElement('div');

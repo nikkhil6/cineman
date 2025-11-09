@@ -51,6 +51,9 @@ def init_db():
     with app.app_context():
         db.create_all()
 
+# Initialize database when module is imported (needed for Gunicorn)
+init_db()
+
 # Cache the chain instance globally
 try:
     movie_chain = get_recommendation_chain()

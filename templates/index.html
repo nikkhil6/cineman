@@ -150,20 +150,25 @@
     
     /* When flipped, expand to larger size and center */
     .flip-card.is-flipped { 
-      position: fixed; 
-      top: 50%; 
-      left: 50%; 
-      transform: translate(-50%, -50%); 
-      width: min(800px, 90vw); 
-      z-index: 3000; 
-      max-height: 90vh;
-      overflow: visible;
+      position: fixed !important; 
+      top: 50% !important; 
+      left: 50% !important; 
+      transform: translate(-50%, -50%) !important; 
+      width: min(800px, 90vw) !important; 
+      z-index: 10000 !important; 
+      max-height: 85vh !important;
+      overflow: visible !important;
     }
     .flip-card.is-flipped .flip-card-inner { 
       transform: rotateY(180deg); 
       min-height: auto;
-      max-height: 90vh;
+      max-height: 85vh;
       overflow: visible;
+    }
+    .flip-card.is-flipped .flip-card-back {
+      max-height: 85vh;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
     
     /* Backdrop blur when card is flipped */
@@ -177,7 +182,7 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s ease;
-      z-index: 2999;
+      z-index: 9999;
     }
     .poster-row.has-flipped-card::after {
       opacity: 1;
@@ -200,13 +205,14 @@
       padding:10px; 
       box-shadow: var(--card-shadow); 
     }
-    .flip-card-front { z-index:2; align-items:center; }
+    .flip-card-front { z-index:2; align-items:center; overflow:hidden; }
     .flip-card-back { 
       transform: rotateY(180deg); 
       z-index:1; 
       padding:16px; 
       overflow-y: auto; 
       overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
       background: linear-gradient(180deg,#ffffff,#fbfbfb); 
       align-items:stretch; 
     }
@@ -327,7 +333,7 @@
         top: 50% !important;
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
-        z-index: 3000 !important;
+        z-index: 10000 !important;
         overflow: visible !important;
       }
       

@@ -100,7 +100,7 @@ class TestDesktopUI(unittest.TestCase):
         
         # Check for desktop flipped card style
         self.assertIn('width: min(800px, 90vw)', html_content)
-        self.assertIn('max-height: 90vh', html_content)
+        self.assertIn('max-height: 85vh', html_content)
         
         # Check for backdrop blur
         self.assertIn('backdrop-filter: blur(4px)', html_content)

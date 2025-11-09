@@ -148,8 +148,13 @@
       min-height: 480px; 
     }
     
-    /* When flipped, expand to larger size and center */
-    .flip-card.is-flipped { 
+    /* When flipped, rotate the card (keeps perspective for animation) */
+    .flip-card.is-flipped .flip-card-inner { 
+      transform: rotateY(180deg); 
+    }
+    
+    /* When moved to body, position as modal */
+    .flip-card.moved-to-body { 
       position: fixed !important; 
       top: 50% !important; 
       left: 50% !important; 
@@ -159,13 +164,12 @@
       max-height: 85vh !important;
       overflow: visible !important;
     }
-    .flip-card.is-flipped .flip-card-inner { 
-      transform: rotateY(180deg); 
+    .flip-card.moved-to-body .flip-card-inner { 
       min-height: auto;
       max-height: 85vh;
       overflow: visible;
     }
-    .flip-card.is-flipped .flip-card-back {
+    .flip-card.moved-to-body .flip-card-back {
       max-height: 85vh;
       overflow-y: auto;
       overflow-x: hidden;
@@ -330,27 +334,25 @@
       .watchlist-item { flex-direction:column; }
       .watchlist-item-poster { width:100%; height:auto; max-height:300px; }
       
-      /* Mobile-specific flipped card styling - ensure full screen viewing */
-      .flip-card.is-flipped { 
-        position: fixed !important;
+      /* Allow posters to overflow on mobile so they're not clipped */
+      .agent-message { 
+        overflow: visible;
+        max-width: 95%;
+      }
+      
+      /* Mobile-specific moved-to-body styling - ensure full screen viewing */
+      .flip-card.moved-to-body { 
         width: 92vw !important;
         max-width: 92vw !important;
-        height: auto !important;
         max-height: 88vh !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        z-index: 10000 !important;
-        overflow: visible !important;
       }
       
-      .flip-card.is-flipped .flip-card-inner {
+      .flip-card.moved-to-body .flip-card-inner {
         max-height: 88vh !important;
         height: auto !important;
-        overflow: visible !important;
       }
       
-      .flip-card.is-flipped .flip-card-back {
+      .flip-card.moved-to-body .flip-card-back {
         position: relative !important;
         height: auto !important;
         max-height: 88vh !important;
@@ -361,7 +363,7 @@
       }
       
       /* Ensure action buttons are always visible at the bottom */
-      .flip-card.is-flipped .flip-card-back .action-buttons {
+      .flip-card.moved-to-body .flip-card-back .action-buttons {
         position: sticky !important;
         bottom: 0 !important;
         left: 0 !important;
@@ -373,17 +375,17 @@
       }
       
       /* Two-column layout adjustments for mobile */
-      .flip-card.is-flipped .flip-card-back > div:first-child {
+      .flip-card.moved-to-body .flip-card-back > div:first-child {
         flex-direction: column !important;
       }
       
-      .flip-card.is-flipped .flip-card-back > div:first-child > div:first-child {
+      .flip-card.moved-to-body .flip-card-back > div:first-child > div:first-child {
         flex: 0 0 auto !important;
         max-width: 100% !important;
         margin-bottom: 12px !important;
       }
       
-      .flip-card.is-flipped .flip-card-back > div:first-child > div:first-child img {
+      .flip-card.moved-to-body .flip-card-back > div:first-child > div:first-child img {
         max-height: 280px !important;
         width: auto !important;
         max-width: 100% !important;

@@ -717,21 +717,27 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     
     // If this card is flipped, ANY click on it should close it
     if (flipCard.classList.contains('is-flipped')) {
-      flipCard.classList.remove('is-flipped');
+      // Remove moved-to-body class first to restore perspective
+      flipCard.classList.remove('moved-to-body');
       
-      // Restore card to original position
-      if (originalParent && placeholderDiv) {
-        originalParent.insertBefore(flipCard, placeholderDiv);
-        placeholderDiv.remove();
-        placeholderDiv = null;
-        originalParent = null;
-        originalNextSibling = null;
-      }
-      
-      if (posterRow) {
-        posterRow.classList.remove('has-flipped-card');
-        document.body.style.overflow = '';
-      }
+      // Wait for transition, then restore and unflip
+      setTimeout(() => {
+        flipCard.classList.remove('is-flipped');
+        
+        // Restore card to original position
+        if (originalParent && placeholderDiv) {
+          originalParent.insertBefore(flipCard, placeholderDiv);
+          placeholderDiv.remove();
+          placeholderDiv = null;
+          originalParent = null;
+          originalNextSibling = null;
+        }
+        
+        if (posterRow) {
+          posterRow.classList.remove('has-flipped-card');
+          document.body.style.overflow = '';
+        }
+      }, 100);
       return;
     }
     
@@ -743,23 +749,29 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
       return;
     }
     
-    // Save original position
-    originalParent = flipCard.parentNode;
-    originalNextSibling = flipCard.nextSibling;
-    
-    // Create placeholder to maintain layout
-    placeholderDiv = document.createElement('div');
-    placeholderDiv.style.width = flipCard.offsetWidth + 'px';
-    placeholderDiv.style.height = flipCard.offsetHeight + 'px';
-    placeholderDiv.style.display = 'inline-block';
-    placeholderDiv.style.visibility = 'hidden';
-    
-    // Insert placeholder and move card to body
-    originalParent.insertBefore(placeholderDiv, flipCard);
-    document.body.appendChild(flipCard);
-    
-    // Flip this card
+    // Flip this card first (for animation)
     flipCard.classList.add('is-flipped');
+    
+    // Wait for flip animation to complete (0.6s), then move to body
+    setTimeout(() => {
+      // Save original position
+      originalParent = flipCard.parentNode;
+      originalNextSibling = flipCard.nextSibling;
+      
+      // Create placeholder to maintain layout
+      placeholderDiv = document.createElement('div');
+      placeholderDiv.style.width = flipCard.offsetWidth + 'px';
+      placeholderDiv.style.height = flipCard.offsetHeight + 'px';
+      placeholderDiv.style.display = 'inline-block';
+      placeholderDiv.style.visibility = 'hidden';
+      
+      // Insert placeholder and move card to body
+      originalParent.insertBefore(placeholderDiv, flipCard);
+      document.body.appendChild(flipCard);
+      
+      // Add class to trigger body-level positioning
+      flipCard.classList.add('moved-to-body');
+    }, 650);
     
     // Toggle backdrop on parent poster-row
     if (posterRow) {
@@ -786,61 +798,74 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
       const isFlipped = flipCard.classList.contains('is-flipped');
       
       if (!isFlipped) {
-        // Flipping - save position and move to body
-        originalParent = flipCard.parentNode;
-        originalNextSibling = flipCard.nextSibling;
-        
-        placeholderDiv = document.createElement('div');
-        placeholderDiv.style.width = flipCard.offsetWidth + 'px';
-        placeholderDiv.style.height = flipCard.offsetHeight + 'px';
-        placeholderDiv.style.display = 'inline-block';
-        placeholderDiv.style.visibility = 'hidden';
-        
-        originalParent.insertBefore(placeholderDiv, flipCard);
-        document.body.appendChild(flipCard);
-        
+        // Flip first for animation
         flipCard.classList.add('is-flipped');
+        
+        // Wait for flip animation, then move to body
+        setTimeout(() => {
+          originalParent = flipCard.parentNode;
+          originalNextSibling = flipCard.nextSibling;
+          
+          placeholderDiv = document.createElement('div');
+          placeholderDiv.style.width = flipCard.offsetWidth + 'px';
+          placeholderDiv.style.height = flipCard.offsetHeight + 'px';
+          placeholderDiv.style.display = 'inline-block';
+          placeholderDiv.style.visibility = 'hidden';
+          
+          originalParent.insertBefore(placeholderDiv, flipCard);
+          document.body.appendChild(flipCard);
+          
+          flipCard.classList.add('moved-to-body');
+        }, 650);
         
         if (posterRow) {
           posterRow.classList.add('has-flipped-card');
           document.body.style.overflow = 'hidden';
         }
       } else {
-        // Unflipping - restore position
-        flipCard.classList.remove('is-flipped');
+        // Unflipping - remove moved-to-body first
+        flipCard.classList.remove('moved-to-body');
         
-        if (originalParent && placeholderDiv) {
-          originalParent.insertBefore(flipCard, placeholderDiv);
-          placeholderDiv.remove();
-          placeholderDiv = null;
-          originalParent = null;
-          originalNextSibling = null;
-        }
-        
-        if (posterRow) {
-          posterRow.classList.remove('has-flipped-card');
-          document.body.style.overflow = '';
-        }
+        setTimeout(() => {
+          flipCard.classList.remove('is-flipped');
+          
+          if (originalParent && placeholderDiv) {
+            originalParent.insertBefore(flipCard, placeholderDiv);
+            placeholderDiv.remove();
+            placeholderDiv = null;
+            originalParent = null;
+            originalNextSibling = null;
+          }
+          
+          if (posterRow) {
+            posterRow.classList.remove('has-flipped-card');
+            document.body.style.overflow = '';
+          }
+        }, 100);
       }
     }
     if (e.key === 'Escape') {
       if (flipCard.classList.contains('is-flipped')) {
-        flipCard.classList.remove('is-flipped');
+        flipCard.classList.remove('moved-to-body');
         
-        // Restore card to original position
-        if (originalParent && placeholderDiv) {
-          originalParent.insertBefore(flipCard, placeholderDiv);
-          placeholderDiv.remove();
-          placeholderDiv = null;
-          originalParent = null;
-          originalNextSibling = null;
-        }
-        
-        const posterRow = flipCard.closest('.poster-row');
-        if (posterRow) {
-          posterRow.classList.remove('has-flipped-card');
-          document.body.style.overflow = '';
-        }
+        setTimeout(() => {
+          flipCard.classList.remove('is-flipped');
+          
+          // Restore card to original position
+          if (originalParent && placeholderDiv) {
+            originalParent.insertBefore(flipCard, placeholderDiv);
+            placeholderDiv.remove();
+            placeholderDiv = null;
+            originalParent = null;
+            originalNextSibling = null;
+          }
+          
+          const posterRow = flipCard.closest('.poster-row');
+          if (posterRow) {
+            posterRow.classList.remove('has-flipped-card');
+            document.body.style.overflow = '';
+          }
+        }, 100);
       }
     }
   });

@@ -52,7 +52,13 @@ def init_db():
         db.create_all()
 
 # Initialize database when module is imported (needed for Gunicorn)
-init_db()
+# Wrap in try-except to handle potential issues during import
+try:
+    init_db()
+    print("✅ Database tables initialized successfully.")
+except Exception as e:
+    print(f"⚠️  Warning: Could not initialize database tables on import: {e}")
+    print("⚠️  Tables will be created on first request if needed.")
 
 # Cache the chain instance globally
 try:
@@ -65,6 +71,19 @@ except Exception as e:
 # Initialize session manager for chat history and movie tracking
 session_manager = get_session_manager()
 print("📋 Session Manager initialized successfully.")
+
+# Ensure database tables are created before first request (fallback if import-time init failed)
+@app.before_request
+def ensure_db_initialized():
+    """Ensure database tables exist before handling requests."""
+    if not hasattr(app, '_db_initialized'):
+        try:
+            with app.app_context():
+                db.create_all()
+            app._db_initialized = True
+            print("✅ Database tables verified/created on first request.")
+        except Exception as e:
+            print(f"⚠️  Could not initialize database tables: {e}")
 
 # --- Health Check Endpoint (for Render) ---
 @app.route('/health')

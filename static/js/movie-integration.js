@@ -302,6 +302,21 @@ function extractCompactSummary(movieMarkdown, movieData) {
 function buildFlipCard(movie, movieData, movieMarkdown) {
   const { imdb, rt_tomatometer, rt_audience } = extractRatings(movieData || {});
   const director = extractDirector(movieData || {});
+  
+  // Debug logging for ratings
+  if (CI_DEBUG || (!imdb && !rt_tomatometer && !rt_audience)) {
+    console.log('[Ratings Debug]', {
+      title: movie.title,
+      imdb: imdb || 'N/A',
+      rt_tomatometer: rt_tomatometer || 'N/A', 
+      rt_audience: rt_audience || 'N/A',
+      rawData: {
+        imdb_rating: movieData?.imdb_rating,
+        rt_tomatometer: movieData?.rt_tomatometer,
+        omdb: movieData?.omdb,
+      }
+    });
+  }
 
   const flipCard = document.createElement('div');
   flipCard.className = 'flip-card';
@@ -351,10 +366,38 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   ratingRow.style.justifyContent = 'center';
   ratingRow.style.flexWrap = 'wrap';
   ratingRow.style.gap = '8px';
-  if (imdb) { const imdbBadge = document.createElement('div'); imdbBadge.className = 'rating-badge'; imdbBadge.textContent = `IMDB: ${imdb}`; ratingRow.appendChild(imdbBadge); }
-  if (rt_tomatometer) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT: ${rt_tomatometer}`; ratingRow.appendChild(rtBadge); }
-  else if (rt_audience) { const rtBadge = document.createElement('div'); rtBadge.className = 'rating-badge'; rtBadge.textContent = `RT-Aud: ${rt_audience}`; ratingRow.appendChild(rtBadge); }
-  meta.appendChild(ratingRow);
+  
+  let hasRatings = false;
+  
+  if (imdb) { 
+    const imdbBadge = document.createElement('div'); 
+    imdbBadge.className = 'rating-badge'; 
+    imdbBadge.textContent = `⭐ ${imdb}`; 
+    imdbBadge.title = 'IMDB Rating';
+    ratingRow.appendChild(imdbBadge); 
+    hasRatings = true;
+  }
+  if (rt_tomatometer) { 
+    const rtBadge = document.createElement('div'); 
+    rtBadge.className = 'rating-badge'; 
+    rtBadge.textContent = `🍅 ${rt_tomatometer}`; 
+    rtBadge.title = 'Rotten Tomatoes';
+    ratingRow.appendChild(rtBadge); 
+    hasRatings = true;
+  }
+  else if (rt_audience) { 
+    const rtBadge = document.createElement('div'); 
+    rtBadge.className = 'rating-badge'; 
+    rtBadge.textContent = `🍅 ${rt_audience}`; 
+    rtBadge.title = 'Rotten Tomatoes Audience';
+    ratingRow.appendChild(rtBadge); 
+    hasRatings = true;
+  }
+  
+  // Only append rating row if there are ratings to show
+  if (hasRatings) {
+    meta.appendChild(ratingRow);
+  }
   
   // Action buttons (like, dislike, watchlist)
   const actionButtons = document.createElement('div');
@@ -444,11 +487,28 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backRatings.style.fontSize = '0.8rem';
   backRatings.style.color = '#374151';
   backRatings.style.fontWeight = '600';
-  if (imdb) backRatings.textContent = `IMDB: ${imdb}`;
+  backRatings.style.display = 'flex';
+  backRatings.style.gap = '10px';
+  backRatings.style.flexWrap = 'wrap';
+  
+  if (imdb) {
+    const imdbSpan = document.createElement('span');
+    imdbSpan.textContent = `⭐ IMDB: ${imdb}`;
+    backRatings.appendChild(imdbSpan);
+  }
+  if (rt_tomatometer) {
+    const rtSpan = document.createElement('span');
+    rtSpan.textContent = `🍅 RT: ${rt_tomatometer}`;
+    backRatings.appendChild(rtSpan);
+  } else if (rt_audience) {
+    const rtSpan = document.createElement('span');
+    rtSpan.textContent = `🍅 RT-Aud: ${rt_audience}`;
+    backRatings.appendChild(rtSpan);
+  }
   
   backHeader.appendChild(backTitle);
   backHeader.appendChild(backYearDir);
-  if (imdb) backHeader.appendChild(backRatings);
+  if (imdb || rt_tomatometer || rt_audience) backHeader.appendChild(backRatings);
   rightColumn.appendChild(backHeader);
   
   // Add the full formatted content

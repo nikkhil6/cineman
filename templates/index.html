@@ -328,9 +328,9 @@
 
     @media (max-width:720px) {
       :root{ --card-width-desktop: var(--card-width-mobile); }
-      .poster-image { height:200px; }
-      .flip-card-inner { min-height: auto; } /* Let content determine height */
-      .flip-card { width: 145px; } /* Slightly smaller for mobile */
+      .poster-image { height:240px; }
+      .flip-card-inner { min-height: 380px; } /* Ensure card is tall enough */
+      .flip-card { width: 160px; } /* Optimal size for mobile visibility */
       #chatbox { padding:14px; }
       .chat-container { width:96vw; height:96vh; max-width:96vw; max-height:96vh; }
       .poster-modal { flex-direction: column; align-items: center; }
@@ -376,14 +376,20 @@
       /* Allow posters to overflow on mobile so they're not clipped */
       .agent-message { 
         overflow: visible;
-        max-width: 98%;
-        padding: 10px 14px;
+        max-width: 100%;
+        padding: 10px 12px;
       }
       
       /* Ensure poster cards fit properly in mobile bubble */
       .poster-row {
-        margin-top: 8px;
-        padding: 8px 0;
+        margin-top: 10px;
+        padding: 10px 0;
+        gap: 12px;
+      }
+      
+      /* Ensure cards are visible and not collapsed */
+      .flip-card-face {
+        min-height: 380px;
       }
       
       /* Mobile-specific moved-to-body styling - ensure full screen viewing */

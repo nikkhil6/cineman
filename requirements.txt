@@ -16,3 +16,6 @@ requests>=2.31.0
 
 # Environment variables (optional but recommended)
 python-dotenv>=1.0.0
+
+# Data validation and schemas
+pydantic>=2.0.0

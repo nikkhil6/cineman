@@ -2,7 +2,9 @@ from flask import Blueprint, request, jsonify, session
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
 from cineman.models import db, MovieInteraction
+from cineman.schemas import parse_movie_from_api, MovieRecommendation
 from sqlalchemy.exc import IntegrityError
+from pydantic import ValidationError
 import uuid
 
 bp = Blueprint("api", __name__)
@@ -41,6 +43,8 @@ def movie_combined():
     GET /api/movie?title=Inception
     Combines TMDb poster lookup and OMDb facts into one payload.
     Prefers OMDb IMDb rating if available; falls back to TMDb vote_average.
+    
+    Returns data conforming to MovieRecommendation schema (with legacy format support).
     """
     title = request.args.get("title", "").strip()
     if not title:
@@ -76,7 +80,8 @@ def movie_combined():
         "poster_url": tmdb.get("poster_url"),
         "title": tmdb.get("title"),
         "year": tmdb.get("year"),
-        "vote_average": tmdb.get("vote_average")
+        "vote_average": tmdb.get("vote_average"),
+        "tmdb_id": tmdb.get("tmdb_id")
     }
     
     omdb_safe = {
@@ -85,9 +90,11 @@ def movie_combined():
         "Year": omdb.get("Year"),
         "Director": omdb.get("Director"),
         "IMDb_Rating": omdb.get("IMDb_Rating"),
-        "Poster_URL": omdb.get("Poster_URL")
+        "Poster_URL": omdb.get("Poster_URL"),
+        "imdbID": omdb.get("raw", {}).get("imdbID") if omdb.get("raw") else None
     }
 
+    # Build combined response (legacy format for backward compatibility)
     combined = {
         "query": title,
         "tmdb": tmdb_safe,
@@ -96,6 +103,16 @@ def movie_combined():
         "rating_source": rating_source,
         "note": note,
     }
+    
+    # Also include structured schema-validated data
+    try:
+        movie_schema = parse_movie_from_api(combined, source="combined")
+        combined["schema"] = movie_schema.to_dict()
+    except (ValidationError, Exception) as e:
+        # If schema validation fails, log but don't break the response
+        # (backward compatibility: legacy clients don't need the schema field)
+        print(f"Schema validation warning for movie '{title}': {e}")
+    
     return jsonify(combined)
 
 

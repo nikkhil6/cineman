@@ -165,14 +165,22 @@ cineman/
 │   ├── __init__.py
 │   ├── app.py               # Flask web application
 │   ├── chain.py             # LangChain recommendation chain with Gemini AI
+│   ├── models.py            # Database models (MovieInteraction)
+│   ├── schemas.py           # Pydantic data schemas for validation
+│   ├── utils.py             # Utility functions
+│   ├── routes/              # API routes
+│   │   └── api.py          # Movie API endpoints
 │   └── tools/               # Movie data tools
 │       ├── __init__.py
 │       ├── tmdb.py          # TMDB API integration tool
 │       └── omdb.py          # OMDb API integration tool
 ├── tests/                   # Test suite
 │   ├── __init__.py
+│   ├── test_schemas.py      # Schema validation tests
 │   ├── test_tmdb.py         # TMDB tool tests
 │   └── test_omdb.py         # OMDb tool tests
+├── docs/                    # Documentation
+│   └── SCHEMA_GUIDE.md     # Movie data schema guide
 ├── scripts/                 # Utility scripts
 │   └── verify_dependencies.py
 ├── templates/               # Flask templates
@@ -207,7 +215,15 @@ cineman/
 - Provides IMDb ratings and additional metadata
 - Core function for direct testing, LangChain tool wrapper for agent use
 
-### 4. Verification Script (`scripts/verify_dependencies.py`)
+### 4. Data Schemas (`cineman/schemas.py`)
+- **Comprehensive Movie Schema**: Validates movie data from multiple sources
+- **Type Safety**: Pydantic models ensure data integrity
+- **Nested Structures**: Ratings, identifiers, credits, and details
+- **Backward Compatibility**: Legacy format support for existing code
+- **Extensible**: Easy to add new fields for future features
+- See [Schema Guide](docs/SCHEMA_GUIDE.md) for detailed documentation
+
+### 5. Verification Script (`scripts/verify_dependencies.py`)
 - Automatically checks all dependencies from `requirements.txt`
 - Shows installed versions and missing packages
 - Provides color-coded output for easy verification
@@ -218,6 +234,7 @@ cineman/
 - **Flask**: Web framework for the chat interface
 - **Flask-SQLAlchemy**: ORM for database interactions
 - **SQLite**: Database for storing user preferences
+- **Pydantic**: Data validation and schema definition
 - **LangChain**: AI orchestration framework
 - **Google Gemini AI**: Large language model for recommendations
 - **TMDB API**: Movie database and poster images

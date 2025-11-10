@@ -345,8 +345,16 @@
       
       /* Show only icons on very small screens */
       @media (max-width: 480px) {
-        .watchlist-icon-btn { padding:8px; }
-        .watchlist-icon-btn span:not(.watchlist-badge) { display:none; } /* Hide button text, keep icons/emojis */
+        .watchlist-icon-btn { padding:8px; font-size:1.2rem; }
+        /* Hide text by setting font-size to 0, but emoji/icons will show via font-size on emoji */
+        .watchlist-icon-btn { font-size:0; }
+        .watchlist-icon-btn::before { font-size:1.2rem; }
+        /* Better approach: just show the emoji part by keeping only first character visible */
+        #new-session-btn { font-size:0; }
+        #new-session-btn::before { content:'🔄'; font-size:1.2rem; }
+        #watchlist-btn { font-size:0; }  
+        #watchlist-btn::before { content:'📋'; font-size:1.2rem; }
+        .watchlist-badge { font-size:0.75rem !important; } /* Keep badge visible */
       }
 
     }

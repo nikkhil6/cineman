@@ -14,13 +14,26 @@ class MovieRatings(BaseModel):
     """
     Movie ratings from various sources.
     """
-    imdb_rating: Optional[str] = Field(None, description="IMDB rating (e.g., '8.8', 'N/A')")
-    imdb_votes: Optional[str] = Field(None, description="Number of IMDB votes (e.g., '2.3M')")
-    rt_tomatometer: Optional[str] = Field(None, description="Rotten Tomatoes critics score (e.g., '87%', 'N/A')")
-    rt_audience: Optional[str] = Field(None, description="Rotten Tomatoes audience score (e.g., '91%', 'N/A')")
-    tmdb_rating: Optional[float] = Field(None, description="TMDB vote average (0-10)", ge=0, le=10)
+
+    imdb_rating: Optional[str] = Field(
+        None, description="IMDB rating (e.g., '8.8', 'N/A')"
+    )
+    imdb_votes: Optional[str] = Field(
+        None, description="Number of IMDB votes (e.g., '2.3M')"
+    )
+    rt_tomatometer: Optional[str] = Field(
+        None, description="Rotten Tomatoes critics score (e.g., '87%', 'N/A')"
+    )
+    rt_audience: Optional[str] = Field(
+        None, description="Rotten Tomatoes audience score (e.g., '91%', 'N/A')"
+    )
+    tmdb_rating: Optional[float] = Field(
+        None, description="TMDB vote average (0-10)", ge=0, le=10
+    )
     tmdb_vote_count: Optional[int] = Field(None, description="TMDB vote count", ge=0)
-    metacritic: Optional[str] = Field(None, description="Metacritic score (e.g., '74/100', 'N/A')")
+    metacritic: Optional[str] = Field(
+        None, description="Metacritic score (e.g., '74/100', 'N/A')"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -31,7 +44,7 @@ class MovieRatings(BaseModel):
                 "rt_audience": "91%",
                 "tmdb_rating": 8.2,
                 "tmdb_vote_count": 35420,
-                "metacritic": "74/100"
+                "metacritic": "74/100",
             }
         }
     )
@@ -41,6 +54,7 @@ class MovieIdentifiers(BaseModel):
     """
     External identifiers for the movie across different databases.
     """
+
     imdb_id: Optional[str] = Field(None, description="IMDB ID (e.g., 'tt1375666')")
     tmdb_id: Optional[int] = Field(None, description="TMDB ID", ge=0)
     omdb_id: Optional[str] = Field(None, description="OMDB ID")
@@ -50,7 +64,7 @@ class MovieIdentifiers(BaseModel):
             "example": {
                 "imdb_id": "tt1375666",
                 "tmdb_id": 27205,
-                "omdb_id": "tt1375666"
+                "omdb_id": "tt1375666",
             }
         }
     )
@@ -60,10 +74,13 @@ class MovieDetails(BaseModel):
     """
     Detailed information about a movie.
     """
+
     plot: Optional[str] = Field(None, description="Short plot summary")
     tagline: Optional[str] = Field(None, description="Movie tagline")
     runtime: Optional[str] = Field(None, description="Runtime (e.g., '148 min')")
-    genres: Optional[List[str]] = Field(default_factory=list, description="List of genres")
+    genres: Optional[List[str]] = Field(
+        default_factory=list, description="List of genres"
+    )
     language: Optional[str] = Field(None, description="Primary language")
     country: Optional[str] = Field(None, description="Country of origin")
     awards: Optional[str] = Field(None, description="Awards and nominations")
@@ -83,7 +100,7 @@ class MovieDetails(BaseModel):
                 "awards": "Won 4 Oscars. 157 wins & 220 nominations total",
                 "box_office": "$836,836,967",
                 "production": "Warner Bros. Pictures",
-                "website": "https://www.inceptionmovie.com"
+                "website": "https://www.inceptionmovie.com",
             }
         }
     )
@@ -93,10 +110,17 @@ class MovieCredits(BaseModel):
     """
     Cast and crew information.
     """
+
     director: Optional[str] = Field(None, description="Director name(s)")
-    writers: Optional[List[str]] = Field(default_factory=list, description="List of writers")
-    cast: Optional[List[str]] = Field(default_factory=list, description="List of main cast members")
-    producers: Optional[List[str]] = Field(default_factory=list, description="List of producers")
+    writers: Optional[List[str]] = Field(
+        default_factory=list, description="List of writers"
+    )
+    cast: Optional[List[str]] = Field(
+        default_factory=list, description="List of main cast members"
+    )
+    producers: Optional[List[str]] = Field(
+        default_factory=list, description="List of producers"
+    )
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -104,7 +128,7 @@ class MovieCredits(BaseModel):
                 "director": "Christopher Nolan",
                 "writers": ["Christopher Nolan"],
                 "cast": ["Leonardo DiCaprio", "Joseph Gordon-Levitt", "Ellen Page"],
-                "producers": ["Emma Thomas", "Christopher Nolan"]
+                "producers": ["Emma Thomas", "Christopher Nolan"],
             }
         }
     )
@@ -113,55 +137,80 @@ class MovieCredits(BaseModel):
 class MovieRecommendation(BaseModel):
     """
     Complete movie recommendation schema with all metadata.
-    
+
     This is the comprehensive schema for movie data used throughout the application.
     It combines data from multiple sources (TMDB, OMDb, LLM) and provides validation.
     """
+
     # Basic information (required)
     title: str = Field(..., description="Movie title", min_length=1)
     year: Optional[str] = Field(None, description="Release year (e.g., '2010')")
-    
+
     # Ratings (aggregated)
-    ratings: Optional[MovieRatings] = Field(default_factory=MovieRatings, description="Movie ratings")
-    
+    ratings: Optional[MovieRatings] = Field(
+        default_factory=MovieRatings, description="Movie ratings"
+    )
+
     # Identifiers
-    identifiers: Optional[MovieIdentifiers] = Field(default_factory=MovieIdentifiers, description="External IDs")
-    
+    identifiers: Optional[MovieIdentifiers] = Field(
+        default_factory=MovieIdentifiers, description="External IDs"
+    )
+
     # Credits
-    credits: Optional[MovieCredits] = Field(default_factory=MovieCredits, description="Cast and crew")
-    
+    credits: Optional[MovieCredits] = Field(
+        default_factory=MovieCredits, description="Cast and crew"
+    )
+
     # Details
-    details: Optional[MovieDetails] = Field(default_factory=MovieDetails, description="Detailed information")
-    
+    details: Optional[MovieDetails] = Field(
+        default_factory=MovieDetails, description="Detailed information"
+    )
+
     # Media
     poster_url: Optional[str] = Field(None, description="Poster image URL")
     backdrop_url: Optional[str] = Field(None, description="Backdrop image URL")
-    
-    # LLM-specific fields (for recommendation context)
-    anchor_text: Optional[str] = Field(None, description="Anchor text from LLM response")
-    anchor_id: Optional[str] = Field(None, description="Anchor ID (e.g., 'm1', 'm2', 'm3')")
-    quick_pitch: Optional[str] = Field(None, description="Quick pitch from LLM")
-    why_matches: Optional[str] = Field(None, description="Why it matches user's request")
-    award_highlight: Optional[str] = Field(None, description="Award and prestige highlights")
-    
-    # Metadata
-    created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
-    updated_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), description="Last update timestamp")
-    
-    # Additional data
-    extra_data: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional metadata")
 
-    @field_validator('year')
+    # LLM-specific fields (for recommendation context)
+    anchor_text: Optional[str] = Field(
+        None, description="Anchor text from LLM response"
+    )
+    anchor_id: Optional[str] = Field(
+        None, description="Anchor ID (e.g., 'm1', 'm2', 'm3')"
+    )
+    quick_pitch: Optional[str] = Field(None, description="Quick pitch from LLM")
+    why_matches: Optional[str] = Field(
+        None, description="Why it matches user's request"
+    )
+    award_highlight: Optional[str] = Field(
+        None, description="Award and prestige highlights"
+    )
+
+    # Metadata
+    created_at: Optional[datetime] = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Creation timestamp",
+    )
+    updated_at: Optional[datetime] = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Last update timestamp",
+    )
+
+    # Additional data
+    extra_data: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="Additional metadata"
+    )
+
+    @field_validator("year")
     @classmethod
     def validate_year(cls, v):
         """Validate year format (optional, flexible)."""
-        if v and v != 'N/A':
+        if v and v != "N/A":
             # Allow various year formats: "2010", "2010-2012", "2010-"
             if not any(c.isdigit() for c in v):
-                raise ValueError('Year must contain at least one digit')
+                raise ValueError("Year must contain at least one digit")
         return v
 
-    @field_validator('ratings', mode='before')
+    @field_validator("ratings", mode="before")
     @classmethod
     def ensure_ratings(cls, v):
         """Ensure ratings is always a MovieRatings object."""
@@ -171,7 +220,7 @@ class MovieRecommendation(BaseModel):
             return MovieRatings(**v)
         return v
 
-    @field_validator('identifiers', mode='before')
+    @field_validator("identifiers", mode="before")
     @classmethod
     def ensure_identifiers(cls, v):
         """Ensure identifiers is always a MovieIdentifiers object."""
@@ -181,7 +230,7 @@ class MovieRecommendation(BaseModel):
             return MovieIdentifiers(**v)
         return v
 
-    @field_validator('credits', mode='before')
+    @field_validator("credits", mode="before")
     @classmethod
     def ensure_credits(cls, v):
         """Ensure credits is always a MovieCredits object."""
@@ -191,7 +240,7 @@ class MovieRecommendation(BaseModel):
             return MovieCredits(**v)
         return v
 
-    @field_validator('details', mode='before')
+    @field_validator("details", mode="before")
     @classmethod
     def ensure_details(cls, v):
         """Ensure details is always a MovieDetails object."""
@@ -210,24 +259,21 @@ class MovieRecommendation(BaseModel):
                     "imdb_rating": "8.8",
                     "rt_tomatometer": "87%",
                     "rt_audience": "91%",
-                    "tmdb_rating": 8.2
+                    "tmdb_rating": 8.2,
                 },
-                "identifiers": {
-                    "imdb_id": "tt1375666",
-                    "tmdb_id": 27205
-                },
+                "identifiers": {"imdb_id": "tt1375666", "tmdb_id": 27205},
                 "credits": {
                     "director": "Christopher Nolan",
-                    "cast": ["Leonardo DiCaprio", "Joseph Gordon-Levitt"]
+                    "cast": ["Leonardo DiCaprio", "Joseph Gordon-Levitt"],
                 },
                 "details": {
                     "plot": "A thief who steals corporate secrets...",
                     "runtime": "148 min",
-                    "genres": ["Action", "Sci-Fi", "Thriller"]
+                    "genres": ["Action", "Sci-Fi", "Thriller"],
                 },
                 "poster_url": "https://image.tmdb.org/t/p/w500/...",
                 "anchor_text": "Masterpiece #1: Inception (2010)",
-                "anchor_id": "m1"
+                "anchor_id": "m1",
             }
         }
     )
@@ -259,14 +305,17 @@ class MovieManifest(BaseModel):
     """
     Schema for the LLM response manifest containing multiple movie recommendations.
     """
-    movies: List[MovieRecommendation] = Field(..., description="List of movie recommendations", min_length=1, max_length=10)
-    
-    @field_validator('movies')
+
+    movies: List[MovieRecommendation] = Field(
+        ..., description="List of movie recommendations", min_length=1, max_length=10
+    )
+
+    @field_validator("movies")
     @classmethod
     def validate_movie_count(cls, v):
         """Validate that we have the expected number of movies (typically 3)."""
         if len(v) == 0:
-            raise ValueError('Manifest must contain at least one movie')
+            raise ValueError("Manifest must contain at least one movie")
         return v
 
     model_config = ConfigDict(
@@ -277,20 +326,20 @@ class MovieManifest(BaseModel):
                         "title": "Inception",
                         "year": "2010",
                         "imdb_rating": "8.8",
-                        "anchor_id": "m1"
+                        "anchor_id": "m1",
                     },
                     {
                         "title": "The Matrix",
                         "year": "1999",
                         "imdb_rating": "8.7",
-                        "anchor_id": "m2"
+                        "anchor_id": "m2",
                     },
                     {
                         "title": "Primer",
                         "year": "2004",
                         "imdb_rating": "6.9",
-                        "anchor_id": "m3"
-                    }
+                        "anchor_id": "m3",
+                    },
                 ]
             }
         }
@@ -300,19 +349,19 @@ class MovieManifest(BaseModel):
         """
         Convert to legacy format for backward compatibility.
         """
-        return {
-            "movies": [movie.to_legacy_format() for movie in self.movies]
-        }
+        return {"movies": [movie.to_legacy_format() for movie in self.movies]}
 
 
-def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> MovieRecommendation:
+def parse_movie_from_api(
+    api_data: Dict[str, Any], source: str = "combined"
+) -> MovieRecommendation:
     """
     Parse movie data from API responses (TMDB, OMDb, or combined endpoint).
-    
+
     Args:
         api_data: Raw API response data
         source: Source of the data ("tmdb", "omdb", or "combined")
-    
+
     Returns:
         MovieRecommendation: Parsed and validated movie data
     """
@@ -330,31 +379,30 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         # Parse combined API response
         tmdb = api_data.get("tmdb", {})
         omdb = api_data.get("omdb", {})
-        
-        movie_data["title"] = tmdb.get("title") or omdb.get("Title") or api_data.get("query", "")
+
+        movie_data["title"] = (
+            tmdb.get("title") or omdb.get("Title") or api_data.get("query", "")
+        )
         movie_data["year"] = tmdb.get("year") or omdb.get("Year")
-        
+
         # Ratings
         movie_data["ratings"] = MovieRatings(
             imdb_rating=omdb.get("IMDb_Rating") or api_data.get("rating"),
             tmdb_rating=tmdb.get("vote_average"),
-            tmdb_vote_count=tmdb.get("vote_count")
+            tmdb_vote_count=tmdb.get("vote_count"),
         )
-        
+
         # Identifiers
         movie_data["identifiers"] = MovieIdentifiers(
-            tmdb_id=tmdb.get("tmdb_id"),
-            imdb_id=omdb.get("imdbID")
+            tmdb_id=tmdb.get("tmdb_id"), imdb_id=omdb.get("imdbID")
         )
-        
+
         # Credits
-        movie_data["credits"] = MovieCredits(
-            director=omdb.get("Director")
-        )
-        
+        movie_data["credits"] = MovieCredits(director=omdb.get("Director"))
+
         # Poster
         movie_data["poster_url"] = tmdb.get("poster_url") or omdb.get("Poster_URL")
-        
+
     elif source == "tmdb":
         # Parse TMDB-only response
         movie_data["title"] = api_data.get("title", "")
@@ -362,12 +410,10 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         movie_data["poster_url"] = api_data.get("poster_url")
         movie_data["ratings"] = MovieRatings(
             tmdb_rating=api_data.get("vote_average"),
-            tmdb_vote_count=api_data.get("vote_count")
+            tmdb_vote_count=api_data.get("vote_count"),
         )
-        movie_data["identifiers"] = MovieIdentifiers(
-            tmdb_id=api_data.get("tmdb_id")
-        )
-        
+        movie_data["identifiers"] = MovieIdentifiers(tmdb_id=api_data.get("tmdb_id"))
+
     elif source == "omdb":
         # Parse OMDb-only response
         movie_data["title"] = api_data.get("Title", "")
@@ -376,12 +422,8 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         movie_data["ratings"] = MovieRatings(
             imdb_rating=api_data.get("IMDb_Rating") or api_data.get("imdbRating")
         )
-        movie_data["identifiers"] = MovieIdentifiers(
-            imdb_id=api_data.get("imdbID")
-        )
-        movie_data["credits"] = MovieCredits(
-            director=api_data.get("Director")
-        )
+        movie_data["identifiers"] = MovieIdentifiers(imdb_id=api_data.get("imdbID"))
+        movie_data["credits"] = MovieCredits(director=api_data.get("Director"))
 
     return MovieRecommendation(**movie_data)
 
@@ -389,13 +431,13 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
 def validate_llm_manifest(manifest_json: Dict[str, Any]) -> MovieManifest:
     """
     Validate and parse LLM manifest JSON.
-    
+
     Args:
         manifest_json: Raw JSON from LLM response
-    
+
     Returns:
         MovieManifest: Validated manifest
-    
+
     Raises:
         ValueError: If manifest is invalid
     """
@@ -409,16 +451,14 @@ def validate_llm_manifest(manifest_json: Dict[str, Any]) -> MovieManifest:
                 ratings=MovieRatings(
                     imdb_rating=movie_data.get("imdb_rating"),
                     rt_tomatometer=movie_data.get("rt_tomatometer"),
-                    rt_audience=movie_data.get("rt_audience")
+                    rt_audience=movie_data.get("rt_audience"),
                 ),
-                identifiers=MovieIdentifiers(
-                    imdb_id=movie_data.get("imdb_id")
-                ),
+                identifiers=MovieIdentifiers(imdb_id=movie_data.get("imdb_id")),
                 anchor_text=movie_data.get("anchor_text"),
-                anchor_id=movie_data.get("anchor_id")
+                anchor_id=movie_data.get("anchor_id"),
             )
             movies.append(movie)
-        
+
         return MovieManifest(movies=movies)
     except Exception as e:
         raise ValueError(f"Invalid LLM manifest: {str(e)}")

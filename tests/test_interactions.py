@@ -10,7 +10,6 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from cineman.app import app, db
-from cineman.models import MovieInteraction
 
 
 class TestMovieInteractions(unittest.TestCase):

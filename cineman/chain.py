@@ -1,7 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 import os
 import sys
@@ -123,7 +122,7 @@ if __name__ == "__main__":
 
     # Test 1 (Vague mood test for Phase 1 success)
     user_input = "I'm in the mood for a sci-fi movie with a clever plot twist."
-    print(f"--- Starting Phase 1 Test ---")
+    print("--- Starting Phase 1 Test ---")
     print(f"User Input: {user_input}\n")
 
     try:

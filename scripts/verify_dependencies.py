@@ -166,8 +166,8 @@ def print_summary(results: Dict):
 
     if results["missing"] > 0:
         print(f"{Colors.YELLOW}💡 To install missing packages, run:{Colors.END}")
-        print(f"   pip install -r requirements.txt")
-        print(f"   or")
+        print("   pip install -r requirements.txt")
+        print("   or")
         print(
             f"   pip install {' '.join([d['package'] for d in results['details'] if not d['installed']])}\n"
         )

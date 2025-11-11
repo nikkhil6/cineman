@@ -42,7 +42,7 @@ def run_test_case(title: str):
         poster_url = result.get("Poster_URL", "N/A")
 
         if poster_url.startswith("http"):
-            print(f"   ✅ Poster URL: Found (URL starts with http)")
+            print("   ✅ Poster URL: Found (URL starts with http)")
             print(f"   [Link: {poster_url[:50]}...]")
         elif poster_url == "N/A" or "not found" in result.get("status", "").lower():
             print("   ❌ Poster URL: Not found (Expected for missing movie).")

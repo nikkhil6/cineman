@@ -2,8 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
 from cineman.models import db, MovieInteraction
-from cineman.schemas import parse_movie_from_api, MovieRecommendation
-from sqlalchemy.exc import IntegrityError
+from cineman.schemas import parse_movie_from_api
 from pydantic import ValidationError
 import uuid
 

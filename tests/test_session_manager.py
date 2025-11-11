@@ -23,7 +23,7 @@ def test_create_session():
     session = manager.get_session(session_id)
     assert session is not None
     assert session.session_id == session_id
-    print(f"✅ Retrieved session successfully")
+    print("✅ Retrieved session successfully")
 
 
 def test_session_data():
@@ -63,7 +63,7 @@ def test_session_manager():
     session2_id = manager.create_session()
 
     assert session1_id != session2_id
-    print(f"✅ Created 2 unique sessions")
+    print("✅ Created 2 unique sessions")
 
     # Get sessions
     session1 = manager.get_session(session1_id)
@@ -71,7 +71,7 @@ def test_session_manager():
 
     assert session1 is not None
     assert session2 is not None
-    print(f"✅ Retrieved both sessions")
+    print("✅ Retrieved both sessions")
 
     # Add different data to each session
     session1.add_message("user", "Sci-fi movies")
@@ -84,27 +84,27 @@ def test_session_manager():
         session1.get_chat_history()[0]["content"]
         != session2.get_chat_history()[0]["content"]
     )
-    print(f"✅ Session isolation verified")
+    print("✅ Session isolation verified")
 
     # Test get_or_create
     existing_id, existing_session = manager.get_or_create_session(session1_id)
     assert existing_id == session1_id
     assert len(existing_session.get_chat_history()) == 1
-    print(f"✅ get_or_create returned existing session")
+    print("✅ get_or_create returned existing session")
 
     new_id, new_session = manager.get_or_create_session("non-existent-id")
     assert new_id != "non-existent-id"
     assert len(new_session.get_chat_history()) == 0
-    print(f"✅ get_or_create created new session for invalid ID")
+    print("✅ get_or_create created new session for invalid ID")
 
     # Test delete
     deleted = manager.delete_session(session1_id)
     assert deleted is True
-    print(f"✅ Deleted session")
+    print("✅ Deleted session")
 
     session1_after = manager.get_session(session1_id)
     assert session1_after is None
-    print(f"✅ Session no longer exists after deletion")
+    print("✅ Session no longer exists after deletion")
 
 
 def test_chat_history_limit():

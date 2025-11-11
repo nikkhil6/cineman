@@ -10,7 +10,6 @@ from cineman.schemas import (
     MovieIdentifiers,
     MovieCredits,
     MovieDetails,
-    MovieManifest,
     parse_movie_from_api,
     validate_llm_manifest,
 )

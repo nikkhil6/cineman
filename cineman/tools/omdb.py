@@ -9,17 +9,23 @@ from langchain.tools import tool
 # Configuration via env
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 BASE_URL = "https://www.omdbapi.com/"
-OMDB_ENABLED = os.getenv("OMDB_ENABLED", "1") != "0"    # set OMDB_ENABLED=0 to disable OMDb calls
-OMDB_TIMEOUT = float(os.getenv("OMDB_TIMEOUT", "8"))   # seconds
-OMDB_RETRIES = int(os.getenv("OMDB_RETRIES", "2"))     # retry count (on idempotent errors)
-OMDB_BACKOFF = float(os.getenv("OMDB_BACKOFF", "0.8")) # backoff factor for urllib3 Retry
+OMDB_ENABLED = (
+    os.getenv("OMDB_ENABLED", "1") != "0"
+)  # set OMDB_ENABLED=0 to disable OMDb calls
+OMDB_TIMEOUT = float(os.getenv("OMDB_TIMEOUT", "8"))  # seconds
+OMDB_RETRIES = int(os.getenv("OMDB_RETRIES", "2"))  # retry count (on idempotent errors)
+OMDB_BACKOFF = float(
+    os.getenv("OMDB_BACKOFF", "0.8")
+)  # backoff factor for urllib3 Retry
 
 # Simple in-memory TTL cache (process-lifetime). Optional: replace with redis/filecache later.
 _CACHE: Dict[str, Dict[str, Any]] = {}
 _CACHE_TTL = int(os.getenv("OMDB_CACHE_TTL", "300"))  # seconds
 
 
-def _make_session(retries: int = OMDB_RETRIES, backoff: float = OMDB_BACKOFF) -> requests.Session:
+def _make_session(
+    retries: int = OMDB_RETRIES, backoff: float = OMDB_BACKOFF
+) -> requests.Session:
     session = requests.Session()
     retry = Retry(
         total=retries,
@@ -155,7 +161,12 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
         return result
     except Exception as e:
         elapsed = time.time() - start
-        result = {"status": "error", "error": str(e), "attempts": attempts, "elapsed": elapsed}
+        result = {
+            "status": "error",
+            "error": str(e),
+            "attempts": attempts,
+            "elapsed": elapsed,
+        }
         _set_cache(cache_key, result)
         return result
 

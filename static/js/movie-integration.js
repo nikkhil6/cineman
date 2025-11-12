@@ -882,7 +882,6 @@ async function handleAssistantReplyWithManifest(data) {
 
   // append posters bubble so it appears immediately after user's message
   chatbox.appendChild(posterBubbleWrap);
-  chatbox.scrollTop = chatbox.scrollHeight;
 
   if (!manifest) {
     // no manifest -> append assistant text and exit
@@ -903,6 +902,14 @@ async function handleAssistantReplyWithManifest(data) {
       const card = buildFlipCard(m, movieData, movieSectionMarkdown);
       try { card.dataset.extracted = (movieSectionMarkdown || '').slice(0, 1000); } catch (e) {}
       posterRow.appendChild(card);
+      
+      // Smooth scroll as each card is added
+      requestAnimationFrame(() => {
+        chatbox.scrollTo({
+          top: chatbox.scrollHeight,
+          behavior: 'smooth'
+        });
+      });
     } catch (err) {
       console.warn('Failed to fetch/build card:', m.title, err);
       const fallbackCard = document.createElement('div');
@@ -946,7 +953,13 @@ async function handleAssistantReplyWithManifest(data) {
     console.warn('Failed to render assistantTextClean in chat area', err);
   }
 
-  chatbox.scrollTop = chatbox.scrollHeight;
+  // Final smooth scroll to show the complete response
+  requestAnimationFrame(() => {
+    chatbox.scrollTo({
+      top: chatbox.scrollHeight,
+      behavior: 'smooth'
+    });
+  });
 }
 
 /* ----- Export helpers ----- */

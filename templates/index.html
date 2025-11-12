@@ -452,7 +452,14 @@
 
       msgContainer.appendChild(msgDiv);
       if (chatbox) chatbox.appendChild(msgContainer);
-      if (chatbox) chatbox.scrollTop = chatbox.scrollHeight;
+      if (chatbox) {
+        requestAnimationFrame(() => {
+          chatbox.scrollTo({
+            top: chatbox.scrollHeight,
+            behavior: 'smooth'
+          });
+        });
+      }
       return msgDiv;
     }
     window.addMessage = addMessage;

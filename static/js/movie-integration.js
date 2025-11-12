@@ -774,22 +774,15 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     }
   });
   
-  // Click backdrop to close
-  const handleBackdropClick = (e) => {
+  // Store reference for cleanup
+  flipCard._closeHandler = () => {
+    flipCard.classList.remove('is-flipped');
     const posterRow = flipCard.closest('.poster-row');
-    if (posterRow && posterRow.classList.contains('has-flipped-card')) {
-      if (!flipCard.contains(e.target) && e.target !== flipCard) {
-        flipCard.classList.remove('is-flipped');
-        posterRow.classList.remove('has-flipped-card');
-        document.body.style.overflow = '';
-      }
+    if (posterRow) {
+      posterRow.classList.remove('has-flipped-card');
+      document.body.style.overflow = '';
     }
   };
-  
-  // Add backdrop click handler after a short delay to prevent immediate closing
-  setTimeout(() => {
-    document.addEventListener('click', handleBackdropClick);
-  }, 100);
   
   // Touch/swipe support for mobile navigation between posters
   let touchStartX = 0;
@@ -862,7 +855,7 @@ async function handleAssistantReplyWithManifest(data) {
     return;
   }
 
-  // build agent poster bubble
+  // build agent poster bubble - no bubble wrap, just poster row for full width
   const posterBubbleWrap = document.createElement('div');
   posterBubbleWrap.className = 'message-container';
   const avatar = document.createElement('img');
@@ -872,13 +865,17 @@ async function handleAssistantReplyWithManifest(data) {
   avatar.onerror = function() { this.style.display = 'none'; };
   posterBubbleWrap.appendChild(avatar);
 
-  const posterBubble = document.createElement('div');
-  posterBubble.className = 'agent-message';
+  // Create a container for posters without max-width restriction
+  const posterContainer = document.createElement('div');
+  posterContainer.style.flex = '1';
+  posterContainer.style.display = 'flex';
+  posterContainer.style.flexDirection = 'column';
+  posterContainer.style.minWidth = '0';
 
   const posterRow = document.createElement('div');
   posterRow.className = 'poster-row';
-  posterBubble.appendChild(posterRow);
-  posterBubbleWrap.appendChild(posterBubble);
+  posterContainer.appendChild(posterRow);
+  posterBubbleWrap.appendChild(posterContainer);
 
   // append posters bubble so it appears immediately after user's message
   chatbox.appendChild(posterBubbleWrap);
@@ -890,6 +887,9 @@ async function handleAssistantReplyWithManifest(data) {
   }
 
   const unmatched = [];
+  let cardsLoaded = 0;
+  const totalCards = manifest.movies.length;
+  
   for (const m of manifest.movies) {
     if (!m || !m.title) continue;
     const movieSectionMarkdown = findBestMovieSection(assistantTextRaw, m) || findBestMovieSection(assistantTextClean, m) || '';
@@ -902,6 +902,14 @@ async function handleAssistantReplyWithManifest(data) {
       const card = buildFlipCard(m, movieData, movieSectionMarkdown);
       try { card.dataset.extracted = (movieSectionMarkdown || '').slice(0, 1000); } catch (e) {}
       posterRow.appendChild(card);
+      
+      // Smooth scroll into view as each card appears
+      cardsLoaded++;
+      await new Promise(resolve => setTimeout(resolve, 50)); // Small delay for DOM to update
+      chatbox.scrollTo({
+        top: chatbox.scrollHeight,
+        behavior: 'smooth'
+      });
     } catch (err) {
       console.warn('Failed to fetch/build card:', m.title, err);
       const fallbackCard = document.createElement('div');
@@ -945,6 +953,24 @@ async function handleAssistantReplyWithManifest(data) {
     console.warn('Failed to render assistantTextClean in chat area', err);
   }
 
+  // Setup global backdrop click handler for this poster row
+  // This closes any flipped card when clicking outside of it
+  setTimeout(() => {
+    const handleGlobalClick = (e) => {
+      if (!posterRow.classList.contains('has-flipped-card')) return;
+      
+      const flippedCard = posterRow.querySelector('.flip-card.is-flipped');
+      if (flippedCard && !flippedCard.contains(e.target)) {
+        if (flippedCard._closeHandler) {
+          flippedCard._closeHandler();
+        }
+      }
+    };
+    
+    document.addEventListener('click', handleGlobalClick);
+    posterRow._globalClickHandler = handleGlobalClick;
+  }, 150);
+
   // Final smooth scroll to show the complete response
   // Small delay to ensure all DOM updates and card rendering are complete
   setTimeout(() => {
@@ -952,7 +978,7 @@ async function handleAssistantReplyWithManifest(data) {
       top: chatbox.scrollHeight,
       behavior: 'smooth'
     });
-  }, 100);
+  }, 200);
 }
 
 /* ----- Export helpers ----- */

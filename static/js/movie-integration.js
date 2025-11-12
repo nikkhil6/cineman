@@ -905,7 +905,7 @@ async function handleAssistantReplyWithManifest(data) {
       
       // Smooth scroll into view as each card appears
       cardsLoaded++;
-      await new Promise(resolve => setTimeout(resolve, 50)); // Small delay for DOM to update
+      await new Promise(resolve => setTimeout(resolve, 200)); // Small delay for DOM to update
       chatbox.scrollTo({
         top: chatbox.scrollHeight,
         behavior: 'smooth'
@@ -978,7 +978,7 @@ async function handleAssistantReplyWithManifest(data) {
       top: chatbox.scrollHeight,
       behavior: 'smooth'
     });
-  }, 200);
+  }, 500);
 }
 
 /* ----- Export helpers ----- */

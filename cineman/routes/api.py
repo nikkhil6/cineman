@@ -90,6 +90,7 @@ def movie_combined():
         "Year": omdb.get("Year"),
         "Director": omdb.get("Director"),
         "IMDb_Rating": omdb.get("IMDb_Rating"),
+        "Rotten_Tomatoes": omdb.get("Rotten_Tomatoes"),
         "Poster_URL": omdb.get("Poster_URL"),
         "imdbID": omdb.get("raw", {}).get("imdbID") if omdb.get("raw") else None
     }

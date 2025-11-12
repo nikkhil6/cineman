@@ -116,12 +116,25 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
         # Parse JSON
         data = resp.json()
         if data.get("Response") == "True":
+            # Extract Rotten Tomatoes ratings from Ratings array
+            rt_tomatometer = None
+            rt_audience = None
+            ratings_array = data.get("Ratings", [])
+            for rating in ratings_array:
+                source = rating.get("Source", "")
+                value = rating.get("Value", "")
+                if "Rotten Tomatoes" in source:
+                    rt_tomatometer = value
+                # OMDb doesn't typically provide audience score separately,
+                # but we keep the field for potential future use
+            
             result = {
                 "status": "success",
                 "Title": data.get("Title"),
                 "Year": data.get("Year"),
                 "Director": data.get("Director"),
                 "IMDb_Rating": data.get("imdbRating"),
+                "Rotten_Tomatoes": rt_tomatometer,
                 "Poster_URL": data.get("Poster"),
                 "raw": data,
                 "attempts": attempts,

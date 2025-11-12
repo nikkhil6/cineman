@@ -337,6 +337,7 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         # Ratings
         movie_data["ratings"] = MovieRatings(
             imdb_rating=omdb.get("IMDb_Rating") or api_data.get("rating"),
+            rt_tomatometer=omdb.get("Rotten_Tomatoes"),
             tmdb_rating=tmdb.get("vote_average"),
             tmdb_vote_count=tmdb.get("vote_count")
         )
@@ -374,7 +375,8 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         movie_data["year"] = api_data.get("Year")
         movie_data["poster_url"] = api_data.get("Poster_URL") or api_data.get("Poster")
         movie_data["ratings"] = MovieRatings(
-            imdb_rating=api_data.get("IMDb_Rating") or api_data.get("imdbRating")
+            imdb_rating=api_data.get("IMDb_Rating") or api_data.get("imdbRating"),
+            rt_tomatometer=api_data.get("Rotten_Tomatoes")
         )
         movie_data["identifiers"] = MovieIdentifiers(
             imdb_id=api_data.get("imdbID")

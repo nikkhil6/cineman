@@ -12,7 +12,7 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 
 ---
 #### 🥇 Masterpiece #1: [Movie Title] ([Year]) (anchor:m1)
-* **Ratings:** **IMDB:** [IMDB Rating]
+* **Ratings:** **IMDB:** [IMDB Rating] | **Rotten Tomatoes:** [RT Score or N/A]
 
 **The Quick Pitch:**
 [A short, 1-2 sentence compelling summary.]
@@ -25,7 +25,7 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 
 ---
 #### 🥈 Masterpiece #2: [Movie Title] ([Year]) (anchor:m2)
-* **Ratings:** **IMDB:** [IMDB Rating]
+* **Ratings:** **IMDB:** [IMDB Rating] | **Rotten Tomatoes:** [RT Score or N/A]
 
 **The Quick Pitch:**
 [1-2 sentence summary.]
@@ -38,7 +38,7 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 
 ---
 #### 💎 Hidden Gem #3: [Movie Title] ([Year]) (anchor:m3)
-* **Ratings:** **IMDB:** [IMDB Rating]
+* **Ratings:** **IMDB:** [IMDB Rating] | **Rotten Tomatoes:** [RT Score or N/A]
 
 **The Quick Pitch:**
 [1-2 sentence summary.]

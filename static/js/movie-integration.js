@@ -902,14 +902,6 @@ async function handleAssistantReplyWithManifest(data) {
       const card = buildFlipCard(m, movieData, movieSectionMarkdown);
       try { card.dataset.extracted = (movieSectionMarkdown || '').slice(0, 1000); } catch (e) {}
       posterRow.appendChild(card);
-      
-      // Smooth scroll as each card is added
-      requestAnimationFrame(() => {
-        chatbox.scrollTo({
-          top: chatbox.scrollHeight,
-          behavior: 'smooth'
-        });
-      });
     } catch (err) {
       console.warn('Failed to fetch/build card:', m.title, err);
       const fallbackCard = document.createElement('div');
@@ -954,12 +946,13 @@ async function handleAssistantReplyWithManifest(data) {
   }
 
   // Final smooth scroll to show the complete response
-  requestAnimationFrame(() => {
+  // Small delay to ensure all DOM updates and card rendering are complete
+  setTimeout(() => {
     chatbox.scrollTo({
       top: chatbox.scrollHeight,
       behavior: 'smooth'
     });
-  });
+  }, 100);
 }
 
 /* ----- Export helpers ----- */

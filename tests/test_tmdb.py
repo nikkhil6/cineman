@@ -51,7 +51,8 @@ class TestTMDBIntegration:
         assert result["status"] == "success"
         assert result["title"] == "Interstellar"
         assert result["year"] == "2014"
-        assert "image.tmdb.org" in result["poster_url"]
+        # Verify URL starts with expected TMDB image domain
+        assert result["poster_url"].startswith("https://image.tmdb.org/t/p/w500")
         assert result["tmdb_id"] == 157336
         assert result["vote_average"] == 8.4
         mock_get.assert_called_once()

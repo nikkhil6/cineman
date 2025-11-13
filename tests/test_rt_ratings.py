@@ -148,6 +148,34 @@ class TestRottenTomatoesRatings:
         assert "ratings" in movie_dict
         assert movie_dict["ratings"]["imdb_rating"] == "8.0"
         assert movie_dict["ratings"]["rt_tomatometer"] == "85%"
+    
+    def test_parse_combined_api_with_float_rating(self):
+        """Test parsing combined API response when rating is a float (TMDb fallback)."""
+        api_data = {
+            "query": "Test Movie",
+            "tmdb": {
+                "title": "Test Movie",
+                "year": "2020",
+                "poster_url": "https://example.com/poster.jpg",
+                "vote_average": 8.684,
+                "tmdb_id": 12345
+            },
+            "omdb": {
+                "Title": None,
+                "IMDb_Rating": None,
+                "Rotten_Tomatoes": None
+            },
+            "rating": 8.684,  # Float from TMDb
+            "rating_source": "TMDb"
+        }
+        
+        movie = parse_movie_from_api(api_data, source="combined")
+        
+        # Should convert float to string for IMDB rating field
+        assert movie.title == "Test Movie"
+        assert movie.ratings.imdb_rating == "8.684"
+        assert isinstance(movie.ratings.imdb_rating, str)
+        assert movie.ratings.tmdb_rating == 8.684
 
 
 if __name__ == "__main__":

@@ -95,11 +95,15 @@ def movie_combined():
         "imdbID": omdb.get("raw", {}).get("imdbID") if omdb.get("raw") else None
     }
 
+    # Determine poster URL (prefer TMDb, fallback to OMDb)
+    poster = tmdb_safe.get("poster_url") or omdb_safe.get("Poster_URL")
+    
     # Build combined response (legacy format for backward compatibility)
     combined = {
         "query": title,
         "tmdb": tmdb_safe,
         "omdb": omdb_safe,
+        "poster": poster,
         "rating": rating,
         "rating_source": rating_source,
         "note": note,

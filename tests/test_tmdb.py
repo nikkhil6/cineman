@@ -1,71 +1,107 @@
-import os
-import sys
-import json
+"""
+Tests for TMDB API integration.
+"""
 
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# Import the core function we are testing from the cineman.tools module
-try:
-    from cineman.tools.tmdb import get_movie_poster_core
-except ImportError:
-    print(
-        "FATAL ERROR: Could not import get_movie_poster_core. Ensure cineman package is installed."
-    )
-    sys.exit(1)
-
-# --- Test Functions ---
+import pytest
+from unittest.mock import patch, MagicMock
 
 
-def run_test(title: str):
-    """Executes the tool function and prints the result for inspection."""
-    print(f"\n--- Testing Movie: '{title}' ---")
+@pytest.fixture
+def mock_tmdb_response_success():
+    """Mock successful TMDB API response."""
+    return {
+        "results": [
+            {
+                "id": 157336,
+                "title": "Interstellar",
+                "release_date": "2014-11-05",
+                "poster_path": "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg",
+                "vote_average": 8.4,
+                "vote_count": 35000,
+            }
+        ]
+    }
 
-    # Check for API Key setup before calling the function
-    if not os.getenv("TMDB_API_KEY"):
-        print("❌ TEST ABORTED: TMDB_API_KEY environment variable is missing.")
-        return
 
-    # Execute the core function
-    result_str = get_movie_poster_core(title)
+@pytest.fixture
+def mock_tmdb_response_not_found():
+    """Mock TMDB API response for movie not found."""
+    return {"results": []}
 
-    try:
-        # Convert the string result back to a Python dictionary for easy inspection
-        result = json.loads(result_str)
-        print("✅ Success: Tool returned valid JSON.")
 
-        # Check if the search was successful
-        if result.get("status") == "success":
-            print(f"   Status: {result['status']}")
-            print(f"   Year: {result.get('year')}")
-            print(f"   Poster URL: {result.get('poster_url')}")
+class TestTMDBIntegration:
+    """Test TMDB API integration."""
 
-            # Additional check: Does the URL look like a valid poster link?
-            if result.get("poster_url") and result["poster_url"].startswith(
-                "https://image.tmdb.org/t/p/w500"
-            ):
-                print("   ✅ URL Format: Correct.")
-            else:
-                print("   ❌ URL Format: Incorrect or missing poster path.")
+    @patch("cineman.tools.tmdb.TMDB_API_KEY", "test-api-key")
+    @patch("cineman.tools.tmdb.requests.get")
+    def test_get_movie_poster_success(self, mock_get, mock_tmdb_response_success):
+        """Test successful movie poster fetch from TMDB."""
+        from cineman.tools.tmdb import get_movie_poster_core
 
-        else:
-            print(f"❌ Failure: Status '{result.get('status')}'")
-            print(f"   Error/Message: {result_str}")
+        # Setup mock
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_tmdb_response_success
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
 
-    except json.JSONDecodeError:
-        print("❌ FAILURE: Tool returned non-JSON data.")
-        print(f"   Raw Output: {result_str}")
+        # Execute
+        result = get_movie_poster_core("Interstellar")
+
+        # Verify
+        assert result["status"] == "success"
+        assert result["title"] == "Interstellar"
+        assert result["year"] == "2014"
+        assert "image.tmdb.org" in result["poster_url"]
+        assert result["tmdb_id"] == 157336
+        assert result["vote_average"] == 8.4
+        mock_get.assert_called_once()
+
+    @patch("cineman.tools.tmdb.TMDB_API_KEY", "test-api-key")
+    @patch("cineman.tools.tmdb.requests.get")
+    def test_get_movie_poster_not_found(self, mock_get, mock_tmdb_response_not_found):
+        """Test movie not found scenario."""
+        from cineman.tools.tmdb import get_movie_poster_core
+
+        # Setup mock
+        mock_response = MagicMock()
+        mock_response.json.return_value = mock_tmdb_response_not_found
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        # Execute
+        result = get_movie_poster_core("Nonexistent Movie 123456")
+
+        # Verify
+        assert result["status"] == "not_found"
+        assert result["poster_url"] == ""
+
+    @patch("cineman.tools.tmdb.requests.get")
+    def test_get_movie_poster_api_error(self, mock_get):
+        """Test API error handling."""
+        from cineman.tools.tmdb import get_movie_poster_core
+
+        # Setup mock to raise exception
+        mock_get.side_effect = Exception("API connection failed")
+
+        # Execute
+        result = get_movie_poster_core("Test Movie")
+
+        # Verify error handling
+        assert result["status"] == "error"
+        assert "error" in result
+
+    @patch("cineman.tools.tmdb.TMDB_API_KEY", None)
+    def test_get_movie_poster_no_api_key(self):
+        """Test behavior when API key is not configured."""
+        from cineman.tools.tmdb import get_movie_poster_core
+
+        # Execute
+        result = get_movie_poster_core("Test Movie")
+
+        # Verify
+        assert result["status"] == "error"
+        assert "error" in result
 
 
 if __name__ == "__main__":
-
-    # --- Execute Test Cases ---
-
-    # 1. Successful Case (A well-known movie)
-    run_test("Interstellar")
-
-    # 2. Movie Not Found Case
-    run_test("A Movie That Does Not Exist 123456")
-
-    # 3. Simple Search Ambiguity Case
-    run_test("Dune")
+    pytest.main([__file__, "-v"])

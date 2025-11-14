@@ -882,7 +882,8 @@ async function handleAssistantReplyWithManifest(data) {
 
   // append posters bubble so it appears immediately after user's message
   chatbox.appendChild(posterBubbleWrap);
-  chatbox.scrollTop = chatbox.scrollHeight;
+  // Scroll into view smoothly after adding container
+  chatbox.scrollTo({ top: chatbox.scrollHeight, behavior: 'smooth' });
 
   if (!manifest) {
     // no manifest -> append assistant text and exit
@@ -946,7 +947,8 @@ async function handleAssistantReplyWithManifest(data) {
     console.warn('Failed to render assistantTextClean in chat area', err);
   }
 
-  chatbox.scrollTop = chatbox.scrollHeight;
+  // Final smooth scroll to show complete response
+  chatbox.scrollTo({ top: chatbox.scrollHeight, behavior: 'smooth' });
 }
 
 /* ----- Export helpers ----- */

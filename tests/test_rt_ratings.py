@@ -129,5 +129,119 @@ class TestRottenTomatoesRatings:
         assert movie.ratings.tmdb_rating == 7.0
 
 
+    def test_api_response_structure_with_top_level_fields(self):
+        """Test that API response includes top-level fields for frontend."""
+        # Simulate the API response structure
+        api_response = {
+            "query": "Inception",
+            "poster": "https://image.tmdb.org/poster.jpg",
+            "imdb_rating": "8.8",
+            "rt_tomatometer": "87%",
+            "rating": "8.8",
+            "rating_source": "OMDb/IMDb",
+            "tmdb": {
+                "status": "success",
+                "poster_url": "https://image.tmdb.org/poster.jpg",
+                "title": "Inception",
+                "year": "2010"
+            },
+            "omdb": {
+                "status": "success",
+                "Title": "Inception",
+                "Year": "2010",
+                "IMDb_Rating": "8.8",
+                "Rotten_Tomatoes": "87%"
+            }
+        }
+        
+        # Verify top-level fields exist
+        assert "poster" in api_response
+        assert "imdb_rating" in api_response
+        assert "rt_tomatometer" in api_response
+        
+        # Verify values are correct
+        assert api_response["poster"] == "https://image.tmdb.org/poster.jpg"
+        assert api_response["imdb_rating"] == "8.8"
+        assert api_response["rt_tomatometer"] == "87%"
+        
+        # Verify backward compatibility - nested fields still exist
+        assert api_response["omdb"]["IMDb_Rating"] == "8.8"
+        assert api_response["omdb"]["Rotten_Tomatoes"] == "87%"
+    
+    def test_multiple_rt_ratings_with_all_fields(self):
+        """Test MovieRatings with multiple rating sources including RT."""
+        ratings = MovieRatings(
+            imdb_rating="8.5",
+            imdb_votes="1.2M",
+            rt_tomatometer="85%",
+            rt_audience="89%",
+            tmdb_rating=8.3,
+            tmdb_vote_count=25000,
+            metacritic="80/100"
+        )
+        
+        assert ratings.imdb_rating == "8.5"
+        assert ratings.imdb_votes == "1.2M"
+        assert ratings.rt_tomatometer == "85%"
+        assert ratings.rt_audience == "89%"
+        assert ratings.tmdb_rating == 8.3
+        assert ratings.tmdb_vote_count == 25000
+        assert ratings.metacritic == "80/100"
+    
+    def test_na_rt_ratings(self):
+        """Test handling of N/A RT ratings."""
+        ratings = MovieRatings(
+            imdb_rating="7.5",
+            rt_tomatometer="N/A",
+            rt_audience="N/A"
+        )
+        
+        assert ratings.imdb_rating == "7.5"
+        assert ratings.rt_tomatometer == "N/A"
+        assert ratings.rt_audience == "N/A"
+    
+    def test_legacy_format_includes_rt_ratings(self):
+        """Test that to_legacy_format includes RT ratings."""
+        movie = MovieRecommendation(
+            title="Test Movie",
+            year="2020",
+            ratings=MovieRatings(
+                imdb_rating="8.0",
+                rt_tomatometer="85%",
+                rt_audience="88%"
+            )
+        )
+        
+        legacy = movie.to_legacy_format()
+        
+        assert "imdb_rating" in legacy
+        assert legacy["imdb_rating"] == "8.0"
+        assert "rt_tomatometer" in legacy
+        assert legacy["rt_tomatometer"] == "85%"
+    
+    def test_integer_rating_conversion(self):
+        """Test that integer ratings are also converted to strings."""
+        api_data = {
+            "query": "Test Movie",
+            "tmdb": {
+                "title": "Test Movie",
+                "year": "2020",
+                "vote_average": 8.0
+            },
+            "omdb": {
+                "IMDb_Rating": None,
+                "Rotten_Tomatoes": None
+            },
+            "rating": 8,  # Integer rating
+            "rating_source": "TMDb"
+        }
+        
+        movie = parse_movie_from_api(api_data, source="combined")
+        
+        # Should convert integer to string
+        assert movie.ratings.imdb_rating == "8"
+        assert isinstance(movie.ratings.imdb_rating, str)
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

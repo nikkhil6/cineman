@@ -43,8 +43,8 @@ function extractDirector(data) {
 }
 
 function extractRatings(data) {
-  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDbRating)) || null;
-  let rtTom = data.rt_tomatometer || (data.omdb && data.omdb.RottenTomatoes_Tomatometer) || null;
+  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDb_Rating || data.omdb.IMDbRating)) || null;
+  let rtTom = data.rt_tomatometer || (data.omdb && (data.omdb.Rotten_Tomatoes || data.omdb.RottenTomatoes_Tomatometer)) || null;
   let rtAud = data.rt_audience || (data.omdb && data.omdb.RottenTomatoes_Audience) || null;
 
   if ((!rtTom || !imdb) && data.omdb && Array.isArray(data.omdb.Ratings)) {

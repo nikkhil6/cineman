@@ -436,7 +436,8 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   const backLayout = document.createElement('div');
   backLayout.style.display = 'flex';
   backLayout.style.gap = '16px';
-  backLayout.style.height = '100%';
+  backLayout.style.flex = '1';
+  backLayout.style.minHeight = '0';
   backLayout.style.overflow = 'hidden';
   
   // LEFT COLUMN - Poster
@@ -462,6 +463,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   rightColumn.style.flex = '1';
   rightColumn.style.display = 'flex';
   rightColumn.style.flexDirection = 'column';
+  rightColumn.style.minHeight = '0';
   rightColumn.style.overflow = 'hidden';
   
   // Add movie title and metadata at the top of right column
@@ -840,7 +842,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   return flipCard;
 }
 
-/* ----- Main handler: insert posters as an agent message bubble THEN append assistant text ----- */
+/* ----- Main handler: Split response into conversation -> posters -> recommendation text ----- */
 async function handleAssistantReplyWithManifest(data) {
   const raw = (typeof data.response === 'string') ? data.response : '';
   const { manifest, assistantTextClean, assistantTextRaw } = parseManifestAndStrip(raw);
@@ -862,7 +864,42 @@ async function handleAssistantReplyWithManifest(data) {
     return;
   }
 
-  // build agent poster bubble
+  if (!manifest) {
+    // no manifest -> just append assistant text and exit
+    if (assistantTextClean && typeof window.addMessage === 'function') window.addMessage('Agent', assistantTextClean);
+    return;
+  }
+
+  // Split response into conversational preface and recommendation details
+  // Look for the "### 🍿 CineMan's Curated Recommendation" header or similar
+  const recommendationHeaderRegex = /^###?\s*🍿.*?(?:Recommendation|Curated)/mi;
+  const match = assistantTextClean.match(recommendationHeaderRegex);
+  
+  let conversationalText = '';
+  let recommendationText = '';
+  
+  if (match && match.index !== undefined) {
+    // Split at the recommendation header
+    conversationalText = assistantTextClean.slice(0, match.index).trim();
+    recommendationText = assistantTextClean.slice(match.index).trim();
+  } else {
+    // No clear split found, treat first paragraph as conversational if it doesn't contain movie details
+    const paragraphs = assistantTextClean.split(/\n\n+/);
+    if (paragraphs.length > 1 && !paragraphs[0].includes('Masterpiece') && !paragraphs[0].includes('anchor:')) {
+      conversationalText = paragraphs[0].trim();
+      recommendationText = paragraphs.slice(1).join('\n\n').trim();
+    } else {
+      // All is recommendation text
+      recommendationText = assistantTextClean;
+    }
+  }
+
+  // Step 1: Display conversational text first (if any)
+  if (conversationalText && typeof window.addMessage === 'function') {
+    window.addMessage('Agent', conversationalText);
+  }
+
+  // Step 2: Build and display poster cards
   const posterBubbleWrap = document.createElement('div');
   posterBubbleWrap.className = 'message-container';
   const avatar = document.createElement('img');
@@ -880,15 +917,9 @@ async function handleAssistantReplyWithManifest(data) {
   posterBubble.appendChild(posterRow);
   posterBubbleWrap.appendChild(posterBubble);
 
-  // append posters bubble so it appears immediately after user's message
+  // append posters bubble
   chatbox.appendChild(posterBubbleWrap);
   chatbox.scrollTop = chatbox.scrollHeight;
-
-  if (!manifest) {
-    // no manifest -> append assistant text and exit
-    if (assistantTextClean && typeof window.addMessage === 'function') window.addMessage('Agent', assistantTextClean);
-    return;
-  }
 
   const unmatched = [];
   for (const m of manifest.movies) {
@@ -929,21 +960,21 @@ async function handleAssistantReplyWithManifest(data) {
     posterRow.appendChild(trayWrapper);
   }
 
-  // After posters are in view, append the assistant's textual reply (ensures posters appear before text)
+  // Step 3: After posters, append the recommendation text (movie details)
   try {
-    if (assistantTextClean && typeof window.addMessage === 'function') {
-      window.addMessage('Agent', assistantTextClean);
-    } else if (assistantTextClean) {
+    if (recommendationText && typeof window.addMessage === 'function') {
+      window.addMessage('Agent', recommendationText);
+    } else if (recommendationText) {
       const wrap = document.createElement('div');
       wrap.className = 'message-container';
       const bubble = document.createElement('div');
       bubble.className = 'agent-message';
-      bubble.innerHTML = window.marked ? marked.parse(assistantTextClean) : assistantTextClean;
+      bubble.innerHTML = window.marked ? marked.parse(recommendationText) : recommendationText;
       wrap.appendChild(bubble);
       chatbox.appendChild(wrap);
     }
   } catch (err) {
-    console.warn('Failed to render assistantTextClean in chat area', err);
+    console.warn('Failed to render recommendationText in chat area', err);
   }
 
   chatbox.scrollTop = chatbox.scrollHeight;

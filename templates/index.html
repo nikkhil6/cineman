@@ -158,12 +158,21 @@
       z-index: 3000; 
       max-height: 90vh;
       overflow: visible;
+      height: auto;
     }
     .flip-card.is-flipped .flip-card-inner { 
       transform: rotateY(180deg); 
       min-height: auto;
       max-height: 90vh;
       overflow: visible;
+      height: auto;
+    }
+    .flip-card.is-flipped .flip-card-back {
+      max-height: 90vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
     }
     
     /* Backdrop blur when card is flipped */

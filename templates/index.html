@@ -220,23 +220,23 @@
       align-items:stretch; 
     }
 
-    .poster-image { width:100%; height:320px; object-fit:cover; border-radius:6px; display:block; }
-    .poster-meta { margin-top:10px; text-align:center; font-size:0.95rem; color:#111; }
-    .poster-meta .title { font-weight:700; }
-    .poster-meta .year { color:#6b7280; font-size:0.85rem; margin-top:4px; }
-    .poster-meta .dir { color:#555; font-size:0.86rem; margin-top:6px; }
+    .poster-image { width:100%; height:280px; object-fit:cover; border-radius:6px; display:block; }
+    .poster-meta { margin-top:8px; text-align:center; font-size:0.95rem; color:#111; }
+    .poster-meta .title { font-weight:700; font-size:0.92rem; }
+    .poster-meta .year { color:#6b7280; font-size:0.8rem; margin-top:3px; }
+    .poster-meta .dir { color:#555; font-size:0.8rem; margin-top:4px; }
     .rating-badge { 
       display:inline-flex; 
       align-items: center;
-      gap: 4px;
-      margin-top:8px; 
-      padding:6px 12px; 
+      gap: 3px;
+      margin-top:6px; 
+      padding:4px 10px; 
       border-radius:999px; 
       background: linear-gradient(135deg, #fff9e6 0%, #fef3c7 100%); 
       font-weight:700; 
-      font-size:0.86rem; 
+      font-size:0.78rem; 
       color:#0f172a; 
-      margin-right:6px; 
+      margin-right:4px; 
       border: 1px solid rgba(251, 191, 36, 0.3);
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
@@ -249,8 +249,8 @@
     .poster-tray-btn { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:6px 10px; border:1px solid rgba(2,6,23,0.06); background:#fff; cursor:pointer; font-weight:600; }
 
     /* Action buttons for like/dislike/watchlist */
-    .action-buttons { display:flex; gap:6px; justify-content:center; margin-top:12px; margin-bottom:4px; width:100%; padding:0 4px; }
-    .action-btn { padding:8px 10px; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:4px; flex:1; justify-content:center; min-height:36px; }
+    .action-buttons { display:flex; gap:5px; justify-content:center; margin-top:8px; margin-bottom:4px; width:100%; padding:0 4px; }
+    .action-btn { padding:6px 8px; border:none; border-radius:6px; cursor:pointer; font-size:0.82rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:3px; flex:1; justify-content:center; min-height:32px; }
     .action-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
     .like-btn { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
     .like-btn.active { background:#16a34a; color:#fff; }
@@ -316,8 +316,8 @@
 
     @media (max-width:720px) {
       :root{ --card-width-desktop: var(--card-width-mobile); }
-      .poster-image { height:220px; }
-      .flip-card-inner { min-height: 320px; }
+      .poster-image { height:200px; }
+      .flip-card-inner { min-height: 300px; }
       #chatbox { padding:14px; }
       .chat-container { width:96vw; height:96vh; max-width:96vw; max-height:96vh; }
       .poster-modal { flex-direction: column; align-items: center; }
@@ -325,6 +325,10 @@
       .card-back-content { line-height:1.4; }
       .watchlist-item { flex-direction:column; }
       .watchlist-item-poster { width:100%; height:auto; max-height:300px; }
+      .rating-badge { font-size:0.72rem; padding:3px 8px; }
+      .action-btn { font-size:0.75rem; padding:5px 6px; min-height:28px; }
+      .poster-meta .title { font-size:0.88rem; }
+      .poster-meta .year, .poster-meta .dir { font-size:0.76rem; }
       
       /* Mobile-specific flipped card styling */
       .flip-card.is-flipped { 

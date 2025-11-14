@@ -288,3 +288,55 @@ def api_status():
             "status": "error",
             "message": "Failed to check API status"
         }), 500
+
+
+@bp.route("/session/timeout", methods=["GET"])
+def session_timeout_info():
+    """
+    GET /api/session/timeout
+    Get information about the current session timeout.
+    
+    Returns:
+    - session_exists: Whether a valid session exists
+    - timeout_seconds: Total session timeout in seconds (3600 = 1 hour)
+    - remaining_seconds: Seconds remaining before session expires
+    - last_accessed: ISO timestamp of last session access
+    """
+    from cineman.session_manager import get_session_manager
+    
+    session_id = session.get('session_id')
+    session_manager = get_session_manager()
+    
+    if not session_id:
+        return jsonify({
+            "status": "success",
+            "session_exists": False,
+            "timeout_seconds": 3600,
+            "remaining_seconds": 3600,
+            "message": "No active session"
+        })
+    
+    session_data = session_manager.get_session(session_id)
+    
+    if not session_data:
+        return jsonify({
+            "status": "success",
+            "session_exists": False,
+            "timeout_seconds": 3600,
+            "remaining_seconds": 3600,
+            "message": "Session expired or not found"
+        })
+    
+    # Calculate remaining time
+    from datetime import datetime
+    timeout_seconds = int(session_manager.session_timeout.total_seconds())
+    elapsed = (datetime.now() - session_data.last_accessed).total_seconds()
+    remaining = max(0, timeout_seconds - elapsed)
+    
+    return jsonify({
+        "status": "success",
+        "session_exists": True,
+        "timeout_seconds": timeout_seconds,
+        "remaining_seconds": int(remaining),
+        "last_accessed": session_data.last_accessed.isoformat()
+    })

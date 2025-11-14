@@ -348,6 +348,50 @@
       
 
     }
+
+    /* Movie Links Container */
+    .movie-links-container {
+      margin-top: 16px;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 0 20px;
+    }
+
+    .movie-link {
+      color: rgba(255, 255, 255, 0.85);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .movie-link:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .movie-links-container {
+        gap: 10px;
+        margin-top: 12px;
+        padding: 0 10px;
+      }
+      
+      .movie-link {
+        font-size: 0.8rem;
+        padding: 6px 12px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -393,6 +437,15 @@
       <input type="text" id="userInput" class="form-control me-2" placeholder="Ask for a sci-fi thriller or a nostalgic comedy..." aria-label="Ask CineMan for a movie" />
       <button type="button" id="sendButton" class="btn btn-primary btn-send">Suggest</button>
     </div>
+  </div>
+
+  <!-- Movie Website Links -->
+  <div class="movie-links-container">
+    <a href="https://letterboxd.com/" target="_blank" rel="noopener noreferrer" class="movie-link">Letterboxd</a>
+    <a href="https://www.imdb.com/" target="_blank" rel="noopener noreferrer" class="movie-link">IMDb</a>
+    <a href="https://www.rottentomatoes.com/" target="_blank" rel="noopener noreferrer" class="movie-link">Rotten Tomatoes</a>
+    <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer" class="movie-link">TMDb</a>
+    <a href="https://www.metacritic.com/movie" target="_blank" rel="noopener noreferrer" class="movie-link">Metacritic</a>
   </div>
 
   <!-- Poster Modal: opened when user clicks a poster -->

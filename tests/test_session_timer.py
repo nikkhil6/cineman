@@ -45,7 +45,7 @@ class TestSessionTimerEndpoint(unittest.TestCase):
         mock_session_data = MagicMock()
         mock_session_data.last_accessed = datetime.now() - timedelta(minutes=10)
         
-        mock_manager.get_session.return_value = mock_session_data
+        mock_manager.peek_session.return_value = mock_session_data
         mock_manager.session_timeout = timedelta(minutes=60)
         mock_get_manager.return_value = mock_manager
         
@@ -70,7 +70,7 @@ class TestSessionTimerEndpoint(unittest.TestCase):
         """Test /api/session/timeout with an expired session."""
         # Mock session manager returning None (expired session)
         mock_manager = MagicMock()
-        mock_manager.get_session.return_value = None
+        mock_manager.peek_session.return_value = None
         mock_get_manager.return_value = mock_manager
         
         # Create a session
@@ -94,7 +94,7 @@ class TestSessionTimerEndpoint(unittest.TestCase):
         mock_session_data = MagicMock()
         mock_session_data.last_accessed = datetime.now() - timedelta(minutes=59)
         
-        mock_manager.get_session.return_value = mock_session_data
+        mock_manager.peek_session.return_value = mock_session_data
         mock_manager.session_timeout = timedelta(minutes=60)
         mock_get_manager.return_value = mock_manager
         
@@ -119,7 +119,7 @@ class TestSessionTimerEndpoint(unittest.TestCase):
         mock_session_data = MagicMock()
         mock_session_data.last_accessed = datetime.now() - timedelta(minutes=30)
         
-        mock_manager.get_session.return_value = mock_session_data
+        mock_manager.peek_session.return_value = mock_session_data
         mock_manager.session_timeout = timedelta(minutes=60)
         mock_get_manager.return_value = mock_manager
         

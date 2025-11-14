@@ -316,7 +316,7 @@ def session_timeout_info():
             "message": "No active session"
         })
     
-    session_data = session_manager.get_session(session_id)
+    session_data = session_manager.peek_session(session_id)
     
     if not session_data:
         return jsonify({

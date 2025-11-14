@@ -43,6 +43,10 @@
     white-space: nowrap;
 }
 
+.status-text:empty {
+    display: none;
+}
+
 /* Status Colors */
 .status-operational {
     background: rgba(240, 253, 244, 0.95);

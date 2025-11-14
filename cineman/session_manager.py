@@ -72,6 +72,17 @@ class SessionManager:
                 session.last_accessed = datetime.now()
             return session
     
+    def peek_session(self, session_id: str) -> Optional[SessionData]:
+        """Get session data without updating last_accessed time."""
+        with self._lock:
+            session = self._sessions.get(session_id)
+            if session:
+                # Check if session has expired
+                if datetime.now() - session.last_accessed > self.session_timeout:
+                    del self._sessions[session_id]
+                    return None
+            return session
+    
     def get_or_create_session(self, session_id: Optional[str] = None) -> tuple[str, SessionData]:
         """Get existing session or create a new one."""
         if session_id:

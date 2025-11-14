@@ -109,8 +109,8 @@
         
         // Update indicator
         icon.textContent = STATUS_ICONS[overallStatus];
-        text.textContent = overallStatus === 'operational' ? 'APIs OK' : 
-                          overallStatus === 'degraded' ? 'Degraded' : 'Issues';
+        text.textContent = overallStatus === 'degraded' ? 'Degraded' : 
+                          overallStatus === 'error' ? 'Issues' : '';
         indicator.className = `api-status-indicator status-${overallStatus}`;
         
         // Update tooltip

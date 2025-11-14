@@ -335,14 +335,8 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         movie_data["year"] = tmdb.get("year") or omdb.get("Year")
         
         # Ratings
-        # Convert rating to string if it's a float (TMDb fallback case)
-        imdb_rating_value = omdb.get("IMDb_Rating") or api_data.get("rating")
-        if isinstance(imdb_rating_value, (int, float)):
-            imdb_rating_value = str(imdb_rating_value)
-        
         movie_data["ratings"] = MovieRatings(
-            imdb_rating=imdb_rating_value,
-            rt_tomatometer=omdb.get("Rotten_Tomatoes"),
+            imdb_rating=omdb.get("IMDb_Rating") or api_data.get("rating"),
             tmdb_rating=tmdb.get("vote_average"),
             tmdb_vote_count=tmdb.get("vote_count")
         )
@@ -380,8 +374,7 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         movie_data["year"] = api_data.get("Year")
         movie_data["poster_url"] = api_data.get("Poster_URL") or api_data.get("Poster")
         movie_data["ratings"] = MovieRatings(
-            imdb_rating=api_data.get("IMDb_Rating") or api_data.get("imdbRating"),
-            rt_tomatometer=api_data.get("Rotten_Tomatoes")
+            imdb_rating=api_data.get("IMDb_Rating") or api_data.get("imdbRating")
         )
         movie_data["identifiers"] = MovieIdentifiers(
             imdb_id=api_data.get("imdbID")

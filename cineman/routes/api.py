@@ -90,32 +90,18 @@ def movie_combined():
         "Year": omdb.get("Year"),
         "Director": omdb.get("Director"),
         "IMDb_Rating": omdb.get("IMDb_Rating"),
-        "Rotten_Tomatoes": omdb.get("Rotten_Tomatoes"),
         "Poster_URL": omdb.get("Poster_URL"),
         "imdbID": omdb.get("raw", {}).get("imdbID") if omdb.get("raw") else None
     }
 
-    # Determine poster URL (prefer TMDb, fallback to OMDb)
-    poster = tmdb_safe.get("poster_url") or omdb_safe.get("Poster_URL")
-    
-    # Extract top-level ratings for easier frontend access
-    # Convert to string if it's a float (TMDb fallback case)
-    imdb_rating = omdb_safe.get("IMDb_Rating") or rating
-    if isinstance(imdb_rating, (int, float)):
-        imdb_rating = str(imdb_rating)
-    rt_tomatometer = omdb_safe.get("Rotten_Tomatoes")
-    
     # Build combined response (legacy format for backward compatibility)
     combined = {
         "query": title,
         "tmdb": tmdb_safe,
         "omdb": omdb_safe,
-        "poster": poster,
         "rating": rating,
         "rating_source": rating_source,
         "note": note,
-        "imdb_rating": imdb_rating,
-        "rt_tomatometer": rt_tomatometer,
     }
     
     # Also include structured schema-validated data

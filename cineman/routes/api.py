@@ -3,9 +3,11 @@ from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
 from cineman.models import db, MovieInteraction
 from cineman.schemas import parse_movie_from_api, MovieRecommendation
+from cineman.api_status import check_all_apis
 from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
 import uuid
+import time
 
 bp = Blueprint("api", __name__)
 
@@ -260,3 +262,29 @@ def get_all_interactions():
         "status": "success",
         "interactions": [interaction.to_dict() for interaction in interactions]
     })
+
+
+@bp.route("/status", methods=["GET"])
+def api_status():
+    """
+    GET /api/status
+    Check the status of all external APIs (Gemini, TMDB, OMDB).
+    
+    Returns status information for each API service including:
+    - status: "operational" | "degraded" | "error"
+    - message: Human-readable status message
+    - response_time: API response time in milliseconds
+    """
+    try:
+        statuses = check_all_apis()
+        return jsonify({
+            "status": "success",
+            "timestamp": int(time.time()),
+            "services": statuses
+        })
+    except Exception as e:
+        print(f"Error checking API status: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to check API status"
+        }), 500

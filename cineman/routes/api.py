@@ -3,9 +3,11 @@ from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
 from cineman.models import db, MovieInteraction
 from cineman.schemas import parse_movie_from_api, MovieRecommendation
+from cineman.api_status import check_all_apis
 from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
 import uuid
+import time
 
 bp = Blueprint("api", __name__)
 
@@ -90,18 +92,32 @@ def movie_combined():
         "Year": omdb.get("Year"),
         "Director": omdb.get("Director"),
         "IMDb_Rating": omdb.get("IMDb_Rating"),
+        "Rotten_Tomatoes": omdb.get("Rotten_Tomatoes"),
         "Poster_URL": omdb.get("Poster_URL"),
         "imdbID": omdb.get("raw", {}).get("imdbID") if omdb.get("raw") else None
     }
 
+    # Extract top-level fields for easier frontend access
+    poster = tmdb_safe.get("poster_url") or omdb_safe.get("Poster_URL")
+    
+    # Convert rating to string if it's a float (TMDb fallback case)
+    imdb_rating = omdb_safe.get("IMDb_Rating") or rating
+    if isinstance(imdb_rating, (int, float)):
+        imdb_rating = str(imdb_rating)
+    
+    rt_tomatometer = omdb_safe.get("Rotten_Tomatoes")
+    
     # Build combined response (legacy format for backward compatibility)
     combined = {
         "query": title,
         "tmdb": tmdb_safe,
         "omdb": omdb_safe,
+        "poster": poster,
         "rating": rating,
         "rating_source": rating_source,
         "note": note,
+        "imdb_rating": imdb_rating,
+        "rt_tomatometer": rt_tomatometer,
     }
     
     # Also include structured schema-validated data
@@ -259,4 +275,82 @@ def get_all_interactions():
     return jsonify({
         "status": "success",
         "interactions": [interaction.to_dict() for interaction in interactions]
+    })
+
+
+@bp.route("/status", methods=["GET"])
+def api_status():
+    """
+    GET /api/status
+    Check the status of all external APIs (Gemini, TMDB, OMDB).
+    
+    Returns status information for each API service including:
+    - status: "operational" | "degraded" | "error"
+    - message: Human-readable status message
+    - response_time: API response time in milliseconds
+    """
+    try:
+        statuses = check_all_apis()
+        return jsonify({
+            "status": "success",
+            "timestamp": int(time.time()),
+            "services": statuses
+        })
+    except Exception as e:
+        print(f"Error checking API status: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to check API status"
+        }), 500
+
+
+@bp.route("/session/timeout", methods=["GET"])
+def session_timeout_info():
+    """
+    GET /api/session/timeout
+    Get information about the current session timeout.
+    
+    Returns:
+    - session_exists: Whether a valid session exists
+    - timeout_seconds: Total session timeout in seconds (3600 = 1 hour)
+    - remaining_seconds: Seconds remaining before session expires
+    - last_accessed: ISO timestamp of last session access
+    """
+    from cineman.session_manager import get_session_manager
+    
+    session_id = session.get('session_id')
+    session_manager = get_session_manager()
+    
+    if not session_id:
+        return jsonify({
+            "status": "success",
+            "session_exists": False,
+            "timeout_seconds": 3600,
+            "remaining_seconds": 3600,
+            "message": "No active session"
+        })
+    
+    session_data = session_manager.peek_session(session_id)
+    
+    if not session_data:
+        return jsonify({
+            "status": "success",
+            "session_exists": False,
+            "timeout_seconds": 3600,
+            "remaining_seconds": 3600,
+            "message": "Session expired or not found"
+        })
+    
+    # Calculate remaining time
+    from datetime import datetime
+    timeout_seconds = int(session_manager.session_timeout.total_seconds())
+    elapsed = (datetime.now() - session_data.last_accessed).total_seconds()
+    remaining = max(0, timeout_seconds - elapsed)
+    
+    return jsonify({
+        "status": "success",
+        "session_exists": True,
+        "timeout_seconds": timeout_seconds,
+        "remaining_seconds": int(remaining),
+        "last_accessed": session_data.last_accessed.isoformat()
     })

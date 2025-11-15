@@ -43,8 +43,8 @@ function extractDirector(data) {
 }
 
 function extractRatings(data) {
-  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDbRating)) || null;
-  let rtTom = data.rt_tomatometer || (data.omdb && data.omdb.RottenTomatoes_Tomatometer) || null;
+  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDb_Rating || data.omdb.IMDbRating)) || null;
+  let rtTom = data.rt_tomatometer || (data.omdb && (data.omdb.Rotten_Tomatoes || data.omdb.RottenTomatoes_Tomatometer)) || null;
   let rtAud = data.rt_audience || (data.omdb && data.omdb.RottenTomatoes_Audience) || null;
 
   if ((!rtTom || !imdb) && data.omdb && Array.isArray(data.omdb.Ratings)) {
@@ -436,7 +436,8 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   const backLayout = document.createElement('div');
   backLayout.style.display = 'flex';
   backLayout.style.gap = '16px';
-  backLayout.style.height = '100%';
+  backLayout.style.flex = '1';
+  backLayout.style.minHeight = '0';
   backLayout.style.overflow = 'hidden';
   
   // LEFT COLUMN - Poster
@@ -462,6 +463,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   rightColumn.style.flex = '1';
   rightColumn.style.display = 'flex';
   rightColumn.style.flexDirection = 'column';
+  rightColumn.style.minHeight = '0';
   rightColumn.style.overflow = 'hidden';
   
   // Add movie title and metadata at the top of right column
@@ -470,45 +472,62 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backHeader.style.marginBottom = '12px';
   backHeader.style.borderBottom = '2px solid #e5e7eb';
   backHeader.style.paddingBottom = '10px';
+  backHeader.style.flexShrink = '0';
+  
+  // Title row with ratings on the right
+  const titleRow = document.createElement('div');
+  titleRow.style.display = 'flex';
+  titleRow.style.justifyContent = 'space-between';
+  titleRow.style.alignItems = 'flex-start';
+  titleRow.style.gap = '12px';
+  titleRow.style.marginBottom = '4px';
   
   const backTitle = document.createElement('div');
   backTitle.style.fontWeight = '700';
   backTitle.style.fontSize = '1.15rem';
-  backTitle.style.marginBottom = '4px';
+  backTitle.style.flex = '1';
+  backTitle.style.minWidth = '0';
   backTitle.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
   
-  const backYearDir = document.createElement('div');
-  backYearDir.style.color = '#6b7280';
-  backYearDir.style.fontSize = '0.85rem';
-  backYearDir.style.marginBottom = '6px';
-  backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
-  
   const backRatings = document.createElement('div');
-  backRatings.style.fontSize = '0.8rem';
+  backRatings.style.fontSize = '0.75rem';
   backRatings.style.color = '#374151';
   backRatings.style.fontWeight = '600';
   backRatings.style.display = 'flex';
-  backRatings.style.gap = '10px';
-  backRatings.style.flexWrap = 'wrap';
+  backRatings.style.gap = '8px';
+  backRatings.style.flexWrap = 'nowrap';
+  backRatings.style.flexShrink = '0';
+  backRatings.style.whiteSpace = 'nowrap';
   
   if (imdb) {
     const imdbSpan = document.createElement('span');
-    imdbSpan.textContent = `⭐ IMDB: ${imdb}`;
+    imdbSpan.textContent = `⭐ ${imdb}`;
+    imdbSpan.title = `IMDB: ${imdb}`;
     backRatings.appendChild(imdbSpan);
   }
   if (rt_tomatometer) {
     const rtSpan = document.createElement('span');
-    rtSpan.textContent = `🍅 RT: ${rt_tomatometer}`;
+    rtSpan.textContent = `🍅 ${rt_tomatometer}`;
+    rtSpan.title = `Rotten Tomatoes: ${rt_tomatometer}`;
     backRatings.appendChild(rtSpan);
   } else if (rt_audience) {
     const rtSpan = document.createElement('span');
-    rtSpan.textContent = `🍅 RT-Aud: ${rt_audience}`;
+    rtSpan.textContent = `🍅 ${rt_audience}`;
+    rtSpan.title = `Rotten Tomatoes Audience: ${rt_audience}`;
     backRatings.appendChild(rtSpan);
   }
   
-  backHeader.appendChild(backTitle);
+  titleRow.appendChild(backTitle);
+  if (imdb || rt_tomatometer || rt_audience) titleRow.appendChild(backRatings);
+  
+  const backYearDir = document.createElement('div');
+  backYearDir.style.color = '#6b7280';
+  backYearDir.style.fontSize = '0.85rem';
+  
+  backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
+  
+  backHeader.appendChild(titleRow);
   backHeader.appendChild(backYearDir);
-  if (imdb || rt_tomatometer || rt_audience) backHeader.appendChild(backRatings);
   rightColumn.appendChild(backHeader);
   
   // Add the full formatted content
@@ -517,6 +536,8 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backContent.style.flex = '1';
   backContent.style.overflowY = 'auto';
   backContent.style.paddingRight = '8px';
+  backContent.style.minHeight = '0';
+  backContent.style.overflowX = 'hidden';
   
   // Use the full formatted content from formatModalContentForThreeSections
   const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
@@ -532,6 +553,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   const backActionButtons = document.createElement('div');
   backActionButtons.className = 'action-buttons';
   backActionButtons.style.marginTop = '12px';
+  backActionButtons.style.flexShrink = '0';
   
   const backLikeBtn = document.createElement('button');
   backLikeBtn.className = 'action-btn like-btn';
@@ -840,7 +862,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   return flipCard;
 }
 
-/* ----- Main handler: insert posters as an agent message bubble THEN append assistant text ----- */
+/* ----- Main handler: Split response into conversation -> posters -> recommendation text ----- */
 async function handleAssistantReplyWithManifest(data) {
   const raw = (typeof data.response === 'string') ? data.response : '';
   const { manifest, assistantTextClean, assistantTextRaw } = parseManifestAndStrip(raw);
@@ -862,7 +884,42 @@ async function handleAssistantReplyWithManifest(data) {
     return;
   }
 
-  // build agent poster bubble
+  if (!manifest) {
+    // no manifest -> just append assistant text and exit
+    if (assistantTextClean && typeof window.addMessage === 'function') window.addMessage('Agent', assistantTextClean);
+    return;
+  }
+
+  // Split response into conversational preface and recommendation details
+  // Look for the "### 🍿 CineMan's Curated Recommendation" header or similar
+  const recommendationHeaderRegex = /^###?\s*🍿.*?(?:Recommendation|Curated)/mi;
+  const match = assistantTextClean.match(recommendationHeaderRegex);
+  
+  let conversationalText = '';
+  let recommendationText = '';
+  
+  if (match && match.index !== undefined) {
+    // Split at the recommendation header
+    conversationalText = assistantTextClean.slice(0, match.index).trim();
+    recommendationText = assistantTextClean.slice(match.index).trim();
+  } else {
+    // No clear split found, treat first paragraph as conversational if it doesn't contain movie details
+    const paragraphs = assistantTextClean.split(/\n\n+/);
+    if (paragraphs.length > 1 && !paragraphs[0].includes('Masterpiece') && !paragraphs[0].includes('anchor:')) {
+      conversationalText = paragraphs[0].trim();
+      recommendationText = paragraphs.slice(1).join('\n\n').trim();
+    } else {
+      // All is recommendation text
+      recommendationText = assistantTextClean;
+    }
+  }
+
+  // Step 1: Display conversational text first (if any)
+  if (conversationalText && typeof window.addMessage === 'function') {
+    window.addMessage('Agent', conversationalText);
+  }
+
+  // Step 2: Build and display poster cards
   const posterBubbleWrap = document.createElement('div');
   posterBubbleWrap.className = 'message-container';
   const avatar = document.createElement('img');
@@ -880,16 +937,10 @@ async function handleAssistantReplyWithManifest(data) {
   posterBubble.appendChild(posterRow);
   posterBubbleWrap.appendChild(posterBubble);
 
-  // append posters bubble so it appears immediately after user's message
+  // append posters bubble
   chatbox.appendChild(posterBubbleWrap);
   // Scroll into view smoothly after adding container
   chatbox.scrollTo({ top: chatbox.scrollHeight, behavior: 'smooth' });
-
-  if (!manifest) {
-    // no manifest -> append assistant text and exit
-    if (assistantTextClean && typeof window.addMessage === 'function') window.addMessage('Agent', assistantTextClean);
-    return;
-  }
 
   const unmatched = [];
   for (const m of manifest.movies) {
@@ -930,21 +981,21 @@ async function handleAssistantReplyWithManifest(data) {
     posterRow.appendChild(trayWrapper);
   }
 
-  // After posters are in view, append the assistant's textual reply (ensures posters appear before text)
+  // Step 3: After posters, append the recommendation text (movie details)
   try {
-    if (assistantTextClean && typeof window.addMessage === 'function') {
-      window.addMessage('Agent', assistantTextClean);
-    } else if (assistantTextClean) {
+    if (recommendationText && typeof window.addMessage === 'function') {
+      window.addMessage('Agent', recommendationText);
+    } else if (recommendationText) {
       const wrap = document.createElement('div');
       wrap.className = 'message-container';
       const bubble = document.createElement('div');
       bubble.className = 'agent-message';
-      bubble.innerHTML = window.marked ? marked.parse(assistantTextClean) : assistantTextClean;
+      bubble.innerHTML = window.marked ? marked.parse(recommendationText) : recommendationText;
       wrap.appendChild(bubble);
       chatbox.appendChild(wrap);
     }
   } catch (err) {
-    console.warn('Failed to render assistantTextClean in chat area', err);
+    console.warn('Failed to render recommendationText in chat area', err);
   }
 
   // Final smooth scroll to show complete response

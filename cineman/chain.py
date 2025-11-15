@@ -5,7 +5,7 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import HumanMessage, AIMessage
 import os
 import sys
-from typing import List, Dict, Optional
+from typing import List, Dict
 
 # Helper function to load the prompt content
 def load_prompt_from_file(filepath):

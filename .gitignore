@@ -26,6 +26,11 @@ wheels/
 # Environment variables
 .env
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # IDE
 .vscode/
 .idea/

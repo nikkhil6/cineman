@@ -1,0 +1,123 @@
+/**
+ * Session Timer Styles
+ * 
+ * Styles for the session timeout countdown timer
+ */
+
+/* Timer Container */
+.session-timer-container {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 10px;
+}
+
+/* Timer Display */
+.session-timer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: default;
+}
+
+.session-timer:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Timer Icon */
+.timer-icon {
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+/* Timer Display Text */
+.timer-display {
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+/* Normal State - Green */
+.session-timer-container:not(.warning):not(.critical) .session-timer {
+    background: rgba(240, 253, 244, 0.95);
+    border-color: rgba(134, 239, 172, 0.4);
+    color: #166534;
+}
+
+/* Warning State - Yellow (< 5 minutes) */
+.session-timer-container.warning .session-timer {
+    background: rgba(254, 252, 232, 0.95);
+    border-color: rgba(253, 224, 71, 0.4);
+    color: #854d0e;
+    animation: pulse-warning 2s ease-in-out infinite;
+}
+
+/* Critical State - Red (< 1 minute) */
+.session-timer-container.critical .session-timer {
+    background: rgba(254, 242, 242, 0.95);
+    border-color: rgba(252, 165, 165, 0.4);
+    color: #991b1b;
+    animation: pulse-critical 1s ease-in-out infinite;
+}
+
+/* Warning Animation */
+@keyframes pulse-warning {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Critical Animation */
+@keyframes pulse-critical {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.02);
+    }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .timer-display {
+        font-size: 0.85rem;
+    }
+    
+    .session-timer {
+        padding: 6px 10px;
+    }
+}
+
+/* Very small screens - show icon only */
+@media (max-width: 580px) {
+    .timer-display {
+        display: none;
+    }
+    
+    .session-timer {
+        padding: 8px;
+        min-width: 36px;
+        justify-content: center;
+    }
+}
+
+/* Extra small screens - hide completely to avoid clutter */
+@media (max-width: 480px) {
+    .session-timer-container {
+        display: none;
+    }
+}

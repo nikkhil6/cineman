@@ -13,7 +13,7 @@ automatic_scaling:
 # Note: For production, store sensitive data in Secret Manager instead of app.yaml
 env_variables:
   DATABASE_URL: "postgresql://cineman-user:Cine1Man@/cineman?host=/cloudsql/cineman-477616:us-central1:cineman-db"
-  GEMINI_API_KEY: "AIzaSyAqp5OFuX6tELOo0wMBN6tZ1xYL54oj3cM"
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
   TMDB_API_KEY: "477c80af00ee96b7ab3dd7ada867cee3"  
   OMDB_API_KEY: "9ce3475e"
 

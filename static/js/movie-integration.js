@@ -43,8 +43,8 @@ function extractDirector(data) {
 }
 
 function extractRatings(data) {
-  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDbRating)) || null;
-  let rtTom = data.rt_tomatometer || (data.omdb && data.omdb.RottenTomatoes_Tomatometer) || null;
+  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDb_Rating || data.omdb.IMDbRating)) || null;
+  let rtTom = data.rt_tomatometer || (data.omdb && (data.omdb.Rotten_Tomatoes || data.omdb.RottenTomatoes_Tomatometer)) || null;
   let rtAud = data.rt_audience || (data.omdb && data.omdb.RottenTomatoes_Audience) || null;
 
   if ((!rtTom || !imdb) && data.omdb && Array.isArray(data.omdb.Ratings)) {
@@ -472,45 +472,62 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backHeader.style.marginBottom = '12px';
   backHeader.style.borderBottom = '2px solid #e5e7eb';
   backHeader.style.paddingBottom = '10px';
+  backHeader.style.flexShrink = '0';
+  
+  // Title row with ratings on the right
+  const titleRow = document.createElement('div');
+  titleRow.style.display = 'flex';
+  titleRow.style.justifyContent = 'space-between';
+  titleRow.style.alignItems = 'flex-start';
+  titleRow.style.gap = '12px';
+  titleRow.style.marginBottom = '4px';
   
   const backTitle = document.createElement('div');
   backTitle.style.fontWeight = '700';
   backTitle.style.fontSize = '1.15rem';
-  backTitle.style.marginBottom = '4px';
+  backTitle.style.flex = '1';
+  backTitle.style.minWidth = '0';
   backTitle.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
   
-  const backYearDir = document.createElement('div');
-  backYearDir.style.color = '#6b7280';
-  backYearDir.style.fontSize = '0.85rem';
-  backYearDir.style.marginBottom = '6px';
-  backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
-  
   const backRatings = document.createElement('div');
-  backRatings.style.fontSize = '0.8rem';
+  backRatings.style.fontSize = '0.75rem';
   backRatings.style.color = '#374151';
   backRatings.style.fontWeight = '600';
   backRatings.style.display = 'flex';
-  backRatings.style.gap = '10px';
-  backRatings.style.flexWrap = 'wrap';
+  backRatings.style.gap = '8px';
+  backRatings.style.flexWrap = 'nowrap';
+  backRatings.style.flexShrink = '0';
+  backRatings.style.whiteSpace = 'nowrap';
   
   if (imdb) {
     const imdbSpan = document.createElement('span');
-    imdbSpan.textContent = `⭐ IMDB: ${imdb}`;
+    imdbSpan.textContent = `⭐ ${imdb}`;
+    imdbSpan.title = `IMDB: ${imdb}`;
     backRatings.appendChild(imdbSpan);
   }
   if (rt_tomatometer) {
     const rtSpan = document.createElement('span');
-    rtSpan.textContent = `🍅 RT: ${rt_tomatometer}`;
+    rtSpan.textContent = `🍅 ${rt_tomatometer}`;
+    rtSpan.title = `Rotten Tomatoes: ${rt_tomatometer}`;
     backRatings.appendChild(rtSpan);
   } else if (rt_audience) {
     const rtSpan = document.createElement('span');
-    rtSpan.textContent = `🍅 RT-Aud: ${rt_audience}`;
+    rtSpan.textContent = `🍅 ${rt_audience}`;
+    rtSpan.title = `Rotten Tomatoes Audience: ${rt_audience}`;
     backRatings.appendChild(rtSpan);
   }
   
-  backHeader.appendChild(backTitle);
+  titleRow.appendChild(backTitle);
+  if (imdb || rt_tomatometer || rt_audience) titleRow.appendChild(backRatings);
+  
+  const backYearDir = document.createElement('div');
+  backYearDir.style.color = '#6b7280';
+  backYearDir.style.fontSize = '0.85rem';
+  
+  backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
+  
+  backHeader.appendChild(titleRow);
   backHeader.appendChild(backYearDir);
-  if (imdb || rt_tomatometer || rt_audience) backHeader.appendChild(backRatings);
   rightColumn.appendChild(backHeader);
   
   // Add the full formatted content
@@ -519,6 +536,8 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backContent.style.flex = '1';
   backContent.style.overflowY = 'auto';
   backContent.style.paddingRight = '8px';
+  backContent.style.minHeight = '0';
+  backContent.style.overflowX = 'hidden';
   
   // Use the full formatted content from formatModalContentForThreeSections
   const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
@@ -534,6 +553,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   const backActionButtons = document.createElement('div');
   backActionButtons.className = 'action-buttons';
   backActionButtons.style.marginTop = '12px';
+  backActionButtons.style.flexShrink = '0';
   
   const backLikeBtn = document.createElement('button');
   backLikeBtn.className = 'action-btn like-btn';

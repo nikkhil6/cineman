@@ -1,29 +1,25 @@
 runtime: python311
 
-# App Engine Standard environment for Flask applications
 entrypoint: gunicorn -b :$PORT cineman.app:app --workers 2 --timeout 120
 
-# Instance scaling configuration
 automatic_scaling:
   target_cpu_utilization: 0.65
   min_instances: 0
   max_instances: 10
 
-# Environment variables
-# Note: For production, store sensitive data in Secret Manager instead of app.yaml
+# Non-secret config values can remain here. Do NOT put secret values in source control.
 env_variables:
   DATABASE_URL: "postgresql://cineman-user:Cine1Man@/cineman?host=/cloudsql/cineman-477616:us-central1:cineman-db"
-  GEMINI_API_KEY: "AIzaSyD9P_1Fs69TzQ41BrV58cDVVppruP-_OKI"
-  TMDB_API_KEY: "477c80af00ee96b7ab3dd7ada867cee3"  
+  # Provide project and secret names (not secret contents)
+  GCP_PROJECT: "cineman-477616"
+  GEMINI_SECRET_NAME: "gemini-api-key"   # name of the secret in Secret Manager
+  TMDB_API_KEY: "477c80af00ee96b7ab3dd7ada867cee3"
   OMDB_API_KEY: "9ce3475e"
 
-# Health check configuration
-# App Engine will call /health endpoint to verify the app is running
 handlers:
 - url: /.*
   script: auto
   secure: always
 
-# Enable API for monitoring
 inbound_services:
 - warmup

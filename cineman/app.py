@@ -1,3 +1,7 @@
+# Place this as early as possible in cineman/app.py (before any AI/chain init)
+import cineman.secret_helper as secret_helper
+secret_helper.inject_gemini_key()
+
 from flask import Flask, request, jsonify, render_template, session
 from cineman.chain import get_recommendation_chain, build_session_context, format_chat_history
 from cineman.session_manager import get_session_manager

@@ -4,6 +4,7 @@ from cineman.tools.omdb import fetch_omdb_data_core
 from cineman.models import db, MovieInteraction
 from cineman.schemas import parse_movie_from_api, MovieRecommendation
 from cineman.api_status import check_all_apis
+from cineman.rate_limiter import get_gemini_rate_limiter
 from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
 import uuid
@@ -354,3 +355,34 @@ def session_timeout_info():
         "remaining_seconds": int(remaining),
         "last_accessed": session_data.last_accessed.isoformat()
     })
+
+
+@bp.route("/rate-limit", methods=["GET"])
+def rate_limit_status():
+    """
+    GET /api/rate-limit
+    Get current rate limit status for Gemini API.
+    
+    Returns:
+    - status: Request status
+    - usage: Current usage statistics including:
+      - call_count: Number of calls made today
+      - daily_limit: Maximum calls allowed per day
+      - remaining: Number of calls remaining
+      - reset_date: When the counter will reset (ISO format)
+      - status: Rate limiter status ('active', 'unavailable', 'error')
+    """
+    try:
+        rate_limiter = get_gemini_rate_limiter()
+        usage_stats = rate_limiter.get_usage_stats()
+        
+        return jsonify({
+            "status": "success",
+            "usage": usage_stats
+        })
+    except Exception as e:
+        print(f"Error getting rate limit status: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to get rate limit status"
+        }), 500

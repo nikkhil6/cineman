@@ -184,6 +184,9 @@ def chat():
         # Increment rate limiter counter after successful API call
         rate_limiter.increment()
         
+        # Get updated remaining count after increment
+        updated_stats = rate_limiter.get_usage_stats()
+        
         # Extract movie titles from response and add to session
         new_movies = extract_movie_titles_from_response(agent_response)
         if new_movies:
@@ -197,7 +200,7 @@ def chat():
         return jsonify({
             "response": agent_response, 
             "session_id": session_id,
-            "remaining_calls": remaining - 1  # Already incremented
+            "remaining_calls": updated_stats['remaining']
         })
     
     except Exception as e:

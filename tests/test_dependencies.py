@@ -84,6 +84,26 @@ class TestDependencies(unittest.TestCase):
             f"Found unpinned dependencies (should use ==): {unpinned_packages}"
         )
 
+    @staticmethod
+    def _parse_package_line(line):
+        """Parse a package==version line.
+        
+        Returns tuple of (normalized_name, version) or None if invalid.
+        Handles all valid Python package version specifiers including
+        pre-release, post-release, and local version identifiers.
+        """
+        if '==' not in line:
+            return None
+        
+        # More comprehensive pattern to handle all valid version specifiers
+        match = re.match(r'^([a-zA-Z0-9_.-]+)==(.+)$', line)
+        if match:
+            package_name, version = match.groups()
+            # Normalize package name (pip uses lowercase with hyphens)
+            normalized_name = package_name.lower().replace('_', '-')
+            return (normalized_name, version.strip())
+        return None
+
     def test_installed_packages_match_requirements(self):
         """Verify that installed packages match the pinned versions in requirements.txt."""
         self.assertIsNotNone(
@@ -100,14 +120,10 @@ class TestDependencies(unittest.TestCase):
             if not line or line.startswith('#'):
                 continue
             
-            # Parse package==version format
-            if '==' in line:
-                match = re.match(r'^([a-zA-Z0-9_-]+)==([0-9.]+[a-zA-Z0-9.]*)', line)
-                if match:
-                    package_name, version = match.groups()
-                    # Normalize package name (pip uses lowercase with hyphens)
-                    normalized_name = package_name.lower().replace('_', '-')
-                    pinned_packages[normalized_name] = version
+            parsed = self._parse_package_line(line)
+            if parsed:
+                normalized_name, version = parsed
+                pinned_packages[normalized_name] = version
         
         # Get installed packages using pip freeze
         try:
@@ -120,12 +136,10 @@ class TestDependencies(unittest.TestCase):
             installed_packages = {}
             for line in result.stdout.split('\n'):
                 line = line.strip()
-                if '==' in line:
-                    match = re.match(r'^([a-zA-Z0-9_-]+)==([0-9.]+[a-zA-Z0-9.]*)', line)
-                    if match:
-                        package_name, version = match.groups()
-                        normalized_name = package_name.lower().replace('_', '-')
-                        installed_packages[normalized_name] = version
+                parsed = self._parse_package_line(line)
+                if parsed:
+                    normalized_name, version = parsed
+                    installed_packages[normalized_name] = version
         except subprocess.CalledProcessError as e:
             self.fail(f"Failed to run pip freeze: {e}")
         

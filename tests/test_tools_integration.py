@@ -179,10 +179,8 @@ class TestOMDbToolIntegration:
     def test_omdb_auth_error(self):
         """Test OMDb handles authentication error."""
         # Clear cache to avoid cached results
-        from cineman.tools.omdb import _CACHE
-        cache_key = "omdb:testautherror"
-        if cache_key in _CACHE:
-            del _CACHE[cache_key]
+        from cineman.tools.omdb import _clear_cache
+        _clear_cache("omdb:testautherror")
         
         with patch('cineman.tools.omdb.OMDB_API_KEY', 'test_key'):
             with patch('cineman.tools.omdb._get_omdb_client') as mock_client_getter:
@@ -199,10 +197,8 @@ class TestOMDbToolIntegration:
     def test_omdb_quota_error(self):
         """Test OMDb handles quota error."""
         # Clear cache to avoid cached results
-        from cineman.tools.omdb import _CACHE
-        cache_key = "omdb:testquotaerror"
-        if cache_key in _CACHE:
-            del _CACHE[cache_key]
+        from cineman.tools.omdb import _clear_cache
+        _clear_cache("omdb:testquotaerror")
         
         with patch('cineman.tools.omdb.OMDB_API_KEY', 'test_key'):
             with patch('cineman.tools.omdb._get_omdb_client') as mock_client_getter:
@@ -219,10 +215,8 @@ class TestOMDbToolIntegration:
     def test_omdb_transient_error(self):
         """Test OMDb handles transient error."""
         # Clear cache to avoid cached results
-        from cineman.tools.omdb import _CACHE
-        cache_key = "omdb:testtransienterror"
-        if cache_key in _CACHE:
-            del _CACHE[cache_key]
+        from cineman.tools.omdb import _clear_cache
+        _clear_cache("omdb:testtransienterror")
         
         with patch('cineman.tools.omdb.OMDB_API_KEY', 'test_key'):
             with patch('cineman.tools.omdb._get_omdb_client') as mock_client_getter:
@@ -256,10 +250,8 @@ class TestOMDbToolIntegration:
     def test_omdb_caching(self):
         """Test OMDb uses caching correctly."""
         # Clear cache before test
-        from cineman.tools.omdb import _CACHE
-        cache_key = "omdb:inception"
-        if cache_key in _CACHE:
-            del _CACHE[cache_key]
+        from cineman.tools.omdb import _clear_cache
+        _clear_cache("omdb:inception")
         
         mock_response = Mock()
         mock_response.ok = True
@@ -377,10 +369,8 @@ class TestParallelRequests:
                 }
                 
                 # Clear cache for this test
-                from cineman.tools.omdb import _CACHE
-                cache_key = f"omdb:{title.lower()}"
-                if cache_key in _CACHE:
-                    del _CACHE[cache_key]
+                from cineman.tools.omdb import _clear_cache
+                _clear_cache(f"omdb:{title.lower()}")
                 
                 with patch('cineman.tools.omdb.OMDB_API_KEY', 'test_key'):
                     with patch('cineman.tools.omdb._get_omdb_client') as mock_client_getter:

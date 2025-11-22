@@ -45,6 +45,19 @@ def _set_cache(key: str, value: Dict[str, Any]) -> None:
     _CACHE[key] = {"_ts": time.time(), "value": value}
 
 
+def _clear_cache(key: Optional[str] = None) -> None:
+    """
+    Clear cache entries. Used primarily for testing.
+    
+    Args:
+        key: Specific cache key to clear, or None to clear all cache
+    """
+    if key is None:
+        _CACHE.clear()
+    elif key in _CACHE:
+        del _CACHE[key]
+
+
 def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
     """
     Fetch OMDb data for `title` and return a structured dict.
@@ -84,17 +97,17 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
     client = _get_omdb_client()
 
     start = time.time()
-    # Note: MovieDataClient tracks attempts internally, we estimate here for backward compatibility
-    attempts = 0
+    # Note: MovieDataClient tracks attempts internally, but we maintain backward 
+    # compatibility by reporting attempts in the response. On success, we report 1.
+    # On error, attempts is set in the exception handlers.
+    attempts = 1
     try:
-        attempts = client.max_retries + 1  # Will be corrected on success
         response = client.get(
             BASE_URL,
             params=params,
             api_name="OMDb"
         )
         elapsed = time.time() - start
-        attempts = 1  # Success on some attempt
 
         # Parse JSON
         data = response.json()

@@ -317,7 +317,8 @@ class MovieDataClient:
                 error_msg = f"{api_name} request failed: {type(e).__name__}: {str(e)}"
                 self._raise_classified_error(error_type, error_msg, None, e)
         
-        # Should not reach here, but handle exhausted retries
+        # Loop completed without success - raise last error
+        # This handles the edge case where all retries failed with retryable errors
         if last_response is not None:
             error_type = self._classify_error(last_response, None)
             error_msg = (
@@ -335,7 +336,7 @@ class MovieDataClient:
             logger.error(f"{log_context} {error_msg}")
             self._raise_classified_error(error_type, error_msg, None, last_error)
         
-        # Fallback (should never reach here)
+        # Truly unexpected fallback
         raise APIError(
             f"{api_name} request failed after {self.max_retries + 1} attempts",
             APIErrorType.UNKNOWN

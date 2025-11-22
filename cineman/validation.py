@@ -327,20 +327,20 @@ def validate_llm_recommendation(
             confidence = max(tmdb_title_sim, omdb_title_sim)
             source = "both"
             # Prefer OMDb for title/year as it's more authoritative
-            matched_title = omdb_result["title"]
-            matched_year = normalize_year(omdb_result["year"])
-            matched_director = omdb_result["director"]
+            matched_title = omdb_result.get("title")
+            matched_year = normalize_year(omdb_result.get("year"))
+            matched_director = omdb_result.get("director")
         elif tmdb_title_sim >= 0.7:
             confidence = tmdb_title_sim * 0.9  # Slight penalty for only one strong match
             source = "tmdb"
-            matched_title = tmdb_result["title"]
-            matched_year = tmdb_result["year"]
+            matched_title = tmdb_result.get("title")
+            matched_year = tmdb_result.get("year")
         elif omdb_title_sim >= 0.7:
             confidence = omdb_title_sim * 0.9
             source = "omdb"
-            matched_title = omdb_result["title"]
-            matched_year = normalize_year(omdb_result["year"])
-            matched_director = omdb_result["director"]
+            matched_title = omdb_result.get("title")
+            matched_year = normalize_year(omdb_result.get("year"))
+            matched_director = omdb_result.get("director")
         else:
             # Both found but poor matches - likely wrong movie
             confidence = 0.3
@@ -350,16 +350,16 @@ def validate_llm_recommendation(
     elif tmdb_found and tmdb_title_sim >= 0.7:
         confidence = tmdb_title_sim * 0.8  # Penalty for single source
         source = "tmdb"
-        matched_title = tmdb_result["title"]
-        matched_year = tmdb_result["year"]
+        matched_title = tmdb_result.get("title")
+        matched_year = tmdb_result.get("year")
     
     # Only OMDb found
     elif omdb_found and omdb_title_sim >= 0.7:
         confidence = omdb_title_sim * 0.8  # Penalty for single source
         source = "omdb"
-        matched_title = omdb_result["title"]
-        matched_year = normalize_year(omdb_result["year"])
-        matched_director = omdb_result["director"]
+        matched_title = omdb_result.get("title")
+        matched_year = normalize_year(omdb_result.get("year"))
+        matched_director = omdb_result.get("director")
     
     # Neither found or poor matches
     else:

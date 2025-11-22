@@ -10,6 +10,10 @@ from cineman.models import db
 from cineman.rate_limiter import get_gemini_rate_limiter
 import os
 import json
+import logging
+
+# Configure logger for app
+logger = logging.getLogger(__name__)
 
 # Get the project root directory (parent of cineman package)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -201,9 +205,7 @@ def extract_and_validate_movies(response: str, session_id: str = None) -> tuple:
         return validated_response, movie_titles, summary
         
     except (json.JSONDecodeError, Exception) as e:
-        print(f"Error in extract_and_validate_movies: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Error in extract_and_validate_movies: {e}", exc_info=True)
         # Return original response on error
         return response, extract_movie_titles_from_response(response), None
 
@@ -303,9 +305,7 @@ def chat():
         return jsonify(response_data)
     
     except Exception as e:
-        print(f"Chat API Error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Chat API Error: {e}", exc_info=True)
         return jsonify({"response": "An unexpected error occurred while processing your request."}), 500
 
 # --- API Endpoint to clear/reset session ---

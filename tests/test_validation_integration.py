@@ -64,7 +64,7 @@ class TestValidationIntegration:
         # Simulate LLM response with movie manifest
         llm_response = """Here are my recommendations for you:
 
-\n\n{
+{
   "movies": [
     {
       "title": "Inception",
@@ -129,7 +129,7 @@ class TestValidationIntegration:
         # LLM response with one real and one fake movie
         llm_response = """Here are my recommendations:
 
-\n\n{
+{
   "movies": [
     {
       "title": "Inception",
@@ -184,7 +184,7 @@ class TestValidationIntegration:
         # LLM response with typo in title
         llm_response = """Here's a great movie:
 
-\n\n{
+{
   "movies": [
     {
       "title": "The Shawshank Redemtion",
@@ -230,7 +230,7 @@ class TestValidationIntegration:
         # Response with malformed JSON
         llm_response = """Here are some movies:
 
-\n\n{
+{
   "movies": [
     {"title": "Inception"
   ]

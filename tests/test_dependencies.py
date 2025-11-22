@@ -7,6 +7,7 @@ import unittest
 import subprocess
 import re
 from pathlib import Path
+from subprocess import TimeoutExpired
 
 
 class TestDependencies(unittest.TestCase):
@@ -40,7 +41,7 @@ class TestDependencies(unittest.TestCase):
         )
 
     def test_requirements_not_empty(self):
-        """Verify that requirements.txt is not empty."""
+        """Verify that requirements.txt is not empty and contains package declarations."""
         self.assertIsNotNone(
             self.requirements_content,
             f"requirements.txt not found at {self.requirements_path}"
@@ -49,6 +50,19 @@ class TestDependencies(unittest.TestCase):
             len(self.requirements_content.strip()),
             0,
             "requirements.txt is empty"
+        )
+        
+        # Verify it contains at least one package declaration
+        has_package = False
+        for line in self.requirements_content.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#') and '==' in line:
+                has_package = True
+                break
+        
+        self.assertTrue(
+            has_package,
+            "requirements.txt should contain at least one package declaration with =="
         )
 
     def test_all_dependencies_are_pinned(self):
@@ -89,14 +103,15 @@ class TestDependencies(unittest.TestCase):
         """Parse a package==version line.
         
         Returns tuple of (normalized_name, version) or None if invalid.
-        Handles all valid Python package version specifiers including
-        pre-release, post-release, and local version identifiers.
+        Handles valid Python package version specifiers according to PEP 440.
         """
         if '==' not in line:
             return None
         
-        # More comprehensive pattern to handle all valid version specifiers
-        match = re.match(r'^([a-zA-Z0-9_.-]+)==(.+)$', line)
+        # PEP 440 compliant version pattern
+        # Matches: N.N.N, N.N.NaN, N.N.NbN, N.N.NrcN, N.N.N.postN, N.N.N+local, etc.
+        version_pattern = r'[0-9]+(?:\.[0-9]+)*(?:[a-zA-Z0-9]+(?:\.[0-9]+)?)?(?:\+[a-zA-Z0-9.]+)?'
+        match = re.match(r'^([a-zA-Z0-9_.-]+)==(' + version_pattern + r')$', line)
         if match:
             package_name, version = match.groups()
             # Normalize package name (pip uses lowercase with hyphens)
@@ -125,13 +140,14 @@ class TestDependencies(unittest.TestCase):
                 normalized_name, version = parsed
                 pinned_packages[normalized_name] = version
         
-        # Get installed packages using pip freeze
+        # Get installed packages using pip freeze with timeout
         try:
             result = subprocess.run(
                 ['pip', 'freeze'],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
+                timeout=30  # Prevent hanging processes
             )
             installed_packages = {}
             for line in result.stdout.split('\n'):
@@ -140,8 +156,12 @@ class TestDependencies(unittest.TestCase):
                 if parsed:
                     normalized_name, version = parsed
                     installed_packages[normalized_name] = version
+        except subprocess.TimeoutExpired:
+            self.fail("pip freeze command timed out after 30 seconds")
         except subprocess.CalledProcessError as e:
             self.fail(f"Failed to run pip freeze: {e}")
+        except FileNotFoundError:
+            self.fail("pip command not found in PATH")
         
         # Verify each pinned package is installed at the correct version
         mismatches = []
@@ -177,12 +197,17 @@ class TestDependencies(unittest.TestCase):
             "requirements.lock should contain SHA256 hashes for packages"
         )
         
-        # Count the number of hash entries (should be many)
+        # Count the number of hash entries
+        # Each package should have at least one hash, typically multiple for different platforms
         hash_count = lock_content.count('--hash=sha256:')
+        
+        # Minimum expected: at least one hash per package in requirements.txt
+        # In practice, we expect many more (multiple hashes per package for different wheels)
+        min_expected_hashes = 11  # Number of direct dependencies
         self.assertGreater(
             hash_count,
-            50,  # Should have many hashes for all dependencies
-            f"requirements.lock should contain many hashes (found {hash_count})"
+            min_expected_hashes,
+            f"requirements.lock should contain hashes for all packages (expected >{min_expected_hashes}, found {hash_count})"
         )
 
 

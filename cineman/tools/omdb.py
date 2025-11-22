@@ -5,6 +5,7 @@ from typing import Dict, Any, Optional
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from langchain.tools import tool
+from cineman.metrics import track_external_api_call, track_cache_operation
 
 # Configuration via env
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
@@ -51,6 +52,7 @@ def _set_cache(key: str, value: Dict[str, Any]) -> None:
     _CACHE[key] = {"_ts": time.time(), "value": value}
 
 
+@track_external_api_call('omdb')
 def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
     """
     Fetch OMDb data for `title` and return a structured dict.
@@ -79,7 +81,11 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
         # mark as coming from cache for clarity
         cached_copy = dict(cached)
         cached_copy["_cached"] = True
+        track_cache_operation('omdb', hit=True)
         return cached_copy
+    
+    # Cache miss
+    track_cache_operation('omdb', hit=False)
 
     params = {"apikey": OMDB_API_KEY, "t": title, "plot": "short", "r": "json"}
     session = _make_session()

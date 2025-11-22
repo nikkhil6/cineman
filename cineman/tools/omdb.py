@@ -4,6 +4,7 @@ import logging
 from typing import Dict, Any, Optional
 from langchain.tools import tool
 from cineman.api_client import MovieDataClient, AuthError, NotFoundError, TransientError, QuotaError, APIError
+from cineman.cache import get_cache
 
 logger = logging.getLogger(__name__)
 
@@ -11,10 +12,6 @@ logger = logging.getLogger(__name__)
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 BASE_URL = "https://www.omdbapi.com/"
 OMDB_ENABLED = os.getenv("OMDB_ENABLED", "1") != "0"    # set OMDB_ENABLED=0 to disable OMDb calls
-
-# Simple in-memory TTL cache (process-lifetime). Optional: replace with redis/filecache later.
-_CACHE: Dict[str, Dict[str, Any]] = {}
-_CACHE_TTL = int(os.getenv("OMDB_CACHE_TTL", "300"))  # seconds
 
 # Shared client instance for connection pooling
 _omdb_client = None
@@ -28,37 +25,25 @@ def _get_omdb_client() -> MovieDataClient:
     return _omdb_client
 
 
-def _get_from_cache(key: str) -> Optional[Dict[str, Any]]:
-    entry = _CACHE.get(key)
-    if not entry:
-        return None
-    if time.time() - entry.get("_ts", 0) > _CACHE_TTL:
-        try:
-            del _CACHE[key]
-        except KeyError:
-            pass
-        return None
-    return entry.get("value")
-
-
-def _set_cache(key: str, value: Dict[str, Any]) -> None:
-    _CACHE[key] = {"_ts": time.time(), "value": value}
-
-
 def _clear_cache(key: Optional[str] = None) -> None:
     """
     Clear cache entries. Used primarily for testing.
+    Provided for backward compatibility with existing tests.
     
     Args:
         key: Specific cache key to clear, or None to clear all cache
     """
+    cache = get_cache()
     if key is None:
-        _CACHE.clear()
-    elif key in _CACHE:
-        del _CACHE[key]
+        cache.clear(source="omdb")
+    else:
+        # Extract title from old-style key format "omdb:title"
+        if key.startswith("omdb:"):
+            title = key[5:]  # Remove "omdb:" prefix
+            cache.evict(title, source="omdb")
 
 
-def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
+def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
     """
     Fetch OMDb data for `title` and return a structured dict.
     Possible status values:
@@ -85,12 +70,14 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
             "error_type": "auth"
         }
 
-    cache_key = f"omdb:{title.lower()}"
-    cached = _get_from_cache(cache_key)
+    # Check cache first
+    cache = get_cache()
+    cached = cache.get(title, year=year, source="omdb")
     if cached:
         # mark as coming from cache for clarity
         cached_copy = dict(cached)
         cached_copy["_cached"] = True
+        logger.debug(f"OMDb cache hit for '{title}'")
         return cached_copy
 
     params = {"apikey": OMDB_API_KEY, "t": title, "plot": "short", "r": "json"}
@@ -134,7 +121,9 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
                 "attempts": attempts,
                 "elapsed": elapsed,
             }
-            _set_cache(cache_key, result)
+            # Cache successful result
+            cache.set(title, result, year=year, source="omdb")
+            logger.debug(f"OMDb result cached for '{title}'")
             return result
         else:
             result = {
@@ -144,7 +133,8 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
                 "attempts": attempts,
                 "elapsed": elapsed,
             }
-            _set_cache(cache_key, result)
+            # Cache not_found with medium TTL (1 hour)
+            cache.set(title, result, year=year, source="omdb", ttl=3600)
             return result
 
     except AuthError as e:
@@ -157,7 +147,8 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
             "attempts": attempts,
             "elapsed": elapsed,
         }
-        _set_cache(cache_key, result)
+        # Cache auth errors with shorter TTL (5 minutes)
+        cache.set(title, result, year=year, source="omdb", ttl=300)
         return result
     except QuotaError as e:
         elapsed = time.time() - start
@@ -169,7 +160,8 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
             "attempts": attempts,
             "elapsed": elapsed,
         }
-        _set_cache(cache_key, result)
+        # Cache quota errors with shorter TTL (5 minutes)
+        cache.set(title, result, year=year, source="omdb", ttl=300)
         return result
     except NotFoundError as e:
         elapsed = time.time() - start
@@ -180,7 +172,8 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
             "attempts": attempts,
             "elapsed": elapsed,
         }
-        _set_cache(cache_key, result)
+        # Cache not_found with medium TTL (1 hour)
+        cache.set(title, result, year=year, source="omdb", ttl=3600)
         return result
     except TransientError as e:
         elapsed = time.time() - start
@@ -192,7 +185,7 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
             "attempts": attempts,
             "elapsed": elapsed,
         }
-        _set_cache(cache_key, result)
+        # Don't cache transient errors (may be temporary)
         return result
     except APIError as e:
         elapsed = time.time() - start
@@ -204,7 +197,8 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
             "attempts": attempts,
             "elapsed": elapsed,
         }
-        _set_cache(cache_key, result)
+        # Cache API errors with shorter TTL (5 minutes)
+        cache.set(title, result, year=year, source="omdb", ttl=300)
         return result
     except Exception as e:
         elapsed = time.time() - start
@@ -216,14 +210,18 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
             "attempts": attempts,
             "elapsed": elapsed,
         }
-        _set_cache(cache_key, result)
+        # Don't cache unknown errors
         return result
 
 
 @tool
-def get_movie_facts(title: str) -> Dict[str, Any]:
+def get_movie_facts(title: str, year: str = None) -> Dict[str, Any]:
     """
     LangChain tool: fetch OMDb facts (IMDb rating, director, poster).
     Returns same dict as fetch_omdb_data_core.
+    
+    Args:
+        title (str): Movie title to search for (e.g., "Inception").
+        year (str): Optional release year for better matching (e.g., "2010").
     """
-    return fetch_omdb_data_core(title)
+    return fetch_omdb_data_core(title, year)

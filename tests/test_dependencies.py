@@ -2,12 +2,10 @@
 Test suite for dependency pinning and reproducibility.
 This ensures dependencies are installed at exact pinned versions.
 """
-import os
 import unittest
 import subprocess
 import re
 from pathlib import Path
-from subprocess import TimeoutExpired
 
 
 class TestDependencies(unittest.TestCase):
@@ -201,13 +199,19 @@ class TestDependencies(unittest.TestCase):
         # Each package should have at least one hash, typically multiple for different platforms
         hash_count = lock_content.count('--hash=sha256:')
         
-        # Minimum expected: at least one hash per package in requirements.txt
-        # In practice, we expect many more (multiple hashes per package for different wheels)
-        min_expected_hashes = 11  # Number of direct dependencies
+        # Calculate minimum expected hashes: at least one hash per direct dependency
+        # Count direct dependencies from requirements.txt
+        direct_deps_count = 0
+        for line in self.requirements_content.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('#') and '==' in line:
+                direct_deps_count += 1
+        
+        # We expect many more hashes than direct dependencies (multiple per package for different wheels)
         self.assertGreater(
             hash_count,
-            min_expected_hashes,
-            f"requirements.lock should contain hashes for all packages (expected >{min_expected_hashes}, found {hash_count})"
+            direct_deps_count,
+            f"requirements.lock should contain hashes for all packages (expected >{direct_deps_count}, found {hash_count})"
         )
 
 

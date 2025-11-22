@@ -124,6 +124,89 @@ def extract_movie_titles_from_response(response: str) -> list:
     
     return []
 
+
+def extract_and_validate_movies(response: str, session_id: str = None) -> tuple:
+    """
+    Extract movies from LLM response and validate them against TMDB/OMDb.
+    
+    Args:
+        response: LLM response text containing JSON manifest
+        session_id: Session ID for logging
+        
+    Returns:
+        Tuple of (validated_response, movie_titles, validation_summary)
+    """
+    from cineman.validation import validate_movie_list
+    
+    try:
+        # Find JSON at the end of response
+        json_start = response.rfind('\n\n{')
+        if json_start == -1:
+            json_start = response.rfind('{')
+        
+        if json_start == -1:
+            # No JSON manifest found - likely conversational response
+            return response, [], None
+        
+        # Split response into text part and JSON part
+        text_part = response[:json_start].strip()
+        json_str = response[json_start:].strip()
+        if json_str.startswith('\n\n'):
+            json_str = json_str[2:]
+        
+        # Parse JSON manifest
+        manifest = json.loads(json_str)
+        if 'movies' not in manifest or not isinstance(manifest['movies'], list):
+            return response, [], None
+        
+        movies = manifest['movies']
+        if not movies:
+            return response, [], None
+        
+        # Validate movies
+        valid_movies, dropped_movies, summary = validate_movie_list(movies, session_id)
+        
+        # Build validation message if there were drops or corrections
+        validation_notes = []
+        
+        if dropped_movies:
+            dropped_titles = [m.get('title', 'Unknown') for m in dropped_movies]
+            validation_notes.append(
+                f"\n\n**Note:** {len(dropped_movies)} recommendation(s) were filtered out because "
+                f"they could not be verified in movie databases: {', '.join(dropped_titles)}. "
+                f"This helps ensure all recommendations are real, accurate movies."
+            )
+        
+        # Count corrections
+        corrected_count = sum(1 for m in valid_movies if m.get('validation', {}).get('corrections'))
+        if corrected_count > 0:
+            validation_notes.append(
+                f"\n**Note:** {corrected_count} movie detail(s) were automatically corrected "
+                f"to match official database records."
+            )
+        
+        # Rebuild manifest with only valid movies
+        updated_manifest = {"movies": valid_movies}
+        updated_json = json.dumps(updated_manifest, indent=2)
+        
+        # Combine text part with updated manifest and validation notes
+        validated_response = text_part
+        if validation_notes:
+            validated_response += '\n' + ''.join(validation_notes)
+        validated_response += '\n\n' + updated_json
+        
+        # Extract titles for tracking
+        movie_titles = [m.get('title', '') for m in valid_movies if m.get('title')]
+        
+        return validated_response, movie_titles, summary
+        
+    except (json.JSONDecodeError, Exception) as e:
+        print(f"Error in extract_and_validate_movies: {e}")
+        import traceback
+        traceback.print_exc()
+        # Return original response on error
+        return response, extract_movie_titles_from_response(response), None
+
 # --- API Endpoint for Chat Communication ---
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -187,21 +270,37 @@ def chat():
         # Get updated remaining count after increment
         updated_stats = rate_limiter.get_usage_stats()
         
-        # Extract movie titles from response and add to session
-        new_movies = extract_movie_titles_from_response(agent_response)
+        # Validate movie recommendations if present in response
+        validated_response, new_movies, validation_summary = extract_and_validate_movies(
+            agent_response, 
+            session_id
+        )
+        
+        # Add validated movies to session tracking
         if new_movies:
             session_data.add_recommended_movies(new_movies)
         
-        # Add messages to session history
+        # Add messages to session history (store validated response)
         session_data.add_message("user", user_message)
-        session_data.add_message("assistant", agent_response)
+        session_data.add_message("assistant", validated_response)
         
-        # Return the response as JSON to the JavaScript frontend
-        return jsonify({
-            "response": agent_response, 
+        # Build response with validation info
+        response_data = {
+            "response": validated_response, 
             "session_id": session_id,
             "remaining_calls": updated_stats['remaining']
-        })
+        }
+        
+        # Add validation metrics if available
+        if validation_summary:
+            response_data["validation"] = {
+                "checked": validation_summary["total_checked"],
+                "valid": validation_summary["valid_count"],
+                "dropped": validation_summary["dropped_count"],
+                "avg_latency_ms": round(validation_summary["avg_latency_ms"], 1)
+            }
+        
+        return jsonify(response_data)
     
     except Exception as e:
         print(f"Chat API Error: {e}")

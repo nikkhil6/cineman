@@ -1,37 +1,31 @@
 import os
 import time
-import requests
+import logging
 from typing import Dict, Any, Optional
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from langchain.tools import tool
+from cineman.api_client import MovieDataClient, AuthError, NotFoundError, TransientError, QuotaError, APIError
+
+logger = logging.getLogger(__name__)
 
 # Configuration via env
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 BASE_URL = "https://www.omdbapi.com/"
 OMDB_ENABLED = os.getenv("OMDB_ENABLED", "1") != "0"    # set OMDB_ENABLED=0 to disable OMDb calls
-OMDB_TIMEOUT = float(os.getenv("OMDB_TIMEOUT", "8"))   # seconds
-OMDB_RETRIES = int(os.getenv("OMDB_RETRIES", "2"))     # retry count (on idempotent errors)
-OMDB_BACKOFF = float(os.getenv("OMDB_BACKOFF", "0.8")) # backoff factor for urllib3 Retry
 
 # Simple in-memory TTL cache (process-lifetime). Optional: replace with redis/filecache later.
 _CACHE: Dict[str, Dict[str, Any]] = {}
 _CACHE_TTL = int(os.getenv("OMDB_CACHE_TTL", "300"))  # seconds
 
+# Shared client instance for connection pooling
+_omdb_client = None
 
-def _make_session(retries: int = OMDB_RETRIES, backoff: float = OMDB_BACKOFF) -> requests.Session:
-    session = requests.Session()
-    retry = Retry(
-        total=retries,
-        backoff_factor=backoff,
-        status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=frozenset(["GET", "HEAD"]),
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
+
+def _get_omdb_client() -> MovieDataClient:
+    """Get or create the shared OMDb client instance."""
+    global _omdb_client
+    if _omdb_client is None:
+        _omdb_client = MovieDataClient()
+    return _omdb_client
 
 
 def _get_from_cache(key: str) -> Optional[Dict[str, Any]]:
@@ -57,9 +51,10 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
     Possible status values:
       - success
       - not_found
-      - forbidden
+      - forbidden (auth_error)
       - disabled (OMDb disabled via env)
       - error
+      - quota_error
 
     Returned dict includes 'raw' (OMDb JSON) when available, and 'attempts' / 'elapsed' for diagnostics.
     """
@@ -71,7 +66,11 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
         return {"status": "disabled", "error": "OMDb calls disabled via OMDB_ENABLED=0"}
 
     if not OMDB_API_KEY:
-        return {"status": "error", "error": "OMDb API Key not configured."}
+        return {
+            "status": "error",
+            "error": "OMDb API Key not configured.",
+            "error_type": "auth"
+        }
 
     cache_key = f"omdb:{title.lower()}"
     cached = _get_from_cache(cache_key)
@@ -82,39 +81,23 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
         return cached_copy
 
     params = {"apikey": OMDB_API_KEY, "t": title, "plot": "short", "r": "json"}
-    session = _make_session()
+    client = _get_omdb_client()
 
     start = time.time()
+    # Note: MovieDataClient tracks attempts internally, we estimate here for backward compatibility
     attempts = 0
     try:
-        attempts += 1
-        resp = session.get(BASE_URL, params=params, timeout=OMDB_TIMEOUT)
+        attempts = client.max_retries + 1  # Will be corrected on success
+        response = client.get(
+            BASE_URL,
+            params=params,
+            api_name="OMDb"
+        )
         elapsed = time.time() - start
-
-        # If OMDb returns 403 or other statuses, we handle them explicitly
-        if resp.status_code == 403:
-            result = {
-                "status": "forbidden",
-                "error": f"403 Forbidden from OMDb: {resp.text[:200]}",
-                "attempts": attempts,
-                "elapsed": elapsed,
-            }
-            _set_cache(cache_key, result)
-            return result
-
-        # If a 4xx/5xx occurred, include status in error
-        if resp.status_code >= 400:
-            result = {
-                "status": "error",
-                "error": f"HTTP {resp.status_code} from OMDb: {resp.text[:200]}",
-                "attempts": attempts,
-                "elapsed": elapsed,
-            }
-            _set_cache(cache_key, result)
-            return result
+        attempts = 1  # Success on some attempt
 
         # Parse JSON
-        data = resp.json()
+        data = response.json()
         if data.get("Response") == "True":
             # Extract Rotten Tomatoes ratings from Ratings array
             rt_tomatometer = None
@@ -151,22 +134,75 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
             _set_cache(cache_key, result)
             return result
 
-    except requests.exceptions.RequestException as re:
+    except AuthError as e:
         elapsed = time.time() - start
-        # Connection reset / connection abort typically raises a RequestException subclass
-        err_text = str(re)
+        logger.error(f"OMDb authentication error: {e.message}")
         result = {
-            "status": "error",
-            "error": f"Request error: {err_text}",
+            "status": "forbidden",
+            "error": e.message,
+            "error_type": "auth",
             "attempts": attempts,
             "elapsed": elapsed,
         }
-        # cache errors to avoid hammering OMDb repeatedly for transient state
+        _set_cache(cache_key, result)
+        return result
+    except QuotaError as e:
+        elapsed = time.time() - start
+        logger.warning(f"OMDb quota exceeded: {e.message}")
+        result = {
+            "status": "quota_error",
+            "error": e.message,
+            "error_type": "quota",
+            "attempts": attempts,
+            "elapsed": elapsed,
+        }
+        _set_cache(cache_key, result)
+        return result
+    except NotFoundError as e:
+        elapsed = time.time() - start
+        # This shouldn't happen at the HTTP level for OMDb, but handle it anyway
+        result = {
+            "status": "not_found",
+            "error": e.message,
+            "attempts": attempts,
+            "elapsed": elapsed,
+        }
+        _set_cache(cache_key, result)
+        return result
+    except TransientError as e:
+        elapsed = time.time() - start
+        logger.error(f"OMDb transient error after retries: {e.message}")
+        result = {
+            "status": "error",
+            "error": e.message,
+            "error_type": "transient",
+            "attempts": attempts,
+            "elapsed": elapsed,
+        }
+        _set_cache(cache_key, result)
+        return result
+    except APIError as e:
+        elapsed = time.time() - start
+        logger.error(f"OMDb API error: {e.message}")
+        result = {
+            "status": "error",
+            "error": e.message,
+            "error_type": e.error_type.value,
+            "attempts": attempts,
+            "elapsed": elapsed,
+        }
         _set_cache(cache_key, result)
         return result
     except Exception as e:
         elapsed = time.time() - start
-        result = {"status": "error", "error": str(e), "attempts": attempts, "elapsed": elapsed}
+        logger.error(f"OMDb unexpected error: {str(e)}")
+        result = {
+            "status": "error",
+            "error": str(e),
+            "error_type": "unknown",
+            "attempts": attempts,
+            "elapsed": elapsed,
+        }
         _set_cache(cache_key, result)
         return result
 

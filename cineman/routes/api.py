@@ -1,10 +1,11 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify, session, Response
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
 from cineman.models import db, MovieInteraction
 from cineman.schemas import parse_movie_from_api, MovieRecommendation
 from cineman.api_status import check_all_apis
 from cineman.rate_limiter import get_gemini_rate_limiter
+from cineman.metrics import get_metrics, update_rate_limit_metrics
 from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
 import uuid
@@ -385,4 +386,48 @@ def rate_limit_status():
         return jsonify({
             "status": "error",
             "message": "Failed to get rate limit status"
+        }), 500
+
+
+@bp.route("/metrics", methods=["GET"])
+def metrics():
+    """
+    GET /api/metrics
+    Expose Prometheus metrics for monitoring.
+    
+    Returns metrics in Prometheus text format including:
+    - HTTP request counts and durations
+    - External API call counts and durations (TMDB, OMDB, Gemini)
+    - Cache hit/miss rates
+    - Movie validation statistics
+    - Rate limiter usage
+    - LLM invocation statistics
+    - Session metrics
+    
+    Note: This endpoint does not expose sensitive information like API keys
+    or user data. Only aggregated statistics are returned.
+    """
+    try:
+        # Update rate limit metrics before generating output
+        # Use try-except to not fail the entire endpoint if rate limiter has issues
+        try:
+            rate_limiter = get_gemini_rate_limiter()
+            usage_stats = rate_limiter.get_usage_stats()
+            update_rate_limit_metrics(
+                usage_stats.get('call_count', 0),
+                usage_stats.get('daily_limit', 0),
+                usage_stats.get('remaining', 0)
+            )
+        except Exception as rate_limiter_error:
+            # Log the error but continue generating metrics
+            print(f"Warning: Could not update rate limit metrics: {rate_limiter_error}")
+        
+        # Generate and return metrics
+        metrics_text, content_type = get_metrics()
+        return Response(metrics_text, mimetype=content_type)
+    except Exception as e:
+        print(f"Error generating metrics: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to generate metrics"
         }), 500

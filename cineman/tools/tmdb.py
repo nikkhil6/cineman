@@ -2,12 +2,14 @@ import requests
 import os
 from typing import Dict, Any
 from langchain.tools import tool
+from cineman.metrics import track_external_api_call
 
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 
 
+@track_external_api_call('tmdb')
 def get_movie_poster_core(title: str) -> Dict[str, Any]:
     """
     Core TMDb lookup. Searches TMDb for `title` and returns a dict with keys:

@@ -8,9 +8,15 @@ from cineman.session_manager import get_session_manager
 from cineman.routes.api import bp as api_bp
 from cineman.models import db
 from cineman.rate_limiter import get_gemini_rate_limiter
+from cineman.metrics import (
+    http_requests_total, http_request_duration_seconds,
+    track_llm_invocation, track_rate_limit_exceeded,
+    track_duplicate_recommendation, update_active_sessions
+)
 import os
 import json
 import logging
+import time
 
 # Configure logger for app
 logger = logging.getLogger(__name__)
@@ -93,6 +99,28 @@ def ensure_db_initialized():
             print("✅ Database tables verified/created on first request.")
         except Exception as e:
             print(f"⚠️  Could not initialize database tables: {e}")
+
+# Middleware to track HTTP request metrics
+@app.before_request
+def before_request_metrics():
+    """Store request start time for duration tracking."""
+    request._start_time = time.time()
+
+@app.after_request
+def after_request_metrics(response):
+    """Track HTTP request metrics after each request."""
+    if hasattr(request, '_start_time'):
+        duration = time.time() - request._start_time
+        # Get endpoint or use path
+        endpoint = request.endpoint or request.path
+        method = request.method
+        status = response.status_code
+        
+        # Track metrics
+        http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
+        http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
+    
+    return response
 
 # --- Health Check Endpoint (for Render) ---
 @app.route('/health')
@@ -228,6 +256,8 @@ def chat():
         allowed, remaining, error_message = rate_limiter.check_limit()
         
         if not allowed:
+            # Track rate limit exceeded event
+            track_rate_limit_exceeded()
             # Rate limit exceeded - return graceful error message
             return jsonify({
                 "response": f"🎬 **Daily API Limit Reached**\n\n{error_message}\n\n"
@@ -260,11 +290,19 @@ def chat():
         # Format chat history for LangChain
         formatted_history = format_chat_history(chat_history[-6:])  # Last 3 exchanges
         
-        # Invoke the LangChain Chain with chat history
-        agent_response = movie_chain.invoke({
-            "user_input": enhanced_user_message,
-            "chat_history": formatted_history
-        })
+        # Invoke the LangChain Chain with chat history and track duration
+        llm_start_time = time.time()
+        try:
+            agent_response = movie_chain.invoke({
+                "user_input": enhanced_user_message,
+                "chat_history": formatted_history
+            })
+            llm_duration = time.time() - llm_start_time
+            track_llm_invocation(success=True, duration=llm_duration)
+        except Exception as llm_error:
+            llm_duration = time.time() - llm_start_time
+            track_llm_invocation(success=False, duration=llm_duration)
+            raise
         
         # Increment rate limiter counter after successful API call
         rate_limiter.increment()
@@ -280,6 +318,10 @@ def chat():
         
         # Add validated movies to session tracking
         if new_movies:
+            # Check for duplicates before adding
+            for movie in new_movies:
+                if movie in recommended_movies:
+                    track_duplicate_recommendation()
             session_data.add_recommended_movies(new_movies)
         
         # Add messages to session history (store validated response)

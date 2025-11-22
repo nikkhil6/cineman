@@ -433,11 +433,38 @@ Potential improvements:
 
 ## License
 
-This project is open source and available for personal and educational use.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Third-Party API Attribution
+
+This application uses third-party APIs and their data is subject to their respective terms:
+
+**The Movie Database (TMDB)**
+- This product uses the TMDB API but is not endorsed or certified by TMDB.
+- Movie data and images are sourced from [The Movie Database (TMDB)](https://www.themoviedb.org/).
+- TMDB API is used under their [API Terms of Use](https://www.themoviedb.org/api-terms-of-use).
+- For non-commercial use only, unless you have a commercial TMDB API license.
+
+**Open Movie Database (OMDb)**
+- Movie ratings and metadata are sourced from [OMDb API](https://www.omdbapi.com/).
+- OMDb API requires an API key for usage, available at their website.
+- Data is used in accordance with OMDb API terms of service.
 
 ## Contributing
 
-Feel free to submit issues, fork the repository, and create pull requests for any improvements.
+Contributions are welcome! By contributing to this project, you agree that your contributions will be licensed under the MIT License.
+
+Please feel free to:
+- Submit issues for bugs, feature requests, or improvements
+- Fork the repository and create pull requests
+- Improve documentation
+- Share feedback and suggestions
+
+When contributing, please ensure:
+- Your code follows the existing style and conventions
+- You test your changes thoroughly
+- You update documentation as needed
+- You respect the attribution requirements for TMDB and OMDb APIs
 
 ## Acknowledgments
 

@@ -526,14 +526,17 @@ class TestEdgeCases:
         
         assert result is not None
     
-    def test_none_value(self):
-        """Test that None values are not stored."""
+    def test_empty_dict_value(self):
+        """Test that empty dict values can be stored and retrieved."""
         cache = MovieCache()
         # Set and get should work even with minimal data
         cache.set("Test", {}, source="tmdb")
         result = cache.get("Test", source="tmdb")
         
+        # Should successfully store and retrieve empty dict
         assert result is not None
+        assert isinstance(result, dict)
+        assert len(result) == 0
 
 
 class TestCacheIntegration:

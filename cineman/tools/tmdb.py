@@ -89,7 +89,9 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
             "vote_count": vote_count,
         }
         
-        # Cache successful result using input year parameter for key consistency
+        # Cache successful result
+        # Note: We use the input year (if provided) for cache key consistency.
+        # This ensures lookups with the same year always hit the same cache entry.
         cache.set(title, result, year=year, source="tmdb")
         logger.debug(f"TMDB result cached for '{title}'")
         

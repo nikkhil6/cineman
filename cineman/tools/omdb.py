@@ -38,8 +38,9 @@ def _clear_cache(key: Optional[str] = None) -> None:
         cache.clear(source="omdb")
     else:
         # Extract title from old-style key format "omdb:title"
+        # The original implementation used lowercase titles, so we maintain that
         if key.startswith("omdb:"):
-            title = key[5:]  # Remove "omdb:" prefix
+            title = key[5:]  # Remove "omdb:" prefix (already lowercase)
             cache.evict(title, source="omdb")
 
 

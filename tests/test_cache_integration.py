@@ -2,9 +2,9 @@
 Integration tests for cache functionality.
 
 These tests focus on validating that:
-1. Cache is properly integrated with tools
-2. Cache improves performance by reducing API calls
-3. Cache handles edge cases correctly
+1. Cache is properly integrated with tools.
+2. Cache improves performance by reducing API calls.
+3. Cache handles edge cases correctly.
 
 Note: Most detailed cache behavior is tested in test_cache.py unit tests.
 These integration tests validate the end-to-end scenarios.

@@ -171,7 +171,7 @@ class MovieCache:
         normalized = title.lower()
         
         # Remove common punctuation but keep hyphens and apostrophes
-        normalized = re.sub(r'[^\w\s\'-]', '', normalized)
+        normalized = re.sub(r"[^\w\s'-]", '', normalized)
         
         # Normalize whitespace
         normalized = ' '.join(normalized.split())

@@ -12,10 +12,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency list then install for Docker cache friendliness
-COPY requirements.txt /app/requirements.txt
+# Copy dependency lists then install for Docker cache friendliness
+# Use requirements.lock for reproducible builds with hash verification
+COPY requirements.txt requirements.lock /app/
 RUN pip install --upgrade pip \
- && pip install --no-cache-dir -r /app/requirements.txt
+ && pip install --no-cache-dir -r /app/requirements.lock
 
 # Copy app code
 COPY . /app

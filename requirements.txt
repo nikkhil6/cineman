@@ -1,25 +1,25 @@
 # Web Framework
-flask>=3.0.0
-gunicorn>=21.2.0
+flask==3.1.2
+gunicorn==23.0.0
 
 # Database
-flask-sqlalchemy>=3.1.0
-psycopg2-binary>=2.9.0
+flask-sqlalchemy==3.1.1
+psycopg2-binary==2.9.11
 
 # LangChain dependencies
-langchain>=0.1.0
-langchain-core>=0.1.0
-langchain-google-genai>=1.0.0
+langchain==1.0.8
+langchain-core==1.1.0
+langchain-google-genai==3.1.0
 
 # HTTP requests
-requests>=2.31.0
+requests==2.32.5
 
 # Environment variables (optional but recommended)
-python-dotenv>=1.0.0
+python-dotenv==1.2.1
 
 # Data validation and schemas
-pydantic>=2.0.0
+pydantic==2.12.4
 
 # Google Cloud - Secret Manager (used to fetch GEMINI key at runtime)
-google-cloud-secret-manager>=2.13.0
-google-auth>=2.0.0
+google-cloud-secret-manager==2.25.0
+google-auth==2.43.0

@@ -69,9 +69,18 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
 3. **Install dependencies:**
+
+For reproducible builds with exact versions (recommended):
+```bash
+pip install -r requirements.lock
+```
+
+Or install direct dependencies only:
 ```bash
 pip install -r requirements.txt
 ```
+
+**Note:** All dependencies are pinned to exact versions for reproducibility and supply chain security. The `requirements.lock` file includes cryptographic hashes for additional security verification.
 
 4. **Verify installation:**
 ```bash
@@ -336,6 +345,34 @@ python -m cineman.chain
 ```bash
 python scripts/verify_dependencies.py
 ```
+
+You can also run the dependency pinning test:
+```bash
+python -m unittest tests.test_dependencies -v
+```
+
+### Managing Dependencies
+
+All Python dependencies are pinned to exact versions for reproducibility and security:
+
+**To add a new dependency:**
+1. Add it to `requirements.txt` with exact version (e.g., `new-package==1.2.3`)
+2. Regenerate the lock file with hashes:
+   ```bash
+   pip-compile --generate-hashes --output-file=requirements.lock requirements.txt
+   ```
+3. Install and test:
+   ```bash
+   pip install -r requirements.lock
+   python -m unittest tests.test_dependencies -v
+   ```
+
+**To update dependencies:**
+1. Update version in `requirements.txt`
+2. Regenerate lock file (command above)
+3. Run full test suite to verify compatibility
+
+**Note:** `requirements.lock` includes all transitive dependencies with SHA256 hashes for supply chain security. Always use `requirements.lock` for production deployments.
 
 ### Adding New Tools
 

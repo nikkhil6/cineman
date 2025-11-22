@@ -1,7 +1,0 @@
-Defaulting to user installation because normal site-packages is not writeable
-Collecting prometheus-client
-  Downloading prometheus_client-0.23.1-py3-none-any.whl.metadata (1.9 kB)
-Downloading prometheus_client-0.23.1-py3-none-any.whl (61 kB)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 61.1/61.1 kB 18.7 MB/s eta 0:00:00
-Installing collected packages: prometheus-client
-Successfully installed prometheus-client-0.23.1

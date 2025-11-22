@@ -73,7 +73,7 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
         poster_path = first_result.get("poster_path")
         tmdb_id = first_result.get("id")
         matched_title = first_result.get("title")
-        year = (first_result.get("release_date") or "")[:4]
+        result_year = (first_result.get("release_date") or "")[:4]
         vote_average = first_result.get("vote_average")
         vote_count = first_result.get("vote_count")
 
@@ -82,14 +82,14 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
         result = {
             "status": "success",
             "poster_url": poster_url,
-            "year": year,
+            "year": result_year,
             "title": matched_title,
             "tmdb_id": tmdb_id,
             "vote_average": vote_average,
             "vote_count": vote_count,
         }
         
-        # Cache successful result
+        # Cache successful result using input year parameter for key consistency
         cache.set(title, result, year=year, source="tmdb")
         logger.debug(f"TMDB result cached for '{title}'")
         

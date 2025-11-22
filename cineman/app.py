@@ -7,6 +7,7 @@ from cineman.chain import get_recommendation_chain, build_session_context, forma
 from cineman.session_manager import get_session_manager
 from cineman.routes.api import bp as api_bp
 from cineman.models import db
+from cineman.rate_limiter import get_gemini_rate_limiter
 import os
 import json
 
@@ -137,6 +138,23 @@ def chat():
         if not user_message:
             return jsonify({"response": "Please type a movie request."}), 400
 
+        # Check rate limit before making API call
+        rate_limiter = get_gemini_rate_limiter()
+        allowed, remaining, error_message = rate_limiter.check_limit()
+        
+        if not allowed:
+            # Rate limit exceeded - return graceful error message
+            return jsonify({
+                "response": f"🎬 **Daily API Limit Reached**\n\n{error_message}\n\n"
+                           "In the meantime, you can:\n"
+                           "- Browse your watchlist for movies you've saved\n"
+                           "- Review previously recommended movies in this session\n"
+                           "- Come back tomorrow for fresh recommendations!\n\n"
+                           "Thank you for understanding! 🙏",
+                "rate_limit_exceeded": True,
+                "remaining_calls": 0
+            }), 429
+
         # Get or create session for chat history
         session_id = session.get('session_id')
         session_id, session_data = session_manager.get_or_create_session(session_id)
@@ -163,6 +181,12 @@ def chat():
             "chat_history": formatted_history
         })
         
+        # Increment rate limiter counter after successful API call
+        rate_limiter.increment()
+        
+        # Get updated remaining count after increment
+        updated_stats = rate_limiter.get_usage_stats()
+        
         # Extract movie titles from response and add to session
         new_movies = extract_movie_titles_from_response(agent_response)
         if new_movies:
@@ -173,7 +197,11 @@ def chat():
         session_data.add_message("assistant", agent_response)
         
         # Return the response as JSON to the JavaScript frontend
-        return jsonify({"response": agent_response, "session_id": session_id})
+        return jsonify({
+            "response": agent_response, 
+            "session_id": session_id,
+            "remaining_calls": updated_stats['remaining']
+        })
     
     except Exception as e:
         print(f"Chat API Error: {e}")

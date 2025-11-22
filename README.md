@@ -304,6 +304,18 @@ cineman/
 2. Request a free API key
 3. Set as `OMDB_API_KEY` environment variable
 
+### Rate Limiting Configuration (Optional)
+By default, the application enforces a limit of 50 Gemini API calls per day (matching the free tier limit). You can customize this:
+
+1. Set the `GEMINI_DAILY_LIMIT` environment variable to your desired limit
+2. Example: `export GEMINI_DAILY_LIMIT=100` for paid tier
+
+The rate limiter:
+- Tracks API usage in the database (persistent across restarts)
+- Automatically resets the counter at midnight UTC
+- Returns a graceful error message (HTTP 429) when the limit is reached
+- Provides a `/api/rate-limit` endpoint to check current usage
+
 ## Development
 
 ### Running Tests
@@ -397,6 +409,11 @@ This application now includes a complete movie recommendation experience:
 - **Interactive flip cards**: 3D animations and modal view for movie details
 - **Mobile-optimized navigation**: Swipe gestures for browsing movies
 - **Session management**: New Session button to clear history and start fresh
+- **Rate Limiting**: Intelligent API usage tracking with daily limits (50 calls/day for free tier)
+  - Persistent tracking across restarts using database storage
+  - Automatic daily reset at midnight UTC
+  - Graceful degradation with user-friendly error messages
+  - Rate limit status API endpoint for monitoring usage
 - **GCP deployment support**: App Engine and Cloud Run ready
 - **Automated CI/CD workflows**: GitHub Actions for deployment
 - **Comprehensive testing suite**: Unit tests, integration tests, and interactive testing tools

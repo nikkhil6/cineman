@@ -43,6 +43,13 @@ SENSITIVE_FIELD_NAMES = {
 EMAIL_PATTERN = re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
 
 
+# Fields that should never be scrubbed (e.g., request tracking)
+SAFE_FIELD_NAMES = {
+    "request_id", "session_id", "event", "timestamp", "level",
+    "service", "environment", "duration_ms", "status_code",
+}
+
+
 def scrub_sensitive_data(value: Any, parent_key: str = None) -> Any:
     """
     Recursively scrub sensitive data from log entries.
@@ -59,12 +66,30 @@ def scrub_sensitive_data(value: Any, parent_key: str = None) -> Any:
     elif isinstance(value, list):
         return [scrub_sensitive_data(item, parent_key) for item in value]
     elif isinstance(value, str):
+        # Never scrub safe fields like request_id, session_id
+        if parent_key and parent_key.lower() in SAFE_FIELD_NAMES:
+            return value
+        
         # Check if parent key is a sensitive field name
         if parent_key and parent_key.lower() in SENSITIVE_FIELD_NAMES:
             return "[REDACTED]"
         
-        # Scrub API keys and tokens in string content
+        # Scrub API keys (looking for 20+ character alphanumeric sequences that look like keys)
+        # Pattern: AIza... or any long alphanumeric string in certain contexts
         scrubbed = value
+        
+        # Bearer tokens
+        scrubbed = re.sub(r'Bearer\s+[A-Za-z0-9_-]+', 'Bearer [REDACTED]', scrubbed, flags=re.IGNORECASE)
+        
+        # Google API key pattern (AIza... with 20+ more characters)
+        scrubbed = re.sub(r'AIza[A-Za-z0-9_-]{20,}', '[REDACTED]', scrubbed)
+        
+        # Generic API key pattern - alphanumeric strings 25+ chars (likely API keys)
+        # But skip if it looks like a UUID (has dashes in specific positions)
+        if not re.match(r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$', value, re.IGNORECASE):
+            scrubbed = re.sub(r'\b[A-Za-z0-9_-]{25,}\b', '[REDACTED]', scrubbed)
+        
+        # Specific patterns
         for pattern_name, pattern in SENSITIVE_PATTERNS.items():
             scrubbed = pattern.sub(r'\1[REDACTED]', scrubbed)
         
@@ -73,6 +98,10 @@ def scrub_sensitive_data(value: Any, parent_key: str = None) -> Any:
         
         return scrubbed
     else:
+        # Never scrub safe fields
+        if parent_key and parent_key.lower() in SAFE_FIELD_NAMES:
+            return value
+        
         # Check if parent key is sensitive (for non-string values)
         if parent_key and parent_key.lower() in SENSITIVE_FIELD_NAMES:
             return "[REDACTED]"

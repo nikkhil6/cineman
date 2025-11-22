@@ -67,7 +67,7 @@ function parseManifestAndStrip(replyText) {
   const possible = replyText.slice(startIdx);
   try {
     const parsed = JSON.parse(possible);
-    if (parsed && Array.isArray(parsed.movies) && parsed.movies.length === 3) {
+    if (parsed && Array.isArray(parsed.movies) && parsed.movies.length > 0 && parsed.movies.length <= 10) {
       let assistantRaw = replyText.slice(0, startIdx).trim();
       let assistantClean = assistantRaw;
       for (const m of parsed.movies) {

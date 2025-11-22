@@ -17,7 +17,7 @@ import re
 import logging
 import time
 from typing import Dict, Any, Optional, List, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
 
@@ -50,16 +50,12 @@ class ValidationResult:
     matched_year: Optional[str] = None
     matched_director: Optional[str] = None
     source: str = "none"
-    corrections: Dict[str, Tuple[str, str]] = None  # field -> (old_value, new_value)
+    corrections: Dict[str, Tuple[str, str]] = field(default_factory=dict)  # field -> (old_value, new_value)
     error_message: Optional[str] = None
     should_drop: bool = False
     latency_ms: float = 0.0
     tmdb_data: Optional[Dict[str, Any]] = None
     omdb_data: Optional[Dict[str, Any]] = None
-    
-    def __post_init__(self):
-        if self.corrections is None:
-            self.corrections = {}
 
 
 def normalize_text(text: str) -> str:
@@ -208,13 +204,18 @@ def validate_against_tmdb(title: str, year: Optional[str] = None) -> Dict[str, A
     """
     Validate movie against TMDB API.
     
+    Note: The year parameter is accepted for future enhancement but not currently
+    used by get_movie_poster_core(). Adding year filtering would require modifying
+    the TMDB tool, which is outside the scope of this validation feature.
+    
     Args:
         title: Movie title to validate
-        year: Optional year for better matching
+        year: Optional year for better matching (not currently used)
         
     Returns:
         Dict with validation results from TMDB
     """
+    # TODO: Future enhancement - pass year to TMDB API for better filtering
     result = get_movie_poster_core(title)
     
     return {
@@ -232,13 +233,18 @@ def validate_against_omdb(title: str, year: Optional[str] = None) -> Dict[str, A
     """
     Validate movie against OMDb API.
     
+    Note: The year parameter is accepted for future enhancement but not currently
+    used by fetch_omdb_data_core(). Adding year filtering would require modifying
+    the OMDb tool, which is outside the scope of this validation feature.
+    
     Args:
         title: Movie title to validate
-        year: Optional year for better matching
+        year: Optional year for better matching (not currently used)
         
     Returns:
         Dict with validation results from OMDb
     """
+    # TODO: Future enhancement - pass year to OMDb API for better filtering
     result = fetch_omdb_data_core(title)
     
     return {

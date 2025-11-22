@@ -20,12 +20,12 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
 # Sensitive data patterns for scrubbing
 SENSITIVE_PATTERNS = {
-    "api_key": re.compile(r'(api[_-]?key["\s:=]+)([a-zA-Z0-9_-]{20,})', re.IGNORECASE),
-    "gemini_key": re.compile(r'(gemini[_-]?api[_-]?key["\s:=]+)([a-zA-Z0-9_-]{20,})', re.IGNORECASE),
-    "tmdb_key": re.compile(r'(tmdb[_-]?api[_-]?key["\s:=]+)([a-zA-Z0-9_-]{20,})', re.IGNORECASE),
-    "omdb_key": re.compile(r'(omdb[_-]?api[_-]?key["\s:=]+)([a-zA-Z0-9_-]{20,})', re.IGNORECASE),
-    "bearer_token": re.compile(r'(bearer\s+)([a-zA-Z0-9_-]{20,})', re.IGNORECASE),
-    "authorization": re.compile(r'(authorization["\s:=]+)([a-zA-Z0-9_-]{20,})', re.IGNORECASE),
+    "api_key": re.compile(r'(api[_\-]?key["\s:=]+)([a-zA-Z0-9_\-]{20,})', re.IGNORECASE),
+    "gemini_key": re.compile(r'(gemini[_\-]?api[_\-]?key["\s:=]+)([a-zA-Z0-9_\-]{20,})', re.IGNORECASE),
+    "tmdb_key": re.compile(r'(tmdb[_\-]?api[_\-]?key["\s:=]+)([a-zA-Z0-9_\-]{20,})', re.IGNORECASE),
+    "omdb_key": re.compile(r'(omdb[_\-]?api[_\-]?key["\s:=]+)([a-zA-Z0-9_\-]{20,})', re.IGNORECASE),
+    "bearer_token": re.compile(r'(bearer\s+)([a-zA-Z0-9_\-]{20,})', re.IGNORECASE),
+    "authorization": re.compile(r'(authorization["\s:=]+)([a-zA-Z0-9_\-]{20,})', re.IGNORECASE),
 }
 
 # Sensitive field names that should be fully redacted
@@ -79,15 +79,15 @@ def scrub_sensitive_data(value: Any, parent_key: str = None) -> Any:
         scrubbed = value
         
         # Bearer tokens
-        scrubbed = re.sub(r'Bearer\s+[A-Za-z0-9_-]+', 'Bearer [REDACTED]', scrubbed, flags=re.IGNORECASE)
+        scrubbed = re.sub(r'Bearer\s+[A-Za-z0-9_\-]+', 'Bearer [REDACTED]', scrubbed, flags=re.IGNORECASE)
         
         # Google API key pattern (AIza... with 20+ more characters)
-        scrubbed = re.sub(r'AIza[A-Za-z0-9_-]{20,}', '[REDACTED]', scrubbed)
+        scrubbed = re.sub(r'AIza[A-Za-z0-9_\-]{20,}', '[REDACTED]', scrubbed)
         
         # Generic API key pattern - alphanumeric strings 25+ chars (likely API keys)
         # But skip if it looks like a UUID (has dashes in specific positions)
-        if not re.match(r'^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$', value, re.IGNORECASE):
-            scrubbed = re.sub(r'\b[A-Za-z0-9_-]{25,}\b', '[REDACTED]', scrubbed)
+        if not re.match(r'^[a-f0-9]{8}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{4}\-[a-f0-9]{12}$', value, re.IGNORECASE):
+            scrubbed = re.sub(r'\b[A-Za-z0-9_\-]{25,}\b', '[REDACTED]', scrubbed)
         
         # Specific patterns
         for pattern_name, pattern in SENSITIVE_PATTERNS.items():

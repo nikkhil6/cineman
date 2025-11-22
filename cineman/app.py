@@ -17,6 +17,7 @@ from cineman.logging_context import set_session_id, bind_context
 from cineman.logging_metrics import track_phase, log_llm_usage
 import os
 import json
+import time
 
 # Configure structured logger for app
 logger = get_logger(__name__)
@@ -289,7 +290,6 @@ def chat():
         formatted_history = format_chat_history(chat_history[-6:])  # Last 3 exchanges
         
         # Invoke the LangChain Chain with chat history (with timing)
-        import time
         llm_start = time.time()
         agent_response = movie_chain.invoke({
             "user_input": enhanced_user_message,

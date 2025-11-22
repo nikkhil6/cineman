@@ -43,6 +43,10 @@ class TestLicense(unittest.TestCase):
 
     def test_license_contains_mit_header(self):
         """Verify that LICENSE file contains MIT License header."""
+        self.assertIsNotNone(
+            self.license_content,
+            f"LICENSE file not found at {self.license_path}"
+        )
         self.assertIn(
             "MIT License",
             self.license_content,
@@ -51,6 +55,10 @@ class TestLicense(unittest.TestCase):
 
     def test_license_contains_copyright_notice(self):
         """Verify that LICENSE file contains copyright notice."""
+        self.assertIsNotNone(
+            self.license_content,
+            f"LICENSE file not found at {self.license_path}"
+        )
         self.assertIn(
             "Copyright",
             self.license_content,
@@ -59,6 +67,10 @@ class TestLicense(unittest.TestCase):
 
     def test_license_contains_permission_grant(self):
         """Verify that LICENSE file contains permission grant."""
+        self.assertIsNotNone(
+            self.license_content,
+            f"LICENSE file not found at {self.license_path}"
+        )
         self.assertIn(
             "Permission is hereby granted",
             self.license_content,
@@ -67,6 +79,10 @@ class TestLicense(unittest.TestCase):
 
     def test_license_contains_warranty_disclaimer(self):
         """Verify that LICENSE file contains warranty disclaimer."""
+        self.assertIsNotNone(
+            self.license_content,
+            f"LICENSE file not found at {self.license_path}"
+        )
         self.assertIn(
             "WITHOUT WARRANTY OF ANY KIND",
             self.license_content,

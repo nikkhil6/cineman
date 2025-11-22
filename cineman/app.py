@@ -2,18 +2,24 @@
 import cineman.secret_helper as secret_helper
 secret_helper.inject_gemini_key()
 
+# Initialize structured logging early
+from cineman.logging_config import get_logger, configure_structlog
+configure_structlog()
+
 from flask import Flask, request, jsonify, render_template, session
 from cineman.chain import get_recommendation_chain, build_session_context, format_chat_history
 from cineman.session_manager import get_session_manager
 from cineman.routes.api import bp as api_bp
 from cineman.models import db
 from cineman.rate_limiter import get_gemini_rate_limiter
+from cineman.logging_middleware import init_logging_middleware
+from cineman.logging_context import set_session_id, bind_context
+from cineman.logging_metrics import track_phase, log_llm_usage
 import os
 import json
-import logging
 
-# Configure logger for app
-logger = logging.getLogger(__name__)
+# Configure structured logger for app
+logger = get_logger(__name__)
 
 # Get the project root directory (parent of cineman package)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,6 +27,9 @@ TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
+
+# Initialize logging middleware
+init_logging_middleware(app)
 
 # Configure secret key for sessions (unified for both features)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -41,8 +50,11 @@ if os.getenv('GAE_ENV', '').startswith('standard') or os.getenv('CLOUD_RUN_SERVI
         # Fallback to in-memory SQLite on GCP (data not persisted between instances)
         # Note: This is for testing. For production, use Cloud SQL.
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/cineman.db'
-        print("⚠️  WARNING: Using temporary SQLite database. Data will not persist between deployments.")
-        print("⚠️  For production, configure Cloud SQL and set DATABASE_URL environment variable.")
+        logger.warning(
+            "database_config_warning",
+            message="Using temporary SQLite database. Data will not persist between deployments.",
+            recommendation="Configure Cloud SQL and set DATABASE_URL environment variable for production"
+        )
 else:
     # Local development - use file-based SQLite
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'cineman.db')
@@ -64,22 +76,26 @@ def init_db():
 # Wrap in try-except to handle potential issues during import
 try:
     init_db()
-    print("✅ Database tables initialized successfully.")
+    logger.info("database_initialized", message="Database tables initialized successfully")
 except Exception as e:
-    print(f"⚠️  Warning: Could not initialize database tables on import: {e}")
-    print("⚠️  Tables will be created on first request if needed.")
+    logger.warning(
+        "database_init_delayed",
+        message="Could not initialize database tables on import",
+        error=str(e),
+        fallback="Tables will be created on first request if needed"
+    )
 
 # Cache the chain instance globally
 try:
     movie_chain = get_recommendation_chain()
-    print("🎬 Movie Recommendation Chain loaded successfully.")
+    logger.info("chain_initialized", message="Movie Recommendation Chain loaded successfully")
 except Exception as e:
-    print(f"FATAL: Failed to load AI Chain: {e}")
+    logger.error("chain_init_failed", message="Failed to load AI Chain", error=str(e))
     movie_chain = None  # Set to None to prevent calls
 
 # Initialize session manager for chat history and movie tracking
 session_manager = get_session_manager()
-print("📋 Session Manager initialized successfully.")
+logger.info("session_manager_initialized", message="Session Manager initialized successfully")
 
 # Ensure database tables are created before first request (fallback if import-time init failed)
 @app.before_request
@@ -90,9 +106,9 @@ def ensure_db_initialized():
             with app.app_context():
                 db.create_all()
             app._db_initialized = True
-            print("✅ Database tables verified/created on first request.")
+            logger.info("database_verified", message="Database tables verified/created on first request")
         except Exception as e:
-            print(f"⚠️  Could not initialize database tables: {e}")
+            logger.error("database_verification_failed", error=str(e))
 
 # --- Health Check Endpoint (for Render) ---
 @app.route('/health')
@@ -124,7 +140,7 @@ def extract_movie_titles_from_response(response: str) -> list:
             if 'movies' in manifest and isinstance(manifest['movies'], list):
                 return [movie.get('title', '') for movie in manifest['movies'] if movie.get('title')]
     except (json.JSONDecodeError, Exception) as e:
-        print(f"Could not extract movie titles: {e}")
+        logger.debug("extract_titles_failed", error=str(e))
     
     return []
 
@@ -213,6 +229,7 @@ def extract_and_validate_movies(response: str, session_id: str = None) -> tuple:
 @app.route('/chat', methods=['POST'])
 def chat():
     if not movie_chain:
+        logger.error("chat_request_failed", reason="AI service not initialized")
         return jsonify({"response": "Error: AI service failed to initialize."}), 503
 
     try:
@@ -221,6 +238,7 @@ def chat():
         user_message = data.get('message', '')
         
         if not user_message:
+            logger.info("chat_request_rejected", reason="empty_message")
             return jsonify({"response": "Please type a movie request."}), 400
 
         # Check rate limit before making API call
@@ -228,6 +246,7 @@ def chat():
         allowed, remaining, error_message = rate_limiter.check_limit()
         
         if not allowed:
+            logger.warning("rate_limit_exceeded", remaining_calls=0)
             # Rate limit exceeded - return graceful error message
             return jsonify({
                 "response": f"🎬 **Daily API Limit Reached**\n\n{error_message}\n\n"
@@ -245,9 +264,18 @@ def chat():
         session_id, session_data = session_manager.get_or_create_session(session_id)
         session['session_id'] = session_id
         
+        # Bind session_id to logging context
+        set_session_id(session_id)
+        
         # Get chat history and recommended movies from session
         chat_history = session_data.get_chat_history(limit=10)  # Last 10 messages
         recommended_movies = session_data.get_recommended_movies()
+        
+        logger.info(
+            "chat_context_loaded",
+            history_count=len(chat_history),
+            recommended_count=len(recommended_movies)
+        )
         
         # Build session context to avoid repeating recommendations
         session_context = build_session_context(chat_history, recommended_movies)
@@ -260,11 +288,22 @@ def chat():
         # Format chat history for LangChain
         formatted_history = format_chat_history(chat_history[-6:])  # Last 3 exchanges
         
-        # Invoke the LangChain Chain with chat history
+        # Invoke the LangChain Chain with chat history (with timing)
+        import time
+        llm_start = time.time()
         agent_response = movie_chain.invoke({
             "user_input": enhanced_user_message,
             "chat_history": formatted_history
         })
+        llm_duration_ms = (time.time() - llm_start) * 1000
+        
+        # Log LLM call (Note: Gemini API doesn't always return token counts in response)
+        logger.info(
+            "llm_call_completed",
+            model="gemini-2.5-flash",
+            duration_ms=round(llm_duration_ms, 2),
+            response_length=len(agent_response) if agent_response else 0
+        )
         
         # Increment rate limiter counter after successful API call
         rate_limiter.increment()
@@ -272,15 +311,27 @@ def chat():
         # Get updated remaining count after increment
         updated_stats = rate_limiter.get_usage_stats()
         
-        # Validate movie recommendations if present in response
-        validated_response, new_movies, validation_summary = extract_and_validate_movies(
-            agent_response, 
-            session_id
+        logger.info(
+            "rate_limit_updated",
+            call_count=updated_stats.get('call_count', 0),
+            remaining=updated_stats.get('remaining', 0)
         )
+        
+        # Validate movie recommendations if present in response
+        with track_phase("movie_validation", session_id=session_id):
+            validated_response, new_movies, validation_summary = extract_and_validate_movies(
+                agent_response, 
+                session_id
+            )
         
         # Add validated movies to session tracking
         if new_movies:
             session_data.add_recommended_movies(new_movies)
+            logger.info(
+                "movies_recommended",
+                count=len(new_movies),
+                titles=new_movies
+            )
         
         # Add messages to session history (store validated response)
         session_data.add_message("user", user_message)
@@ -301,11 +352,21 @@ def chat():
                 "dropped": validation_summary["dropped_count"],
                 "avg_latency_ms": round(validation_summary["avg_latency_ms"], 1)
             }
+            
+            logger.info(
+                "validation_completed",
+                total_checked=validation_summary["total_checked"],
+                valid_count=validation_summary["valid_count"],
+                dropped_count=validation_summary["dropped_count"],
+                avg_latency_ms=round(validation_summary["avg_latency_ms"], 1)
+            )
+        
+        logger.info("chat_request_completed", response_length=len(validated_response))
         
         return jsonify(response_data)
     
     except Exception as e:
-        logger.error(f"Chat API Error: {e}", exc_info=True)
+        logger.error("chat_request_failed", error=str(e), exc_info=True)
         return jsonify({"response": "An unexpected error occurred while processing your request."}), 500
 
 # --- API Endpoint to clear/reset session ---
@@ -316,10 +377,11 @@ def clear_session():
         session_id = session.get('session_id')
         if session_id:
             session_manager.delete_session(session_id)
+            logger.info("session_cleared", session_id=session_id)
         session.clear()
         return jsonify({"status": "success", "message": "Session cleared successfully."})
     except Exception as e:
-        print(f"Session clear error: {e}")
+        logger.error("session_clear_failed", error=str(e))
         return jsonify({"status": "error", "message": "Failed to clear session. Please try again."}), 500
 
 if __name__ == '__main__':

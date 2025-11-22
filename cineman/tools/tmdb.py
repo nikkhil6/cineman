@@ -2,6 +2,10 @@ import requests
 import os
 from typing import Dict, Any
 from langchain.tools import tool
+from cineman.logging_config import get_logger
+from cineman.logging_metrics import track_external_api_call
+
+logger = get_logger(__name__)
 
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
@@ -22,18 +26,21 @@ def get_movie_poster_core(title: str) -> Dict[str, Any]:
     This function is intended to be called programmatically by server routes.
     """
     if not TMDB_API_KEY:
+        logger.error("tmdb_api_key_missing")
         return {"status": "error", "error": "TMDb API Key not configured."}
 
     search_url = f"{TMDB_BASE_URL}/search/movie"
     params = {"api_key": TMDB_API_KEY, "query": title}
 
     try:
-        r = requests.get(search_url, params=params, timeout=6)
-        r.raise_for_status()
-        search_response = r.json()
+        with track_external_api_call("tmdb", "search_movie", title=title):
+            r = requests.get(search_url, params=params, timeout=6)
+            r.raise_for_status()
+            search_response = r.json()
 
         results = search_response.get("results") or []
         if len(results) == 0:
+            logger.info("tmdb_movie_not_found", title=title)
             return {"status": "not_found", "poster_url": "", "title": title}
 
         first_result = results[0]
@@ -46,6 +53,13 @@ def get_movie_poster_core(title: str) -> Dict[str, Any]:
 
         poster_url = f"{IMAGE_BASE_URL}{poster_path}" if poster_path else ""
 
+        logger.info(
+            "tmdb_movie_found",
+            title=matched_title,
+            year=year,
+            tmdb_id=tmdb_id
+        )
+
         return {
             "status": "success",
             "poster_url": poster_url,
@@ -56,6 +70,7 @@ def get_movie_poster_core(title: str) -> Dict[str, Any]:
             "vote_count": vote_count,
         }
     except Exception as e:
+        logger.error("tmdb_request_failed", title=title, error=str(e))
         return {"status": "error", "error": str(e)}
 
 

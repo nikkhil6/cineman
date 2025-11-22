@@ -5,6 +5,10 @@ from typing import Dict, Any, Optional
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from langchain.tools import tool
+from cineman.logging_config import get_logger
+from cineman.logging_metrics import track_external_api_call, log_cache_event
+
+logger = get_logger(__name__)
 
 # Configuration via env
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
@@ -79,7 +83,10 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
         # mark as coming from cache for clarity
         cached_copy = dict(cached)
         cached_copy["_cached"] = True
+        log_cache_event(cache_key, "get", hit=True, title=title)
         return cached_copy
+    
+    log_cache_event(cache_key, "get", hit=False, title=title)
 
     params = {"apikey": OMDB_API_KEY, "t": title, "plot": "short", "r": "json"}
     session = _make_session()
@@ -88,7 +95,8 @@ def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
     attempts = 0
     try:
         attempts += 1
-        resp = session.get(BASE_URL, params=params, timeout=OMDB_TIMEOUT)
+        with track_external_api_call("omdb", "fetch_movie_facts", title=title):
+            resp = session.get(BASE_URL, params=params, timeout=OMDB_TIMEOUT)
         elapsed = time.time() - start
 
         # If OMDb returns 403 or other statuses, we handle them explicitly

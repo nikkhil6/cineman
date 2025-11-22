@@ -335,8 +335,12 @@ class TestMetricsErrorScenarios(unittest.TestCase):
             mock_rate_limiter.return_value.get_usage_stats.side_effect = Exception("DB error")
             
             response = self.client.get('/api/metrics')
-            # Should still return metrics even if rate limiter fails
-            self.assertEqual(response.status_code, 500)
+            # Should still return metrics even if rate limiter fails (graceful degradation)
+            self.assertEqual(response.status_code, 200)
+            # Verify it's still valid Prometheus format
+            data = response.data.decode('utf-8')
+            self.assertIn('# HELP', data)
+            self.assertIn('cineman_http_requests_total', data)
     
     def test_metrics_after_validation_errors(self):
         """Test metrics collection after validation errors."""

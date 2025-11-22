@@ -409,13 +409,18 @@ def metrics():
     """
     try:
         # Update rate limit metrics before generating output
-        rate_limiter = get_gemini_rate_limiter()
-        usage_stats = rate_limiter.get_usage_stats()
-        update_rate_limit_metrics(
-            usage_stats.get('call_count', 0),
-            usage_stats.get('daily_limit', 0),
-            usage_stats.get('remaining', 0)
-        )
+        # Use try-except to not fail the entire endpoint if rate limiter has issues
+        try:
+            rate_limiter = get_gemini_rate_limiter()
+            usage_stats = rate_limiter.get_usage_stats()
+            update_rate_limit_metrics(
+                usage_stats.get('call_count', 0),
+                usage_stats.get('daily_limit', 0),
+                usage_stats.get('remaining', 0)
+            )
+        except Exception as rate_limiter_error:
+            # Log the error but continue generating metrics
+            print(f"Warning: Could not update rate limit metrics: {rate_limiter_error}")
         
         # Generate and return metrics
         metrics_text, content_type = get_metrics()

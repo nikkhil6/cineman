@@ -5,7 +5,16 @@ from langchain.tools import tool
 from cineman.api_client import MovieDataClient, AuthError, NotFoundError, TransientError, QuotaError, APIError
 from cineman.cache import get_cache
 
+# Use standard logger - structured logging is handled via get_logger() if available
 logger = logging.getLogger(__name__)
+
+# Try to import structured logging (optional)
+try:
+    from cineman.logging_config import get_logger
+    logger = get_logger(__name__)
+    _structured_logging_available = True
+except ImportError:
+    _structured_logging_available = False
 
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
@@ -49,7 +58,10 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
     cache = get_cache()
     cached_result = cache.get(title, year=year, source="tmdb")
     if cached_result is not None:
-        logger.debug(f"TMDB cache hit for '{title}'")
+        if _structured_logging_available:
+            logger.info("tmdb_cache_hit", title=title, year=year)
+        else:
+            logger.debug(f"TMDB cache hit for '{title}'")
         return cached_result
 
     search_url = f"{TMDB_BASE_URL}/search/movie"
@@ -93,11 +105,18 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
         # Note: We use the input year (if provided) for cache key consistency.
         # This ensures lookups with the same year always hit the same cache entry.
         cache.set(title, result, year=year, source="tmdb")
-        logger.debug(f"TMDB result cached for '{title}'")
+        
+        if _structured_logging_available:
+            logger.info("tmdb_movie_found", title=matched_title, year=result_year, tmdb_id=tmdb_id)
+        else:
+            logger.debug(f"TMDB result cached for '{title}'")
         
         return result
     except AuthError as e:
-        logger.error(f"TMDB authentication error: {e.message}")
+        if _structured_logging_available:
+            logger.error("tmdb_auth_error", title=title, error=e.message)
+        else:
+            logger.error(f"TMDB authentication error: {e.message}")
         result = {
             "status": "auth_error",
             "error": e.message,
@@ -107,7 +126,10 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
         cache.set(title, result, year=year, source="tmdb", ttl=300)
         return result
     except QuotaError as e:
-        logger.warning(f"TMDB quota exceeded: {e.message}")
+        if _structured_logging_available:
+            logger.warning("tmdb_quota_exceeded", title=title, error=e.message)
+        else:
+            logger.warning(f"TMDB quota exceeded: {e.message}")
         result = {
             "status": "quota_error",
             "error": e.message,
@@ -124,7 +146,10 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
         cache.set(title, result, year=year, source="tmdb", ttl=3600)
         return result
     except TransientError as e:
-        logger.error(f"TMDB transient error after retries: {e.message}")
+        if _structured_logging_available:
+            logger.error("tmdb_transient_error", title=title, error=e.message)
+        else:
+            logger.error(f"TMDB transient error after retries: {e.message}")
         result = {
             "status": "error",
             "error": e.message,
@@ -133,7 +158,10 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
         # Don't cache transient errors (may be temporary)
         return result
     except APIError as e:
-        logger.error(f"TMDB API error: {e.message}")
+        if _structured_logging_available:
+            logger.error("tmdb_api_error", title=title, error=e.message, error_type=e.error_type.value)
+        else:
+            logger.error(f"TMDB API error: {e.message}")
         result = {
             "status": "error",
             "error": e.message,
@@ -143,7 +171,10 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
         cache.set(title, result, year=year, source="tmdb", ttl=300)
         return result
     except Exception as e:
-        logger.error(f"TMDB unexpected error: {str(e)}")
+        if _structured_logging_available:
+            logger.error("tmdb_unexpected_error", title=title, error=str(e))
+        else:
+            logger.error(f"TMDB unexpected error: {str(e)}")
         result = {
             "status": "error",
             "error": str(e),

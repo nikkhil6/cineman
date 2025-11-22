@@ -6,7 +6,16 @@ from langchain.tools import tool
 from cineman.api_client import MovieDataClient, AuthError, NotFoundError, TransientError, QuotaError, APIError
 from cineman.cache import get_cache
 
+# Use standard logger - structured logging is handled via get_logger() if available
 logger = logging.getLogger(__name__)
+
+# Try to import structured logging (optional)
+try:
+    from cineman.logging_config import get_logger
+    logger = get_logger(__name__)
+    _structured_logging_available = True
+except ImportError:
+    _structured_logging_available = False
 
 # Configuration via env
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
@@ -78,7 +87,10 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
         # mark as coming from cache for clarity
         cached_copy = dict(cached)
         cached_copy["_cached"] = True
-        logger.debug(f"OMDb cache hit for '{title}'")
+        if _structured_logging_available:
+            logger.info("omdb_cache_hit", title=title, year=year)
+        else:
+            logger.debug(f"OMDb cache hit for '{title}'")
         return cached_copy
 
     params = {"apikey": OMDB_API_KEY, "t": title, "plot": "short", "r": "json"}
@@ -124,7 +136,10 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
             }
             # Cache successful result
             cache.set(title, result, year=year, source="omdb")
-            logger.debug(f"OMDb result cached for '{title}'")
+            if _structured_logging_available:
+                logger.info("omdb_movie_found", title=data.get("Title"), year=data.get("Year"))
+            else:
+                logger.debug(f"OMDb result cached for '{title}'")
             return result
         else:
             result = {
@@ -140,7 +155,10 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
 
     except AuthError as e:
         elapsed = time.time() - start
-        logger.error(f"OMDb authentication error: {e.message}")
+        if _structured_logging_available:
+            logger.error("omdb_auth_error", title=title, error=e.message)
+        else:
+            logger.error(f"OMDb authentication error: {e.message}")
         result = {
             "status": "forbidden",
             "error": e.message,
@@ -153,7 +171,10 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
         return result
     except QuotaError as e:
         elapsed = time.time() - start
-        logger.warning(f"OMDb quota exceeded: {e.message}")
+        if _structured_logging_available:
+            logger.warning("omdb_quota_exceeded", title=title, error=e.message)
+        else:
+            logger.warning(f"OMDb quota exceeded: {e.message}")
         result = {
             "status": "quota_error",
             "error": e.message,
@@ -178,7 +199,10 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
         return result
     except TransientError as e:
         elapsed = time.time() - start
-        logger.error(f"OMDb transient error after retries: {e.message}")
+        if _structured_logging_available:
+            logger.error("omdb_transient_error", title=title, error=e.message)
+        else:
+            logger.error(f"OMDb transient error after retries: {e.message}")
         result = {
             "status": "error",
             "error": e.message,
@@ -190,7 +214,10 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
         return result
     except APIError as e:
         elapsed = time.time() - start
-        logger.error(f"OMDb API error: {e.message}")
+        if _structured_logging_available:
+            logger.error("omdb_api_error", title=title, error=e.message, error_type=e.error_type.value)
+        else:
+            logger.error(f"OMDb API error: {e.message}")
         result = {
             "status": "error",
             "error": e.message,
@@ -203,7 +230,10 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
         return result
     except Exception as e:
         elapsed = time.time() - start
-        logger.error(f"OMDb unexpected error: {str(e)}")
+        if _structured_logging_available:
+            logger.error("omdb_unexpected_error", title=title, error=str(e))
+        else:
+            logger.error(f"OMDb unexpected error: {str(e)}")
         result = {
             "status": "error",
             "error": str(e),

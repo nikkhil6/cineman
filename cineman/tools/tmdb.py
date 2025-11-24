@@ -2,7 +2,6 @@ import os
 import logging
 from typing import Dict, Any
 from langchain.tools import tool
-from cineman.metrics import track_external_api_call
 from cineman.api_client import MovieDataClient, AuthError, NotFoundError, TransientError, QuotaError, APIError
 from cineman.cache import get_cache
 
@@ -32,7 +31,7 @@ def _get_tmdb_client() -> MovieDataClient:
         _tmdb_client = MovieDataClient()
     return _tmdb_client
 
-@track_external_api_call('tmdb')
+
 def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
     """
     Core TMDb lookup. Searches TMDb for `title` and returns a dict with keys:

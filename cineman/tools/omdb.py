@@ -3,7 +3,6 @@ import time
 import logging
 from typing import Dict, Any, Optional
 from langchain.tools import tool
-from cineman.metrics import track_external_api_call, track_cache_operation
 from cineman.api_client import MovieDataClient, AuthError, NotFoundError, TransientError, QuotaError, APIError
 from cineman.cache import get_cache
 
@@ -22,49 +21,6 @@ except ImportError:
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 BASE_URL = "https://www.omdbapi.com/"
 OMDB_ENABLED = os.getenv("OMDB_ENABLED", "1") != "0"    # set OMDB_ENABLED=0 to disable OMDb calls
-OMDB_TIMEOUT = float(os.getenv("OMDB_TIMEOUT", "8"))   # seconds
-OMDB_RETRIES = int(os.getenv("OMDB_RETRIES", "2"))     # retry count (on idempotent errors)
-OMDB_BACKOFF = float(os.getenv("OMDB_BACKOFF", "0.8")) # backoff factor for urllib3 Retry
-
-# Simple in-memory TTL cache (process-lifetime). Optional: replace with redis/filecache later.
-_CACHE: Dict[str, Dict[str, Any]] = {}
-_CACHE_TTL = int(os.getenv("OMDB_CACHE_TTL", "300"))  # seconds
-
-
-def _make_session(retries: int = OMDB_RETRIES, backoff: float = OMDB_BACKOFF) -> requests.Session:
-    session = requests.Session()
-    retry = Retry(
-        total=retries,
-        backoff_factor=backoff,
-        status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=frozenset(["GET", "HEAD"]),
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
-
-
-def _get_from_cache(key: str) -> Optional[Dict[str, Any]]:
-    entry = _CACHE.get(key)
-    if not entry:
-        return None
-    if time.time() - entry.get("_ts", 0) > _CACHE_TTL:
-        try:
-            del _CACHE[key]
-        except KeyError:
-            pass
-        return None
-    return entry.get("value")
-
-
-def _set_cache(key: str, value: Dict[str, Any]) -> None:
-    _CACHE[key] = {"_ts": time.time(), "value": value}
-
-
-@track_external_api_call('omdb')
-def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
 
 # Shared client instance for connection pooling
 _omdb_client = None
@@ -131,15 +87,11 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
         # mark as coming from cache for clarity
         cached_copy = dict(cached)
         cached_copy["_cached"] = True
-        track_cache_operation('omdb', hit=True)
         if _structured_logging_available:
             logger.info("omdb_cache_hit", title=title, year=year)
         else:
             logger.debug(f"OMDb cache hit for '{title}'")
         return cached_copy
-    
-    # Cache miss
-    track_cache_operation('omdb', hit=False)
 
     params = {"apikey": OMDB_API_KEY, "t": title, "plot": "short", "r": "json"}
     client = _get_omdb_client()

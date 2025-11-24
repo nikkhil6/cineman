@@ -20,7 +20,6 @@ from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass, field
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
-from cineman.metrics import track_validation, movie_validation_duration_seconds
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -482,18 +481,8 @@ def validate_movie_list(
                 **enriched_movie,
                 "drop_reason": result.error_message
             })
-            # Track dropped validation
-            track_validation('dropped')
         else:
             valid_movies.append(enriched_movie)
-            # Track valid or corrected validation
-            if result.corrections:
-                track_validation('corrected')
-            else:
-                track_validation('valid')
-        
-        # Track validation duration
-        movie_validation_duration_seconds.observe(result.latency_ms / 1000.0)
     
     # Build summary
     avg_latency = total_latency / len(movies) if movies else 0

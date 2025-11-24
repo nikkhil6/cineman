@@ -12,13 +12,6 @@ from cineman.session_manager import get_session_manager
 from cineman.routes.api import bp as api_bp
 from cineman.models import db
 from cineman.rate_limiter import get_gemini_rate_limiter
-from cineman.metrics import (
-    http_requests_total, http_request_duration_seconds,
-    track_llm_invocation, track_rate_limit_exceeded,
-    track_duplicate_recommendation, update_active_sessions
-)
-
-
 from cineman.logging_middleware import init_logging_middleware
 from cineman.logging_context import set_session_id, bind_context
 from cineman.logging_metrics import track_phase, log_llm_usage
@@ -36,8 +29,7 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
-# Initialize 
-middleware
+# Initialize logging middleware
 init_logging_middleware(app)
 
 # Configure secret key for sessions (unified for both features)
@@ -118,28 +110,6 @@ def ensure_db_initialized():
             logger.info("database_verified", message="Database tables verified/created on first request")
         except Exception as e:
             logger.error("database_verification_failed", error=str(e))
-
-# Middleware to track HTTP request metrics
-@app.before_request
-def before_request_metrics():
-    """Store request start time for duration tracking."""
-    request._start_time = time.time()
-
-@app.after_request
-def after_request_metrics(response):
-    """Track HTTP request metrics after each request."""
-    if hasattr(request, '_start_time'):
-        duration = time.time() - request._start_time
-        # Get endpoint or use path
-        endpoint = request.endpoint or request.path
-        method = request.method
-        status = response.status_code
-        
-        # Track metrics
-        http_requests_total.labels(method=method, endpoint=endpoint, status=status).inc()
-        http_request_duration_seconds.labels(method=method, endpoint=endpoint).observe(duration)
-    
-    return response
 
 # --- Health Check Endpoint (for Render) ---
 @app.route('/health')
@@ -277,8 +247,6 @@ def chat():
         allowed, remaining, error_message = rate_limiter.check_limit()
         
         if not allowed:
-            # Track rate limit exceeded event
-            track_rate_limit_exceeded()
             logger.warning("rate_limit_exceeded", remaining_calls=0)
             # Rate limit exceeded - return graceful error message
             return jsonify({
@@ -321,19 +289,13 @@ def chat():
         # Format chat history for LangChain
         formatted_history = format_chat_history(chat_history[-6:])  # Last 3 exchanges
         
-        # Invoke the LangChain Chain with chat history and track duration
-        llm_start_time = time.time()
-        try:
-            agent_response = movie_chain.invoke({
-                "user_input": enhanced_user_message,
-                "chat_history": formatted_history
-            })
-            llm_duration = time.time() - llm_start_time
-            track_llm_invocation(success=True, duration=llm_duration)
-        except Exception as llm_error:
-            llm_duration = time.time() - llm_start_time
-            track_llm_invocation(success=False, duration=llm_duration)
-            raise
+        # Invoke the LangChain Chain with chat history (with timing)
+        llm_start = time.time()
+        agent_response = movie_chain.invoke({
+            "user_input": enhanced_user_message,
+            "chat_history": formatted_history
+        })
+        llm_duration_ms = (time.time() - llm_start) * 1000
         
         # Log LLM call (Note: Gemini API doesn't always return token counts in response)
         logger.info(
@@ -364,10 +326,6 @@ def chat():
         
         # Add validated movies to session tracking
         if new_movies:
-            # Check for duplicates before adding
-            for movie in new_movies:
-                if movie in recommended_movies:
-                    track_duplicate_recommendation()
             session_data.add_recommended_movies(new_movies)
             logger.info(
                 "movies_recommended",

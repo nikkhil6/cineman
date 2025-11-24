@@ -200,9 +200,12 @@ cineman/
 │   ├── chain.py             # LangChain recommendation chain with Gemini AI
 │   ├── models.py            # Database models (MovieInteraction)
 │   ├── schemas.py           # Pydantic data schemas for validation
+│   ├── metrics.py           # Prometheus metrics collection
+│   ├── validation.py        # LLM hallucination validation
+│   ├── rate_limiter.py      # API rate limiting
 │   ├── utils.py             # Utility functions
 │   ├── routes/              # API routes
-│   │   └── api.py          # Movie API endpoints
+│   │   └── api.py          # Movie API endpoints and /metrics
 │   └── tools/               # Movie data tools
 │       ├── __init__.py
 │       ├── tmdb.py          # TMDB API integration tool
@@ -210,10 +213,12 @@ cineman/
 ├── tests/                   # Test suite
 │   ├── __init__.py
 │   ├── test_schemas.py      # Schema validation tests
+│   ├── test_metrics.py      # Metrics collection tests
 │   ├── test_tmdb.py         # TMDB tool tests
 │   └── test_omdb.py         # OMDb tool tests
 ├── docs/                    # Documentation
-│   └── SCHEMA_GUIDE.md     # Movie data schema guide
+│   ├── SCHEMA_GUIDE.md     # Movie data schema guide
+│   └── metrics.md          # Metrics and monitoring guide
 ├── scripts/                 # Utility scripts
 │   └── verify_dependencies.py
 ├── templates/               # Flask templates
@@ -315,6 +320,38 @@ The rate limiter:
 - Automatically resets the counter at midnight UTC
 - Returns a graceful error message (HTTP 429) when the limit is reached
 - Provides a `/api/rate-limit` endpoint to check current usage
+
+### Metrics and Monitoring
+
+CineMan exposes comprehensive metrics in Prometheus format for external monitoring:
+
+**Metrics Endpoint:** `GET /api/metrics`
+
+**Available Metrics:**
+- HTTP request counts and latencies (by endpoint and status code)
+- External API call statistics (TMDB, OMDB, Gemini)
+- Cache hit/miss rates for performance optimization
+- Movie validation metrics (valid, dropped, corrected recommendations)
+- Rate limiter usage and quota tracking
+- LLM invocation statistics and performance
+- Active sessions and user engagement
+
+**Example Usage:**
+```bash
+# View metrics in Prometheus format
+curl http://localhost:5000/api/metrics
+
+# Check rate limit status
+curl http://localhost:5000/api/rate-limit
+```
+
+**Key Features:**
+- Prometheus-compatible text format for easy integration
+- No sensitive data exposed (no API keys, user data, or credentials)
+- Real-time performance monitoring and alerting support
+- Comprehensive test coverage including load and error scenarios
+
+For detailed metrics documentation, see [docs/metrics.md](docs/metrics.md).
 
 ## Development
 

@@ -15,7 +15,6 @@ from cineman.logging_context import (
     set_request_id,
     set_session_id,
     clear_context,
-    get_request_id,
 )
 
 logger = get_logger(__name__)

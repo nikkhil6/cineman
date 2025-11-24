@@ -15,13 +15,13 @@ from cineman.rate_limiter import get_gemini_rate_limiter
 from cineman.metrics import (
     http_requests_total, http_request_duration_seconds,
     track_llm_invocation, track_rate_limit_exceeded,
-    track_duplicate_recommendation, update_active_sessions
+    track_duplicate_recommendation
 )
 
 
 from cineman.logging_middleware import init_logging_middleware
-from cineman.logging_context import set_session_id, bind_context
-from cineman.logging_metrics import track_phase, log_llm_usage
+from cineman.logging_context import set_session_id
+from cineman.logging_metrics import track_phase
 import os
 import json
 import time

@@ -6,7 +6,6 @@ from cineman.schemas import parse_movie_from_api, MovieRecommendation
 from cineman.api_status import check_all_apis
 from cineman.rate_limiter import get_gemini_rate_limiter
 from cineman.metrics import get_metrics, update_rate_limit_metrics
-from sqlalchemy.exc import IntegrityError
 from pydantic import ValidationError
 import uuid
 import time

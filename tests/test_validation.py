@@ -400,10 +400,13 @@ class TestValidationWithRealAPIs:
     @pytest.mark.integration
     def test_validate_real_movie_inception(self):
         """Test validation with real API call for Inception."""
-        # This test requires TMDB_API_KEY and OMDB_API_KEY
+        # This test requires valid TMDB_API_KEY and OMDB_API_KEY
         import os
-        if not os.getenv("TMDB_API_KEY") or not os.getenv("OMDB_API_KEY"):
-            pytest.skip("API keys not configured")
+        tmdb_key = os.getenv("TMDB_API_KEY", "")
+        omdb_key = os.getenv("OMDB_API_KEY", "")
+        # Skip if keys are missing or are test placeholders
+        if not tmdb_key or not omdb_key or tmdb_key == "test" or omdb_key == "test":
+            pytest.skip("Real API keys not configured")
         
         result = validate_llm_recommendation(
             title="Inception",
@@ -422,8 +425,11 @@ class TestValidationWithRealAPIs:
     def test_validate_fake_movie(self):
         """Test validation fails for completely fake movie."""
         import os
-        if not os.getenv("TMDB_API_KEY") or not os.getenv("OMDB_API_KEY"):
-            pytest.skip("API keys not configured")
+        tmdb_key = os.getenv("TMDB_API_KEY", "")
+        omdb_key = os.getenv("OMDB_API_KEY", "")
+        # Skip if keys are missing or are test placeholders
+        if not tmdb_key or not omdb_key or tmdb_key == "test" or omdb_key == "test":
+            pytest.skip("Real API keys not configured")
         
         result = validate_llm_recommendation(
             title="The Completely Fabricated Movie That Never Existed 12345",

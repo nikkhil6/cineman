@@ -22,14 +22,6 @@ except ImportError:
 OMDB_API_KEY = os.getenv("OMDB_API_KEY")
 BASE_URL = "https://www.omdbapi.com/"
 OMDB_ENABLED = os.getenv("OMDB_ENABLED", "1") != "0"    # set OMDB_ENABLED=0 to disable OMDb calls
-OMDB_TIMEOUT = float(os.getenv("OMDB_TIMEOUT", "8"))   # seconds
-OMDB_RETRIES = int(os.getenv("OMDB_RETRIES", "2"))     # retry count (on idempotent errors)
-OMDB_BACKOFF = float(os.getenv("OMDB_BACKOFF", "0.8")) # backoff factor for urllib3 Retry
-
-# Simple in-memory TTL cache (process-lifetime). Optional: replace with redis/filecache later.
-_CACHE: Dict[str, Dict[str, Any]] = {}
-_CACHE_TTL = int(os.getenv("OMDB_CACHE_TTL", "300"))  # seconds
-
 
 # Shared client instance for connection pooling
 _omdb_client = None

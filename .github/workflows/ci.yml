@@ -30,5 +30,10 @@ jobs:
         run: |
           python -c "from cineman.app import app; print('Flask app imports successfully!')"
       - name: Run unit tests
+        env:
+          OMDB_API_KEY: test
+          TMDB_API_KEY: test
         run: |
-          OMDB_API_KEY=test python -m pytest tests/test_license.py tests/test_schemas.py tests/test_validation.py tests/test_metrics.py -v
+          python -m pytest tests/ \
+            --ignore-glob='**/test_*_integration.py' \
+            -v --tb=short

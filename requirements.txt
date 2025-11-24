@@ -26,3 +26,5 @@ google-auth>=2.0.0
 
 # Metrics and Monitoring
 prometheus-client>=0.21.0
+# Structured Logging
+structlog>=23.1.0

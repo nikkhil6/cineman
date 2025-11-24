@@ -36,8 +36,7 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 
-# Initialize 
-middleware
+# Initialize logging middleware
 init_logging_middleware(app)
 
 # Configure secret key for sessions (unified for both features)
@@ -339,7 +338,7 @@ def chat():
         logger.info(
             "llm_call_completed",
             model="gemini-2.5-flash",
-            duration_ms=round(llm_duration_ms, 2),
+            duration_ms=round(llm_duration * 1000, 2),
             response_length=len(agent_response) if agent_response else 0
         )
         

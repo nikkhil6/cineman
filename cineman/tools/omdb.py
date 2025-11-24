@@ -31,41 +31,6 @@ _CACHE: Dict[str, Dict[str, Any]] = {}
 _CACHE_TTL = int(os.getenv("OMDB_CACHE_TTL", "300"))  # seconds
 
 
-def _make_session(retries: int = OMDB_RETRIES, backoff: float = OMDB_BACKOFF) -> requests.Session:
-    session = requests.Session()
-    retry = Retry(
-        total=retries,
-        backoff_factor=backoff,
-        status_forcelist=(429, 500, 502, 503, 504),
-        allowed_methods=frozenset(["GET", "HEAD"]),
-        raise_on_status=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
-
-
-def _get_from_cache(key: str) -> Optional[Dict[str, Any]]:
-    entry = _CACHE.get(key)
-    if not entry:
-        return None
-    if time.time() - entry.get("_ts", 0) > _CACHE_TTL:
-        try:
-            del _CACHE[key]
-        except KeyError:
-            pass
-        return None
-    return entry.get("value")
-
-
-def _set_cache(key: str, value: Dict[str, Any]) -> None:
-    _CACHE[key] = {"_ts": time.time(), "value": value}
-
-
-@track_external_api_call('omdb')
-def fetch_omdb_data_core(title: str) -> Dict[str, Any]:
-
 # Shared client instance for connection pooling
 _omdb_client = None
 

@@ -128,6 +128,7 @@ def movie_combined():
         )
         if streaming_result.get("status") == "success":
             streaming = {
+                "status": "success",
                 "platforms": streaming_result.get("platforms", {}),
                 "source": streaming_result.get("source"),
                 "region": streaming_result.get("region", region),

@@ -124,7 +124,7 @@ def _check_watchmode_rate_limit() -> bool:
     """
     global _watchmode_usage
     
-    now = datetime.now(tz=None)  # Using naive datetime for simplicity
+    now = datetime.now()  # Using naive datetime for simplicity
     
     # Reset counter at the start of each month
     if _watchmode_usage["reset_date"] is None or now >= _watchmode_usage["reset_date"]:
@@ -179,9 +179,19 @@ def _get_platform_info(platform_name: str, logo_url: str = None) -> Dict[str, An
     """
     normalized = _normalize_platform_name(platform_name)
     
-    # Check for known platforms
+    # Check for known platforms - use exact match first, then prefix match
+    if normalized in STREAMING_PLATFORM_ICONS:
+        info = STREAMING_PLATFORM_ICONS[normalized]
+        return {
+            "name": info["name"],
+            "icon": info["icon"],
+            "color": info["color"],
+            "logo_url": logo_url
+        }
+    
+    # Try prefix matching for variations (e.g., "netflix_premium" matches "netflix")
     for key, info in STREAMING_PLATFORM_ICONS.items():
-        if key in normalized or normalized in key:
+        if normalized.startswith(key) or key.startswith(normalized):
             return {
                 "name": info["name"],
                 "icon": info["icon"],

@@ -136,7 +136,13 @@ function buildStreamingPlatformsRow(streamingData, isBackSide = false) {
       logo.style.height = '18px';
       logo.style.borderRadius = '4px';
       logo.style.objectFit = 'contain';
-      logo.onerror = () => { logo.textContent = platform.icon || '📺'; logo.style.width = 'auto'; };
+      logo.onerror = () => { 
+        // Replace failed image with icon span
+        const iconSpan = document.createElement('span');
+        iconSpan.textContent = platform.icon || '📺';
+        iconSpan.style.fontSize = '1rem';
+        logo.replaceWith(iconSpan);
+      };
       platformBadge.appendChild(logo);
     } else {
       const icon = document.createElement('span');

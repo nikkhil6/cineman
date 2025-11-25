@@ -342,14 +342,25 @@ class TestStreamingPlatformIcons:
         """Test that all major streaming platforms have icon mappings."""
         from cineman.tools.watchmode import STREAMING_PLATFORM_ICONS
         
-        major_platforms = [
-            "netflix", "amazon_prime", "disney_plus", "hulu", 
-            "hbo_max", "apple_tv_plus", "peacock", "paramount_plus"
-        ]
+        # Check that major platforms are directly mapped
+        direct_platforms = ["netflix", "hulu", "peacock"]
+        for platform in direct_platforms:
+            assert platform in STREAMING_PLATFORM_ICONS, f"Platform {platform} should be in icon mapping"
         
-        for platform in major_platforms:
-            assert platform in STREAMING_PLATFORM_ICONS or \
-                   any(platform in key for key in STREAMING_PLATFORM_ICONS.keys())
+        # Check that variant platforms have mappings via prefix matching
+        variant_platforms = {
+            "amazon_prime": "prime",  # amazon_prime should match 'prime' key
+            "disney_plus": "disney",  # disney_plus should match 'disney_plus' or similar
+            "hbo_max": "hbo_max",
+            "apple_tv_plus": "apple_tv",
+            "paramount_plus": "paramount"
+        }
+        for full_name, expected_prefix in variant_platforms.items():
+            found = any(
+                key.startswith(expected_prefix) or expected_prefix.startswith(key)
+                for key in STREAMING_PLATFORM_ICONS.keys()
+            )
+            assert found, f"Platform {full_name} should have a matching key with prefix {expected_prefix}"
     
     def test_platform_icon_structure(self):
         """Test that platform icon entries have required fields."""

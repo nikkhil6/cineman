@@ -167,27 +167,25 @@
       top: 50%; 
       left: 50%; 
       transform: translate(-50%, -50%); 
-      width: min(850px, 92vw); 
+      width: min(800px, 90vw); 
       z-index: 3000; 
-      height: auto;
-      max-height: none;
+      max-height: 90vh;
       overflow: visible;
+      height: auto;
     }
     .flip-card.is-flipped .flip-card-inner { 
       transform: rotateY(180deg); 
       min-height: auto;
-      max-height: none;
+      max-height: 90vh;
       overflow: visible;
       height: auto;
     }
     .flip-card.is-flipped .flip-card-back {
-      position: relative;
-      height: 600px;
-      max-height: 80vh;
-      overflow-y: scroll !important;
+      max-height: 90vh;
+      overflow-y: auto;
       overflow-x: hidden;
-      display: block;
-      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
     }
     
     /* Backdrop blur when card is flipped */
@@ -229,8 +227,11 @@
       transform: rotateY(180deg); 
       z-index:1; 
       padding:16px; 
+      overflow-y: auto; 
+      overflow-x: hidden;
       background: linear-gradient(180deg,#ffffff,#fbfbfb); 
       align-items:stretch;
+      max-height: 100%;
     }
 
     .poster-image { width:100%; height:280px; object-fit:cover; border-radius:6px; display:block; }

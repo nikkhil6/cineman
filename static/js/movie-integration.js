@@ -56,112 +56,75 @@ function extractRatings(data) {
   return { imdb: imdb || null, rt_tomatometer: rtTom || null, rt_audience: rtAud || null };
 }
 
-/* ----- Streaming data extraction ----- */
-function extractStreamingPlatforms(data) {
-  if (!data || !data.streaming) return null;
-  const streaming = data.streaming;
-  if (!streaming.platforms) return null;
+/* ----- Streaming Platform Helpers ----- */
+function extractStreamingPlatforms(movieData) {
+  if (!movieData || !movieData.streaming) return null;
+  const streaming = movieData.streaming;
+  if (streaming.status !== 'success') return null;
   return streaming;
 }
 
-/* ----- Build streaming platforms row for flip card ----- */
-function buildStreamingPlatformsRow(streamingData, isBackSide = false) {
+function buildStreamingButton(streamingData, container) {
   if (!streamingData || !streamingData.platforms) return null;
   
   const platforms = streamingData.platforms;
-  const subscription = platforms.subscription || [];
-  const rent = platforms.rent || [];
-  const buy = platforms.buy || [];
-  const free = platforms.free || [];
-  
-  // Combine all platforms and mark their types clearly
   const allPlatforms = [
-    ...free.map(p => ({ ...p, displayType: 'free' })),
-    ...subscription.map(p => ({ ...p, displayType: 'subscription' })),
-  ].slice(0, 8);
+    ...(platforms.free || []).map(p => ({ ...p, isFree: true })),
+    ...(platforms.subscription || []).slice(0, 4).map(p => ({ ...p, isFree: false }))
+  ];
   
   if (allPlatforms.length === 0) return null;
   
-  const container = document.createElement('div');
-  container.className = 'streaming-platforms';
-  container.style.display = 'flex';
-  container.style.flexDirection = 'column';
-  container.style.gap = '8px';
-  container.style.marginTop = '12px';
-  container.style.padding = '12px';
-  container.style.borderRadius = '8px';
-  container.style.background = 'rgba(0, 0, 0, 0.03)';
+  // Create a "Where to Watch" button
+  const watchBtn = document.createElement('button');
+  watchBtn.className = 'streaming-watch-btn';
+  watchBtn.innerHTML = '📺 Where to Watch';
+  watchBtn.style.marginTop = '12px';
+  watchBtn.style.padding = '8px 12px';
+  watchBtn.style.borderRadius = '8px';
+  watchBtn.style.border = '1px solid #e5e7eb';
+  watchBtn.style.background = 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)';
+  watchBtn.style.cursor = 'pointer';
+  watchBtn.style.fontSize = '0.85rem';
+  watchBtn.style.fontWeight = '600';
+  watchBtn.style.color = '#0369a1';
+  watchBtn.style.width = '100%';
+  watchBtn.style.transition = 'all 0.2s';
   
-  const headerRow = document.createElement('div');
-  headerRow.style.width = '100%';
-  headerRow.style.textAlign = 'center';
-  headerRow.style.marginBottom = '4px';
-  headerRow.style.fontSize = '0.85rem';
-  headerRow.style.fontWeight = '600';
-  headerRow.style.color = '#374151';
-  headerRow.textContent = '📺 Where to Watch';
-  container.appendChild(headerRow);
+  // Create collapsible streaming panel
+  const streamingPanel = document.createElement('div');
+  streamingPanel.className = 'streaming-panel';
+  streamingPanel.style.display = 'none';
+  streamingPanel.style.marginTop = '8px';
+  streamingPanel.style.padding = '10px';
+  streamingPanel.style.borderRadius = '8px';
+  streamingPanel.style.background = '#f8fafc';
+  streamingPanel.style.border = '1px solid #e2e8f0';
+  streamingPanel.style.maxHeight = '200px';
+  streamingPanel.style.overflowY = 'auto';
   
-  // Create a flex container for the platform badges
-  const badgesContainer = document.createElement('div');
-  badgesContainer.style.display = 'flex';
-  badgesContainer.style.flexWrap = 'wrap';
-  badgesContainer.style.gap = '8px';
-  badgesContainer.style.justifyContent = 'center';
-  
+  // Build platform list
   for (const platform of allPlatforms) {
-    // Determine the link URL
-    const linkUrl = platform.web_url || streamingData.tmdb_link || null;
+    const platformItem = document.createElement('a');
+    platformItem.href = platform.web_url || streamingData.tmdb_link || '#';
+    platformItem.target = '_blank';
+    platformItem.rel = 'noopener noreferrer';
+    platformItem.style.display = 'flex';
+    platformItem.style.alignItems = 'center';
+    platformItem.style.gap = '8px';
+    platformItem.style.padding = '6px 8px';
+    platformItem.style.marginBottom = '4px';
+    platformItem.style.borderRadius = '6px';
+    platformItem.style.textDecoration = 'none';
+    platformItem.style.fontSize = '0.8rem';
+    platformItem.style.transition = 'background 0.2s';
+    platformItem.style.background = platform.isFree ? '#ecfdf5' : '#fff';
+    platformItem.style.border = platform.isFree ? '1px solid #10b981' : '1px solid #e5e7eb';
     
-    // Create an anchor element for proper links
-    const platformLink = document.createElement('a');
-    platformLink.className = 'streaming-badge';
-    platformLink.href = linkUrl || '#';
-    platformLink.target = '_blank';
-    platformLink.rel = 'noopener noreferrer';
-    platformLink.style.display = 'flex';
-    platformLink.style.alignItems = 'center';
-    platformLink.style.gap = '6px';
-    platformLink.style.padding = '8px 14px';
-    platformLink.style.borderRadius = '20px';
-    platformLink.style.textDecoration = 'none';
-    platformLink.style.fontSize = '0.8rem';
-    platformLink.style.cursor = linkUrl ? 'pointer' : 'default';
-    platformLink.style.transition = 'transform 0.2s, box-shadow 0.2s, border-color 0.2s';
-    platformLink.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+    platformItem.onmouseenter = () => { platformItem.style.background = platform.isFree ? '#d1fae5' : '#f1f5f9'; };
+    platformItem.onmouseleave = () => { platformItem.style.background = platform.isFree ? '#ecfdf5' : '#fff'; };
     
-    // Style based on free vs paid
-    if (platform.displayType === 'free') {
-      platformLink.style.background = '#ecfdf5';
-      platformLink.style.border = '2px solid #10b981';
-      platformLink.title = `Watch FREE on ${platform.name}`;
-    } else {
-      platformLink.style.background = '#fff';
-      platformLink.style.border = '1px solid #e5e7eb';
-      platformLink.title = `Watch on ${platform.name} (Subscription)`;
-    }
-    
-    // Add hover effect
-    platformLink.addEventListener('mouseenter', () => {
-      platformLink.style.transform = 'translateY(-2px)';
-      platformLink.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-      platformLink.style.borderColor = platform.displayType === 'free' ? '#059669' : '#3b82f6';
-    });
-    platformLink.addEventListener('mouseleave', () => {
-      platformLink.style.transform = 'translateY(0)';
-      platformLink.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
-      platformLink.style.borderColor = platform.displayType === 'free' ? '#10b981' : '#e5e7eb';
-    });
-    
-    // Prevent card flip when clicking
-    platformLink.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!linkUrl) {
-        e.preventDefault();
-      }
-    });
-    
-    // Platform logo
+    // Logo
     if (platform.logo_url) {
       const logo = document.createElement('img');
       logo.src = platform.logo_url;
@@ -170,70 +133,50 @@ function buildStreamingPlatformsRow(streamingData, isBackSide = false) {
       logo.style.height = '24px';
       logo.style.borderRadius = '4px';
       logo.style.objectFit = 'contain';
-      logo.onerror = () => { 
-        logo.style.display = 'none';
-      };
-      platformLink.appendChild(logo);
+      logo.onerror = () => { logo.style.display = 'none'; };
+      platformItem.appendChild(logo);
     }
     
-    // Platform name
+    // Name
     const name = document.createElement('span');
     name.textContent = platform.name;
+    name.style.flex = '1';
+    name.style.color = platform.isFree ? '#047857' : '#374151';
     name.style.fontWeight = '500';
-    name.style.color = platform.displayType === 'free' ? '#047857' : '#1f2937';
-    platformLink.appendChild(name);
+    platformItem.appendChild(name);
     
-    // Free or Paid label
-    if (platform.displayType === 'free') {
-      const freeTag = document.createElement('span');
-      freeTag.textContent = 'FREE';
-      freeTag.style.fontSize = '0.6rem';
-      freeTag.style.background = '#10b981';
-      freeTag.style.color = '#fff';
-      freeTag.style.padding = '2px 6px';
-      freeTag.style.borderRadius = '4px';
-      freeTag.style.fontWeight = '700';
-      platformLink.appendChild(freeTag);
-    } else {
-      const paidTag = document.createElement('span');
-      paidTag.textContent = 'PAID';
-      paidTag.style.fontSize = '0.6rem';
-      paidTag.style.background = '#6b7280';
-      paidTag.style.color = '#fff';
-      paidTag.style.padding = '2px 6px';
-      paidTag.style.borderRadius = '4px';
-      paidTag.style.fontWeight = '600';
-      platformLink.appendChild(paidTag);
-    }
+    // Badge
+    const badge = document.createElement('span');
+    badge.textContent = platform.isFree ? 'FREE' : 'PAID';
+    badge.style.fontSize = '0.65rem';
+    badge.style.padding = '2px 6px';
+    badge.style.borderRadius = '4px';
+    badge.style.fontWeight = '700';
+    badge.style.background = platform.isFree ? '#10b981' : '#9ca3af';
+    badge.style.color = '#fff';
+    platformItem.appendChild(badge);
     
-    // Link icon to indicate it's clickable
-    if (linkUrl) {
-      const linkIcon = document.createElement('span');
-      linkIcon.textContent = '↗';
-      linkIcon.style.fontSize = '0.75rem';
-      linkIcon.style.color = '#9ca3af';
-      linkIcon.style.marginLeft = '2px';
-      platformLink.appendChild(linkIcon);
-    }
+    // Prevent card flip when clicking
+    platformItem.addEventListener('click', (e) => { e.stopPropagation(); });
     
-    badgesContainer.appendChild(platformLink);
+    streamingPanel.appendChild(platformItem);
   }
   
-  container.appendChild(badgesContainer);
+  // Toggle panel on button click
+  watchBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = streamingPanel.style.display !== 'none';
+    streamingPanel.style.display = isVisible ? 'none' : 'block';
+    watchBtn.innerHTML = isVisible ? '📺 Where to Watch' : '📺 Hide Platforms';
+  });
   
-  // Add attribution
-  if (streamingData.attribution) {
-    const attribution = document.createElement('div');
-    attribution.style.width = '100%';
-    attribution.style.textAlign = 'center';
-    attribution.style.marginTop = '8px';
-    attribution.style.fontSize = '0.65rem';
-    attribution.style.color = '#9ca3af';
-    attribution.textContent = streamingData.attribution;
-    container.appendChild(attribution);
-  }
+  // Prevent panel clicks from bubbling
+  streamingPanel.addEventListener('click', (e) => { e.stopPropagation(); });
   
-  return container;
+  container.appendChild(watchBtn);
+  container.appendChild(streamingPanel);
+  
+  return watchBtn;
 }
 
 /* ----- Manifest parsing ----- */
@@ -606,34 +549,25 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   actionButtons.appendChild(watchlistBtn);
   meta.appendChild(actionButtons);
   
-  // Extract streaming data for use on back side only
-  const streamingData = extractStreamingPlatforms(movieData || {});
-  
   front.appendChild(meta);
 
-  // BACK - full detailed content with poster on left (original two-column layout)
+  // BACK - full detailed content with poster on left
   const back = document.createElement('div');
   back.className = 'flip-card-face flip-card-back';
-  // Make the back card itself scrollable with explicit height
-  back.style.position = 'relative';
-  back.style.height = '600px'; // Fixed height for the back card
-  back.style.maxHeight = '80vh';
-  back.style.overflowY = 'scroll'; // Force scroll
-  back.style.overflowX = 'hidden';
-  back.style.WebkitOverflowScrolling = 'touch'; // Smooth scroll on iOS
   
   // Create two-column layout container
   const backLayout = document.createElement('div');
   backLayout.style.display = 'flex';
   backLayout.style.gap = '16px';
-  backLayout.style.minHeight = 'min-content'; // Allow content to determine height
+  backLayout.style.flex = '1';
+  backLayout.style.minHeight = '0';
+  backLayout.style.overflow = 'hidden';
   
-  // LEFT COLUMN - Poster (sticky)
+  // LEFT COLUMN - Poster
   const leftColumn = document.createElement('div');
-  leftColumn.style.flex = '0 0 200px';
-  leftColumn.style.position = 'sticky';
-  leftColumn.style.top = '0';
-  leftColumn.style.alignSelf = 'flex-start';
+  leftColumn.style.flex = '0 0 240px';
+  leftColumn.style.display = 'flex';
+  leftColumn.style.flexDirection = 'column';
   
   const backPoster = document.createElement('img');
   backPoster.className = 'back-poster-image';
@@ -642,23 +576,32 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backPoster.style.width = '100%';
   backPoster.style.borderRadius = '8px';
   backPoster.style.objectFit = 'cover';
-  backPoster.style.maxHeight = '300px';
+  backPoster.style.maxHeight = '360px';
   backPoster.onerror = () => { backPoster.style.display = 'none'; };
   
   leftColumn.appendChild(backPoster);
   
-  // RIGHT COLUMN - Content (flows naturally, parent scrolls)
+  // Add "Where to Watch" streaming button below poster
+  const streamingData = extractStreamingPlatforms(movieData || {});
+  if (streamingData) {
+    buildStreamingButton(streamingData, leftColumn);
+  }
+  
+  // RIGHT COLUMN - Content
   const rightColumn = document.createElement('div');
   rightColumn.style.flex = '1';
   rightColumn.style.display = 'flex';
   rightColumn.style.flexDirection = 'column';
-  rightColumn.style.gap = '12px';
+  rightColumn.style.minHeight = '0';
+  rightColumn.style.overflow = 'hidden';
   
   // Add movie title and metadata at the top of right column
   const backHeader = document.createElement('div');
   backHeader.className = 'back-header';
+  backHeader.style.marginBottom = '12px';
   backHeader.style.borderBottom = '2px solid #e5e7eb';
   backHeader.style.paddingBottom = '10px';
+  backHeader.style.flexShrink = '0';
   
   // Title row with ratings on the right
   const titleRow = document.createElement('div');
@@ -719,36 +662,27 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   // Add the full formatted content
   const backContent = document.createElement('div');
   backContent.className = 'card-back-content';
+  backContent.style.flex = '1';
+  backContent.style.overflowY = 'auto';
+  backContent.style.paddingRight = '8px';
+  backContent.style.minHeight = '0';
+  backContent.style.overflowX = 'hidden';
   
   // Use the full formatted content from formatModalContentForThreeSections
   const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
   backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
   rightColumn.appendChild(backContent);
   
-  // Add streaming section BELOW the text content
-  const backStreamingRow = buildStreamingPlatformsRow(streamingData, true);
-  if (backStreamingRow) {
-    backStreamingRow.style.marginTop = '16px';
-    backStreamingRow.style.borderTop = '1px solid #e5e7eb';
-    backStreamingRow.style.paddingTop = '12px';
-    rightColumn.appendChild(backStreamingRow);
-  }
-  
   // Assemble the layout
   backLayout.appendChild(leftColumn);
   backLayout.appendChild(rightColumn);
   back.appendChild(backLayout);
   
-  // Add action buttons AFTER the layout (sticky at bottom)
+  // Add action buttons to back side as well
   const backActionButtons = document.createElement('div');
   backActionButtons.className = 'action-buttons';
-  backActionButtons.style.marginTop = '16px';
-  backActionButtons.style.paddingTop = '12px';
-  backActionButtons.style.borderTop = '1px solid #e5e7eb';
-  backActionButtons.style.position = 'sticky';
-  backActionButtons.style.bottom = '0';
-  backActionButtons.style.background = '#fff';
-  backActionButtons.style.zIndex = '10';
+  backActionButtons.style.marginTop = '12px';
+  backActionButtons.style.flexShrink = '0';
   
   const backLikeBtn = document.createElement('button');
   backLikeBtn.className = 'action-btn like-btn';

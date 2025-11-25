@@ -611,29 +611,23 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   
   front.appendChild(meta);
 
-  // BACK - single-column scrollable layout with poster, content, then streaming
+  // BACK - full detailed content with poster on left (original two-column layout)
   const back = document.createElement('div');
   back.className = 'flip-card-face flip-card-back';
   
-  // Create scrollable container for all back content
-  const backScrollContainer = document.createElement('div');
-  backScrollContainer.style.flex = '1';
-  backScrollContainer.style.overflowY = 'auto';
-  backScrollContainer.style.overflowX = 'hidden';
-  backScrollContainer.style.display = 'flex';
-  backScrollContainer.style.flexDirection = 'column';
-  backScrollContainer.style.gap = '16px';
-  backScrollContainer.style.paddingRight = '8px';
+  // Create two-column layout container
+  const backLayout = document.createElement('div');
+  backLayout.style.display = 'flex';
+  backLayout.style.gap = '16px';
+  backLayout.style.flex = '1';
+  backLayout.style.minHeight = '0';
+  backLayout.style.overflow = 'hidden';
   
-  // TOP SECTION - Poster and Title side by side
-  const topSection = document.createElement('div');
-  topSection.style.display = 'flex';
-  topSection.style.gap = '16px';
-  topSection.style.flexShrink = '0';
-  
-  // Poster on left
-  const posterContainer = document.createElement('div');
-  posterContainer.style.flex = '0 0 160px';
+  // LEFT COLUMN - Poster
+  const leftColumn = document.createElement('div');
+  leftColumn.style.flex = '0 0 240px';
+  leftColumn.style.display = 'flex';
+  leftColumn.style.flexDirection = 'column';
   
   const backPoster = document.createElement('img');
   backPoster.className = 'back-poster-image';
@@ -642,105 +636,113 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backPoster.style.width = '100%';
   backPoster.style.borderRadius = '8px';
   backPoster.style.objectFit = 'cover';
-  backPoster.style.maxHeight = '240px';
+  backPoster.style.maxHeight = '360px';
   backPoster.onerror = () => { backPoster.style.display = 'none'; };
-  posterContainer.appendChild(backPoster);
   
-  topSection.appendChild(posterContainer);
+  leftColumn.appendChild(backPoster);
   
-  // Title and metadata on right
+  // RIGHT COLUMN - Content (scrollable)
+  const rightColumn = document.createElement('div');
+  rightColumn.style.flex = '1';
+  rightColumn.style.display = 'flex';
+  rightColumn.style.flexDirection = 'column';
+  rightColumn.style.minHeight = '0';
+  rightColumn.style.overflowY = 'auto';
+  rightColumn.style.overflowX = 'hidden';
+  rightColumn.style.paddingRight = '8px';
+  
+  // Add movie title and metadata at the top of right column
   const backHeader = document.createElement('div');
   backHeader.className = 'back-header';
-  backHeader.style.flex = '1';
-  backHeader.style.display = 'flex';
-  backHeader.style.flexDirection = 'column';
-  backHeader.style.justifyContent = 'flex-start';
+  backHeader.style.marginBottom = '12px';
+  backHeader.style.borderBottom = '2px solid #e5e7eb';
+  backHeader.style.paddingBottom = '10px';
+  backHeader.style.flexShrink = '0';
+  
+  // Title row with ratings on the right
+  const titleRow = document.createElement('div');
+  titleRow.style.display = 'flex';
+  titleRow.style.justifyContent = 'space-between';
+  titleRow.style.alignItems = 'flex-start';
+  titleRow.style.gap = '12px';
+  titleRow.style.marginBottom = '4px';
   
   const backTitle = document.createElement('div');
   backTitle.style.fontWeight = '700';
-  backTitle.style.fontSize = '1.25rem';
-  backTitle.style.marginBottom = '8px';
-  backTitle.style.lineHeight = '1.3';
+  backTitle.style.fontSize = '1.15rem';
+  backTitle.style.flex = '1';
+  backTitle.style.minWidth = '0';
   backTitle.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
-  backHeader.appendChild(backTitle);
   
-  const backYearDir = document.createElement('div');
-  backYearDir.style.color = '#6b7280';
-  backYearDir.style.fontSize = '0.9rem';
-  backYearDir.style.marginBottom = '12px';
-  backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
-  backHeader.appendChild(backYearDir);
-  
-  // Ratings row
   const backRatings = document.createElement('div');
-  backRatings.style.fontSize = '0.85rem';
+  backRatings.style.fontSize = '0.75rem';
   backRatings.style.color = '#374151';
   backRatings.style.fontWeight = '600';
   backRatings.style.display = 'flex';
-  backRatings.style.gap = '12px';
-  backRatings.style.flexWrap = 'wrap';
+  backRatings.style.gap = '8px';
+  backRatings.style.flexWrap = 'nowrap';
+  backRatings.style.flexShrink = '0';
+  backRatings.style.whiteSpace = 'nowrap';
   
   if (imdb) {
     const imdbSpan = document.createElement('span');
     imdbSpan.textContent = `⭐ ${imdb}`;
     imdbSpan.title = `IMDB: ${imdb}`;
-    imdbSpan.style.background = '#fef3c7';
-    imdbSpan.style.padding = '4px 10px';
-    imdbSpan.style.borderRadius = '999px';
     backRatings.appendChild(imdbSpan);
   }
   if (rt_tomatometer) {
     const rtSpan = document.createElement('span');
     rtSpan.textContent = `🍅 ${rt_tomatometer}`;
     rtSpan.title = `Rotten Tomatoes: ${rt_tomatometer}`;
-    rtSpan.style.background = '#fee2e2';
-    rtSpan.style.padding = '4px 10px';
-    rtSpan.style.borderRadius = '999px';
     backRatings.appendChild(rtSpan);
   } else if (rt_audience) {
     const rtSpan = document.createElement('span');
     rtSpan.textContent = `🍅 ${rt_audience}`;
     rtSpan.title = `Rotten Tomatoes Audience: ${rt_audience}`;
-    rtSpan.style.background = '#fee2e2';
-    rtSpan.style.padding = '4px 10px';
-    rtSpan.style.borderRadius = '999px';
     backRatings.appendChild(rtSpan);
   }
-  if (imdb || rt_tomatometer || rt_audience) {
-    backHeader.appendChild(backRatings);
-  }
   
-  topSection.appendChild(backHeader);
-  backScrollContainer.appendChild(topSection);
+  titleRow.appendChild(backTitle);
+  if (imdb || rt_tomatometer || rt_audience) titleRow.appendChild(backRatings);
   
-  // CONTENT SECTION - formatted text
+  const backYearDir = document.createElement('div');
+  backYearDir.style.color = '#6b7280';
+  backYearDir.style.fontSize = '0.85rem';
+  
+  backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
+  
+  backHeader.appendChild(titleRow);
+  backHeader.appendChild(backYearDir);
+  rightColumn.appendChild(backHeader);
+  
+  // Add the full formatted content
   const backContent = document.createElement('div');
   backContent.className = 'card-back-content';
-  backContent.style.borderTop = '1px solid #e5e7eb';
-  backContent.style.paddingTop = '16px';
   
   // Use the full formatted content from formatModalContentForThreeSections
   const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
   backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
-  backScrollContainer.appendChild(backContent);
+  rightColumn.appendChild(backContent);
   
-  // STREAMING SECTION - Where to Watch (at the bottom of content)
+  // Add streaming section BELOW the text content (inside the scrollable right column)
   const backStreamingRow = buildStreamingPlatformsRow(streamingData, true);
   if (backStreamingRow) {
+    backStreamingRow.style.marginTop = '16px';
     backStreamingRow.style.borderTop = '1px solid #e5e7eb';
     backStreamingRow.style.paddingTop = '12px';
-    backScrollContainer.appendChild(backStreamingRow);
+    rightColumn.appendChild(backStreamingRow);
   }
   
-  back.appendChild(backScrollContainer);
+  // Assemble the layout
+  backLayout.appendChild(leftColumn);
+  backLayout.appendChild(rightColumn);
+  back.appendChild(backLayout);
   
-  // Add action buttons to back side (sticky at bottom)
+  // Add action buttons to back side as well
   const backActionButtons = document.createElement('div');
   backActionButtons.className = 'action-buttons';
   backActionButtons.style.marginTop = '12px';
   backActionButtons.style.flexShrink = '0';
-  backActionButtons.style.borderTop = '1px solid #e5e7eb';
-  backActionButtons.style.paddingTop = '12px';
   
   const backLikeBtn = document.createElement('button');
   backLikeBtn.className = 'action-btn like-btn';

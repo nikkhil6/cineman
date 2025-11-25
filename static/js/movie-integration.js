@@ -75,7 +75,7 @@ function buildStreamingPlatformsRow(streamingData, isBackSide = false) {
   const free = platforms.free || [];
   
   // Show subscription and free streaming options first (most relevant)
-  const primaryPlatforms = [...subscription, ...free].slice(0, isBackSide ? 8 : 4);
+  const primaryPlatforms = [...subscription, ...free].slice(0, 8);
   
   if (primaryPlatforms.length === 0) return null;
   
@@ -83,93 +83,84 @@ function buildStreamingPlatformsRow(streamingData, isBackSide = false) {
   container.className = 'streaming-platforms';
   container.style.display = 'flex';
   container.style.flexWrap = 'wrap';
-  container.style.gap = isBackSide ? '8px' : '4px';
+  container.style.gap = '8px';
   container.style.justifyContent = 'center';
-  container.style.marginTop = isBackSide ? '12px' : '6px';
-  container.style.padding = isBackSide ? '8px' : '4px';
+  container.style.marginTop = '12px';
+  container.style.padding = '10px';
   container.style.borderRadius = '8px';
   container.style.background = 'rgba(0, 0, 0, 0.03)';
   
-  if (isBackSide) {
-    const headerRow = document.createElement('div');
-    headerRow.style.width = '100%';
-    headerRow.style.textAlign = 'center';
-    headerRow.style.marginBottom = '6px';
-    headerRow.style.fontSize = '0.8rem';
-    headerRow.style.fontWeight = '600';
-    headerRow.style.color = '#374151';
-    headerRow.innerHTML = '📺 <span style="margin-left: 4px;">Where to Watch</span>';
-    container.appendChild(headerRow);
-  }
+  const headerRow = document.createElement('div');
+  headerRow.style.width = '100%';
+  headerRow.style.textAlign = 'center';
+  headerRow.style.marginBottom = '8px';
+  headerRow.style.fontSize = '0.85rem';
+  headerRow.style.fontWeight = '600';
+  headerRow.style.color = '#374151';
+  headerRow.textContent = 'Where to Watch';
+  container.appendChild(headerRow);
   
   for (const platform of primaryPlatforms) {
     const platformBadge = document.createElement('div');
     platformBadge.className = 'streaming-badge';
-    platformBadge.title = `${platform.name}${platform.type === 'free' ? ' (Free)' : ''}`;
+    platformBadge.title = `Watch on ${platform.name}${platform.type === 'free' ? ' (Free)' : ''}`;
     platformBadge.style.display = 'flex';
     platformBadge.style.alignItems = 'center';
-    platformBadge.style.gap = '4px';
-    platformBadge.style.padding = isBackSide ? '4px 10px' : '3px 6px';
-    platformBadge.style.borderRadius = '12px';
-    platformBadge.style.background = platform.color ? `${platform.color}15` : 'rgba(0, 0, 0, 0.05)';
-    platformBadge.style.border = `1px solid ${platform.color || '#ccc'}30`;
-    platformBadge.style.fontSize = isBackSide ? '0.8rem' : '0.7rem';
+    platformBadge.style.gap = '6px';
+    platformBadge.style.padding = '6px 12px';
+    platformBadge.style.borderRadius = '16px';
+    platformBadge.style.background = '#fff';
+    platformBadge.style.border = '1px solid #e5e7eb';
+    platformBadge.style.fontSize = '0.8rem';
     platformBadge.style.cursor = 'pointer';
-    platformBadge.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    platformBadge.style.transition = 'transform 0.2s, box-shadow 0.2s, border-color 0.2s';
+    platformBadge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
     
     // Add hover effect
     platformBadge.addEventListener('mouseenter', () => {
-      platformBadge.style.transform = 'scale(1.05)';
-      platformBadge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+      platformBadge.style.transform = 'translateY(-2px)';
+      platformBadge.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      platformBadge.style.borderColor = platform.color || '#3b82f6';
     });
     platformBadge.addEventListener('mouseleave', () => {
-      platformBadge.style.transform = 'scale(1)';
-      platformBadge.style.boxShadow = 'none';
+      platformBadge.style.transform = 'translateY(0)';
+      platformBadge.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+      platformBadge.style.borderColor = '#e5e7eb';
     });
     
-    // Logo or icon
-    if (platform.logo_url && isBackSide) {
+    // Always use logo image from TMDB (actual platform logos)
+    if (platform.logo_url) {
       const logo = document.createElement('img');
       logo.src = platform.logo_url;
       logo.alt = platform.name;
-      logo.style.width = '18px';
-      logo.style.height = '18px';
+      logo.style.width = '24px';
+      logo.style.height = '24px';
       logo.style.borderRadius = '4px';
       logo.style.objectFit = 'contain';
       logo.onerror = () => { 
-        // Replace failed image with icon span
-        const iconSpan = document.createElement('span');
-        iconSpan.textContent = platform.icon || '📺';
-        iconSpan.style.fontSize = '1rem';
-        logo.replaceWith(iconSpan);
+        // If logo fails to load, just show the name without logo
+        logo.style.display = 'none';
       };
       platformBadge.appendChild(logo);
-    } else {
-      const icon = document.createElement('span');
-      icon.textContent = platform.icon || '📺';
-      icon.style.fontSize = isBackSide ? '1rem' : '0.9rem';
-      platformBadge.appendChild(icon);
     }
     
-    // Platform name (only on back side)
-    if (isBackSide) {
-      const name = document.createElement('span');
-      name.textContent = platform.name;
-      name.style.fontWeight = '500';
-      name.style.color = '#374151';
-      platformBadge.appendChild(name);
-      
-      if (platform.type === 'free') {
-        const freeTag = document.createElement('span');
-        freeTag.textContent = 'FREE';
-        freeTag.style.fontSize = '0.6rem';
-        freeTag.style.background = '#10b981';
-        freeTag.style.color = '#fff';
-        freeTag.style.padding = '1px 4px';
-        freeTag.style.borderRadius = '4px';
-        freeTag.style.marginLeft = '2px';
-        platformBadge.appendChild(freeTag);
-      }
+    // Platform name
+    const name = document.createElement('span');
+    name.textContent = platform.name;
+    name.style.fontWeight = '500';
+    name.style.color = '#1f2937';
+    platformBadge.appendChild(name);
+    
+    if (platform.type === 'free') {
+      const freeTag = document.createElement('span');
+      freeTag.textContent = 'FREE';
+      freeTag.style.fontSize = '0.6rem';
+      freeTag.style.background = '#10b981';
+      freeTag.style.color = '#fff';
+      freeTag.style.padding = '2px 6px';
+      freeTag.style.borderRadius = '4px';
+      freeTag.style.fontWeight = '600';
+      platformBadge.appendChild(freeTag);
     }
     
     // Click to open web URL if available
@@ -188,20 +179,8 @@ function buildStreamingPlatformsRow(streamingData, isBackSide = false) {
     container.appendChild(platformBadge);
   }
   
-  // Show "more" indicator if there are additional platforms
-  const totalCount = subscription.length + free.length;
-  if (totalCount > primaryPlatforms.length && !isBackSide) {
-    const moreIndicator = document.createElement('span');
-    moreIndicator.textContent = `+${totalCount - primaryPlatforms.length}`;
-    moreIndicator.style.fontSize = '0.7rem';
-    moreIndicator.style.color = '#6b7280';
-    moreIndicator.style.fontWeight = '600';
-    moreIndicator.title = 'Flip card for more options';
-    container.appendChild(moreIndicator);
-  }
-  
   // Add attribution on back side
-  if (isBackSide && streamingData.attribution) {
+  if (streamingData.attribution) {
     const attribution = document.createElement('div');
     attribution.style.width = '100%';
     attribution.style.textAlign = 'center';
@@ -585,12 +564,8 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   actionButtons.appendChild(watchlistBtn);
   meta.appendChild(actionButtons);
   
-  // Streaming platforms row (front side - icons only)
+  // Extract streaming data for use on back side only
   const streamingData = extractStreamingPlatforms(movieData || {});
-  const frontStreamingRow = buildStreamingPlatformsRow(streamingData, false);
-  if (frontStreamingRow) {
-    meta.appendChild(frontStreamingRow);
-  }
   
   front.appendChild(meta);
 

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session, Response
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
+from cineman.tools.watchmode import get_streaming_sources, get_watchmode_usage_stats
 from cineman.models import db, MovieInteraction
 from cineman.schemas import parse_movie_from_api, MovieRecommendation
 from cineman.api_status import check_all_apis
@@ -44,14 +45,21 @@ def movie_facts():
 def movie_combined():
     """
     GET /api/movie?title=Inception
-    Combines TMDb poster lookup and OMDb facts into one payload.
+    Combines TMDb poster lookup, OMDb facts, and streaming availability into one payload.
     Prefers OMDb IMDb rating if available; falls back to TMDb vote_average.
     
+    Query Parameters:
+        title (required): Movie title to search for
+        region (optional): ISO 3166-1 country code for streaming availability (default: US)
+    
     Returns data conforming to MovieRecommendation schema (with legacy format support).
+    Includes streaming availability with platform icons.
     """
     title = request.args.get("title", "").strip()
     if not title:
         return jsonify({"status": "error", "error": "Missing title parameter."}), 400
+    
+    region = request.args.get("region", "US").upper()
 
     tmdb = get_movie_poster_core(title)
     omdb = fetch_omdb_data_core(title)
@@ -108,6 +116,25 @@ def movie_combined():
     
     rt_tomatometer = omdb_safe.get("Rotten_Tomatoes")
     
+    # Fetch streaming availability if we have a TMDB ID
+    streaming = None
+    tmdb_id = tmdb_safe.get("tmdb_id")
+    if tmdb_id:
+        streaming_result = get_streaming_sources(
+            title=title,
+            tmdb_id=tmdb_id,
+            year=tmdb_safe.get("year"),
+            region=region
+        )
+        if streaming_result.get("status") == "success":
+            streaming = {
+                "platforms": streaming_result.get("platforms", {}),
+                "source": streaming_result.get("source"),
+                "region": streaming_result.get("region", region),
+                "attribution": streaming_result.get("attribution"),
+                "tmdb_link": streaming_result.get("tmdb_link")
+            }
+    
     # Build combined response (legacy format for backward compatibility)
     combined = {
         "query": title,
@@ -119,6 +146,7 @@ def movie_combined():
         "note": note,
         "imdb_rating": imdb_rating,
         "rt_tomatometer": rt_tomatometer,
+        "streaming": streaming,
     }
     
     # Also include structured schema-validated data
@@ -429,4 +457,34 @@ def metrics():
         return jsonify({
             "status": "error",
             "message": "Failed to generate metrics"
+        }), 500
+
+
+@bp.route("/streaming/status", methods=["GET"])
+def streaming_api_status():
+    """
+    GET /api/streaming/status
+    Get current status and usage statistics for the streaming API (Watchmode).
+    
+    Returns:
+    - status: Request status
+    - watchmode: Watchmode API usage statistics including:
+      - count: Number of calls made this month
+      - limit: Maximum calls allowed per month
+      - remaining: Number of calls remaining
+      - reset_date: When the counter will reset (ISO format)
+      - enabled: Whether Watchmode API is configured and enabled
+    """
+    try:
+        watchmode_stats = get_watchmode_usage_stats()
+        
+        return jsonify({
+            "status": "success",
+            "watchmode": watchmode_stats
+        })
+    except Exception as e:
+        print(f"Error getting streaming API status: {e}")
+        return jsonify({
+            "status": "error",
+            "message": "Failed to get streaming API status"
         }), 500

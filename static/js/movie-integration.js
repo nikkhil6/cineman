@@ -56,6 +56,159 @@ function extractRatings(data) {
   return { imdb: imdb || null, rt_tomatometer: rtTom || null, rt_audience: rtAud || null };
 }
 
+/* ----- Streaming data extraction ----- */
+function extractStreamingPlatforms(data) {
+  if (!data || !data.streaming) return null;
+  const streaming = data.streaming;
+  if (!streaming.platforms) return null;
+  return streaming;
+}
+
+/* ----- Build streaming platforms row for flip card ----- */
+function buildStreamingPlatformsRow(streamingData, isBackSide = false) {
+  if (!streamingData || !streamingData.platforms) return null;
+  
+  const platforms = streamingData.platforms;
+  const subscription = platforms.subscription || [];
+  const rent = platforms.rent || [];
+  const buy = platforms.buy || [];
+  const free = platforms.free || [];
+  
+  // Show subscription and free streaming options first (most relevant)
+  const primaryPlatforms = [...subscription, ...free].slice(0, isBackSide ? 8 : 4);
+  
+  if (primaryPlatforms.length === 0) return null;
+  
+  const container = document.createElement('div');
+  container.className = 'streaming-platforms';
+  container.style.display = 'flex';
+  container.style.flexWrap = 'wrap';
+  container.style.gap = isBackSide ? '8px' : '4px';
+  container.style.justifyContent = 'center';
+  container.style.marginTop = isBackSide ? '12px' : '6px';
+  container.style.padding = isBackSide ? '8px' : '4px';
+  container.style.borderRadius = '8px';
+  container.style.background = 'rgba(0, 0, 0, 0.03)';
+  
+  if (isBackSide) {
+    const headerRow = document.createElement('div');
+    headerRow.style.width = '100%';
+    headerRow.style.textAlign = 'center';
+    headerRow.style.marginBottom = '6px';
+    headerRow.style.fontSize = '0.8rem';
+    headerRow.style.fontWeight = '600';
+    headerRow.style.color = '#374151';
+    headerRow.innerHTML = '📺 <span style="margin-left: 4px;">Where to Watch</span>';
+    container.appendChild(headerRow);
+  }
+  
+  for (const platform of primaryPlatforms) {
+    const platformBadge = document.createElement('div');
+    platformBadge.className = 'streaming-badge';
+    platformBadge.title = `${platform.name}${platform.type === 'free' ? ' (Free)' : ''}`;
+    platformBadge.style.display = 'flex';
+    platformBadge.style.alignItems = 'center';
+    platformBadge.style.gap = '4px';
+    platformBadge.style.padding = isBackSide ? '4px 10px' : '3px 6px';
+    platformBadge.style.borderRadius = '12px';
+    platformBadge.style.background = platform.color ? `${platform.color}15` : 'rgba(0, 0, 0, 0.05)';
+    platformBadge.style.border = `1px solid ${platform.color || '#ccc'}30`;
+    platformBadge.style.fontSize = isBackSide ? '0.8rem' : '0.7rem';
+    platformBadge.style.cursor = 'pointer';
+    platformBadge.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    
+    // Add hover effect
+    platformBadge.addEventListener('mouseenter', () => {
+      platformBadge.style.transform = 'scale(1.05)';
+      platformBadge.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    });
+    platformBadge.addEventListener('mouseleave', () => {
+      platformBadge.style.transform = 'scale(1)';
+      platformBadge.style.boxShadow = 'none';
+    });
+    
+    // Logo or icon
+    if (platform.logo_url && isBackSide) {
+      const logo = document.createElement('img');
+      logo.src = platform.logo_url;
+      logo.alt = platform.name;
+      logo.style.width = '18px';
+      logo.style.height = '18px';
+      logo.style.borderRadius = '4px';
+      logo.style.objectFit = 'contain';
+      logo.onerror = () => { logo.textContent = platform.icon || '📺'; logo.style.width = 'auto'; };
+      platformBadge.appendChild(logo);
+    } else {
+      const icon = document.createElement('span');
+      icon.textContent = platform.icon || '📺';
+      icon.style.fontSize = isBackSide ? '1rem' : '0.9rem';
+      platformBadge.appendChild(icon);
+    }
+    
+    // Platform name (only on back side)
+    if (isBackSide) {
+      const name = document.createElement('span');
+      name.textContent = platform.name;
+      name.style.fontWeight = '500';
+      name.style.color = '#374151';
+      platformBadge.appendChild(name);
+      
+      if (platform.type === 'free') {
+        const freeTag = document.createElement('span');
+        freeTag.textContent = 'FREE';
+        freeTag.style.fontSize = '0.6rem';
+        freeTag.style.background = '#10b981';
+        freeTag.style.color = '#fff';
+        freeTag.style.padding = '1px 4px';
+        freeTag.style.borderRadius = '4px';
+        freeTag.style.marginLeft = '2px';
+        platformBadge.appendChild(freeTag);
+      }
+    }
+    
+    // Click to open web URL if available
+    if (platform.web_url) {
+      platformBadge.onclick = (e) => {
+        e.stopPropagation();
+        window.open(platform.web_url, '_blank', 'noopener,noreferrer');
+      };
+    } else if (streamingData.tmdb_link) {
+      platformBadge.onclick = (e) => {
+        e.stopPropagation();
+        window.open(streamingData.tmdb_link, '_blank', 'noopener,noreferrer');
+      };
+    }
+    
+    container.appendChild(platformBadge);
+  }
+  
+  // Show "more" indicator if there are additional platforms
+  const totalCount = subscription.length + free.length;
+  if (totalCount > primaryPlatforms.length && !isBackSide) {
+    const moreIndicator = document.createElement('span');
+    moreIndicator.textContent = `+${totalCount - primaryPlatforms.length}`;
+    moreIndicator.style.fontSize = '0.7rem';
+    moreIndicator.style.color = '#6b7280';
+    moreIndicator.style.fontWeight = '600';
+    moreIndicator.title = 'Flip card for more options';
+    container.appendChild(moreIndicator);
+  }
+  
+  // Add attribution on back side
+  if (isBackSide && streamingData.attribution) {
+    const attribution = document.createElement('div');
+    attribution.style.width = '100%';
+    attribution.style.textAlign = 'center';
+    attribution.style.marginTop = '8px';
+    attribution.style.fontSize = '0.65rem';
+    attribution.style.color = '#9ca3af';
+    attribution.textContent = streamingData.attribution;
+    container.appendChild(attribution);
+  }
+  
+  return container;
+}
+
 /* ----- Manifest parsing ----- */
 function parseManifestAndStrip(replyText) {
   if (!replyText || typeof replyText !== 'string') return { manifest: null, assistantTextClean: replyText || '', assistantTextRaw: '' };
@@ -426,6 +579,13 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   actionButtons.appendChild(watchlistBtn);
   meta.appendChild(actionButtons);
   
+  // Streaming platforms row (front side - icons only)
+  const streamingData = extractStreamingPlatforms(movieData || {});
+  const frontStreamingRow = buildStreamingPlatformsRow(streamingData, false);
+  if (frontStreamingRow) {
+    meta.appendChild(frontStreamingRow);
+  }
+  
   front.appendChild(meta);
 
   // BACK - full detailed content with poster on left
@@ -457,6 +617,12 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backPoster.onerror = () => { backPoster.style.display = 'none'; };
   
   leftColumn.appendChild(backPoster);
+  
+  // Streaming platforms section (back side - full details)
+  const backStreamingRow = buildStreamingPlatformsRow(streamingData, true);
+  if (backStreamingRow) {
+    leftColumn.appendChild(backStreamingRow);
+  }
   
   // RIGHT COLUMN - Content
   const rightColumn = document.createElement('div');

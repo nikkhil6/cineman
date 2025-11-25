@@ -56,6 +56,129 @@ function extractRatings(data) {
   return { imdb: imdb || null, rt_tomatometer: rtTom || null, rt_audience: rtAud || null };
 }
 
+/* ----- Streaming Platform Helpers ----- */
+function extractStreamingPlatforms(movieData) {
+  if (!movieData || !movieData.streaming) return null;
+  const streaming = movieData.streaming;
+  if (streaming.status !== 'success') return null;
+  return streaming;
+}
+
+function buildStreamingButton(streamingData, container) {
+  if (!streamingData || !streamingData.platforms) return null;
+  
+  const platforms = streamingData.platforms;
+  const allPlatforms = [
+    ...(platforms.free || []).map(p => ({ ...p, isFree: true })),
+    ...(platforms.subscription || []).slice(0, 4).map(p => ({ ...p, isFree: false }))
+  ];
+  
+  if (allPlatforms.length === 0) return null;
+  
+  // Create a "Where to Watch" button
+  const watchBtn = document.createElement('button');
+  watchBtn.className = 'streaming-watch-btn';
+  watchBtn.innerHTML = '📺 Where to Watch';
+  watchBtn.style.marginTop = '12px';
+  watchBtn.style.padding = '8px 12px';
+  watchBtn.style.borderRadius = '8px';
+  watchBtn.style.border = '1px solid #e5e7eb';
+  watchBtn.style.background = 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)';
+  watchBtn.style.cursor = 'pointer';
+  watchBtn.style.fontSize = '0.85rem';
+  watchBtn.style.fontWeight = '600';
+  watchBtn.style.color = '#0369a1';
+  watchBtn.style.width = '100%';
+  watchBtn.style.transition = 'all 0.2s';
+  
+  // Create collapsible streaming panel
+  const streamingPanel = document.createElement('div');
+  streamingPanel.className = 'streaming-panel';
+  streamingPanel.style.display = 'none';
+  streamingPanel.style.marginTop = '8px';
+  streamingPanel.style.padding = '10px';
+  streamingPanel.style.borderRadius = '8px';
+  streamingPanel.style.background = '#f8fafc';
+  streamingPanel.style.border = '1px solid #e2e8f0';
+  streamingPanel.style.maxHeight = '200px';
+  streamingPanel.style.overflowY = 'auto';
+  
+  // Build platform list
+  for (const platform of allPlatforms) {
+    const platformItem = document.createElement('a');
+    platformItem.href = platform.web_url || streamingData.tmdb_link || '#';
+    platformItem.target = '_blank';
+    platformItem.rel = 'noopener noreferrer';
+    platformItem.style.display = 'flex';
+    platformItem.style.alignItems = 'center';
+    platformItem.style.gap = '8px';
+    platformItem.style.padding = '6px 8px';
+    platformItem.style.marginBottom = '4px';
+    platformItem.style.borderRadius = '6px';
+    platformItem.style.textDecoration = 'none';
+    platformItem.style.fontSize = '0.8rem';
+    platformItem.style.transition = 'background 0.2s';
+    platformItem.style.background = platform.isFree ? '#ecfdf5' : '#fff';
+    platformItem.style.border = platform.isFree ? '1px solid #10b981' : '1px solid #e5e7eb';
+    
+    platformItem.onmouseenter = () => { platformItem.style.background = platform.isFree ? '#d1fae5' : '#f1f5f9'; };
+    platformItem.onmouseleave = () => { platformItem.style.background = platform.isFree ? '#ecfdf5' : '#fff'; };
+    
+    // Logo
+    if (platform.logo_url) {
+      const logo = document.createElement('img');
+      logo.src = platform.logo_url;
+      logo.alt = platform.name;
+      logo.style.width = '24px';
+      logo.style.height = '24px';
+      logo.style.borderRadius = '4px';
+      logo.style.objectFit = 'contain';
+      logo.onerror = () => { logo.style.display = 'none'; };
+      platformItem.appendChild(logo);
+    }
+    
+    // Name
+    const name = document.createElement('span');
+    name.textContent = platform.name;
+    name.style.flex = '1';
+    name.style.color = platform.isFree ? '#047857' : '#374151';
+    name.style.fontWeight = '500';
+    platformItem.appendChild(name);
+    
+    // Badge
+    const badge = document.createElement('span');
+    badge.textContent = platform.isFree ? 'FREE' : 'PAID';
+    badge.style.fontSize = '0.65rem';
+    badge.style.padding = '2px 6px';
+    badge.style.borderRadius = '4px';
+    badge.style.fontWeight = '700';
+    badge.style.background = platform.isFree ? '#10b981' : '#9ca3af';
+    badge.style.color = '#fff';
+    platformItem.appendChild(badge);
+    
+    // Prevent card flip when clicking
+    platformItem.addEventListener('click', (e) => { e.stopPropagation(); });
+    
+    streamingPanel.appendChild(platformItem);
+  }
+  
+  // Toggle panel on button click
+  watchBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = streamingPanel.style.display !== 'none';
+    streamingPanel.style.display = isVisible ? 'none' : 'block';
+    watchBtn.innerHTML = isVisible ? '📺 Where to Watch' : '📺 Hide Platforms';
+  });
+  
+  // Prevent panel clicks from bubbling
+  streamingPanel.addEventListener('click', (e) => { e.stopPropagation(); });
+  
+  container.appendChild(watchBtn);
+  container.appendChild(streamingPanel);
+  
+  return watchBtn;
+}
+
 /* ----- Manifest parsing ----- */
 function parseManifestAndStrip(replyText) {
   if (!replyText || typeof replyText !== 'string') return { manifest: null, assistantTextClean: replyText || '', assistantTextRaw: '' };
@@ -457,6 +580,12 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backPoster.onerror = () => { backPoster.style.display = 'none'; };
   
   leftColumn.appendChild(backPoster);
+  
+  // Add "Where to Watch" streaming button below poster
+  const streamingData = extractStreamingPlatforms(movieData || {});
+  if (streamingData) {
+    buildStreamingButton(streamingData, leftColumn);
+  }
   
   // RIGHT COLUMN - Content
   const rightColumn = document.createElement('div');

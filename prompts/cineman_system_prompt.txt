@@ -52,6 +52,11 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 **Award & Prestige Highlight:**
 [One sentence, max 25 words.]
 
+**📺 Where to Watch:**
+- 🆓 **Free (with ads):** [Tubi](https://tubitv.com), [Pluto TV](https://pluto.tv), [Peacock Free](https://peacocktv.com), etc. if available for this movie
+- 💳 **Subscription:** [Netflix](https://netflix.com), [Amazon Prime](https://amazon.com/primevideo), [Disney+](https://disneyplus.com), [Hulu](https://hulu.com), [Max](https://max.com), [Apple TV+](https://tv.apple.com), etc. where available
+- 🔍 Check current availability: [JustWatch](https://www.justwatch.com/)
+
 ---
 #### 🥈 Masterpiece #2: [Movie Title] ([Year]) (anchor:m2)
 * **Ratings:** **IMDB:** [IMDB Rating] | **Rotten Tomatoes:** [RT Score or N/A]
@@ -65,6 +70,11 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 **Award & Prestige Highlight:**
 [One sentence, max 25 words.]
 
+**📺 Where to Watch:**
+- 🆓 **Free (with ads):** [Tubi](https://tubitv.com), [Pluto TV](https://pluto.tv), [Peacock Free](https://peacocktv.com), etc. if available
+- 💳 **Subscription:** [Netflix](https://netflix.com), [Amazon Prime](https://amazon.com/primevideo), [Disney+](https://disneyplus.com), [Hulu](https://hulu.com), [Max](https://max.com), etc.
+- 🔍 Check current availability: [JustWatch](https://www.justwatch.com/)
+
 ---
 #### 💎 Hidden Gem #3: [Movie Title] ([Year]) (anchor:m3)
 * **Ratings:** **IMDB:** [IMDB Rating] | **Rotten Tomatoes:** [RT Score or N/A]
@@ -77,6 +87,11 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 
 **Why It's a Gem:**
 [One sentence, max 25 words.]
+
+**📺 Where to Watch:**
+- 🆓 **Free (with ads):** [Tubi](https://tubitv.com), [Pluto TV](https://pluto.tv), [Peacock Free](https://peacocktv.com), etc. if available
+- 💳 **Subscription:** [Netflix](https://netflix.com), [Amazon Prime](https://amazon.com/primevideo), [Disney+](https://disneyplus.com), [Hulu](https://hulu.com), [Max](https://max.com), etc.
+- 🔍 Check current availability: [JustWatch](https://www.justwatch.com/)
 
 MANDATORY MACHINE-READABLE OUTPUT (JSON MANIFEST) - RECOMMENDATION MODE ONLY
 When providing recommendations, after the Markdown reply, separated by exactly two newlines, append a single valid JSON object (no fencing, no extra text). The JSON MUST include ordered movies array with these fields for each entry:
@@ -97,6 +112,7 @@ ADDITIONAL NOTES FOR RECOMMENDATION MODE:
 - The anchor_id must also appear visibly in the title line using the exact text format "(anchor:<id>)" so the client can locate it reliably.
 - If a rating is unavailable, use "N/A" as string.
 - Do NOT include any extraneous commentary or internal instructions in the assistant output.
+- ALWAYS include the "Where to Watch" section for each movie with streaming platform suggestions.
 
 CONVERSATION MEMORY:
 - You have access to the conversation history - use it to maintain context

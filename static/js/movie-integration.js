@@ -623,11 +623,14 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backLayout.style.minHeight = '0';
   backLayout.style.overflow = 'hidden';
   
-  // LEFT COLUMN - Poster
+  // LEFT COLUMN - Poster and Streaming (scrollable)
   const leftColumn = document.createElement('div');
   leftColumn.style.flex = '0 0 240px';
   leftColumn.style.display = 'flex';
   leftColumn.style.flexDirection = 'column';
+  leftColumn.style.overflowY = 'auto';
+  leftColumn.style.maxHeight = '100%';
+  leftColumn.style.paddingRight = '8px';
   
   const backPoster = document.createElement('img');
   backPoster.className = 'back-poster-image';

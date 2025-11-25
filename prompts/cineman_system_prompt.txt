@@ -53,9 +53,9 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 [One sentence, max 25 words.]
 
 **📺 Where to Watch:**
-- **Free:** [List free streaming platforms with ads like Tubi, Pluto TV, Peacock Free, etc. if available]
-- **Subscription:** [List subscription services like Netflix, Amazon Prime, Disney+, Hulu, Max, Apple TV+, Peacock Premium, etc.]
-- For the most up-to-date availability, check [JustWatch](https://www.justwatch.com/)
+- 🆓 **Free (with ads):** [Tubi](https://tubitv.com), [Pluto TV](https://pluto.tv), [Peacock Free](https://peacocktv.com), etc. if available for this movie
+- 💳 **Subscription:** [Netflix](https://netflix.com), [Amazon Prime](https://amazon.com/primevideo), [Disney+](https://disneyplus.com), [Hulu](https://hulu.com), [Max](https://max.com), [Apple TV+](https://tv.apple.com), etc. where available
+- 🔍 Check current availability: [JustWatch](https://www.justwatch.com/)
 
 ---
 #### 🥈 Masterpiece #2: [Movie Title] ([Year]) (anchor:m2)
@@ -71,9 +71,9 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 [One sentence, max 25 words.]
 
 **📺 Where to Watch:**
-- **Free:** [List free streaming platforms if available]
-- **Subscription:** [List subscription services]
-- For the most up-to-date availability, check [JustWatch](https://www.justwatch.com/)
+- 🆓 **Free (with ads):** [Tubi](https://tubitv.com), [Pluto TV](https://pluto.tv), [Peacock Free](https://peacocktv.com), etc. if available
+- 💳 **Subscription:** [Netflix](https://netflix.com), [Amazon Prime](https://amazon.com/primevideo), [Disney+](https://disneyplus.com), [Hulu](https://hulu.com), [Max](https://max.com), etc.
+- 🔍 Check current availability: [JustWatch](https://www.justwatch.com/)
 
 ---
 #### 💎 Hidden Gem #3: [Movie Title] ([Year]) (anchor:m3)
@@ -89,9 +89,9 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 [One sentence, max 25 words.]
 
 **📺 Where to Watch:**
-- **Free:** [List free streaming platforms if available]
-- **Subscription:** [List subscription services]
-- For the most up-to-date availability, check [JustWatch](https://www.justwatch.com/)
+- 🆓 **Free (with ads):** [Tubi](https://tubitv.com), [Pluto TV](https://pluto.tv), [Peacock Free](https://peacocktv.com), etc. if available
+- 💳 **Subscription:** [Netflix](https://netflix.com), [Amazon Prime](https://amazon.com/primevideo), [Disney+](https://disneyplus.com), [Hulu](https://hulu.com), [Max](https://max.com), etc.
+- 🔍 Check current availability: [JustWatch](https://www.justwatch.com/)
 
 MANDATORY MACHINE-READABLE OUTPUT (JSON MANIFEST) - RECOMMENDATION MODE ONLY
 When providing recommendations, after the Markdown reply, separated by exactly two newlines, append a single valid JSON object (no fencing, no extra text). The JSON MUST include ordered movies array with these fields for each entry:

@@ -53,7 +53,9 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 [One sentence, max 25 words.]
 
 **📺 Where to Watch:**
-[List common streaming platforms where this movie is typically available, such as Netflix, Amazon Prime, Disney+, Hulu, Max, Apple TV+, etc. If unsure, suggest checking JustWatch or similar aggregators.]
+- **Free:** [List free streaming platforms with ads like Tubi, Pluto TV, Peacock Free, etc. if available]
+- **Subscription:** [List subscription services like Netflix, Amazon Prime, Disney+, Hulu, Max, Apple TV+, Peacock Premium, etc.]
+- For the most up-to-date availability, check [JustWatch](https://www.justwatch.com/)
 
 ---
 #### 🥈 Masterpiece #2: [Movie Title] ([Year]) (anchor:m2)
@@ -69,7 +71,9 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 [One sentence, max 25 words.]
 
 **📺 Where to Watch:**
-[List common streaming platforms where this movie is typically available.]
+- **Free:** [List free streaming platforms if available]
+- **Subscription:** [List subscription services]
+- For the most up-to-date availability, check [JustWatch](https://www.justwatch.com/)
 
 ---
 #### 💎 Hidden Gem #3: [Movie Title] ([Year]) (anchor:m3)
@@ -85,7 +89,9 @@ MANDATORY HUMAN-READABLE STRUCTURE (Markdown):
 [One sentence, max 25 words.]
 
 **📺 Where to Watch:**
-[List common streaming platforms where this movie is typically available.]
+- **Free:** [List free streaming platforms if available]
+- **Subscription:** [List subscription services]
+- For the most up-to-date availability, check [JustWatch](https://www.justwatch.com/)
 
 MANDATORY MACHINE-READABLE OUTPUT (JSON MANIFEST) - RECOMMENDATION MODE ONLY
 When providing recommendations, after the Markdown reply, separated by exactly two newlines, append a single valid JSON object (no fencing, no extra text). The JSON MUST include ordered movies array with these fields for each entry:

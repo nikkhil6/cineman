@@ -614,20 +614,26 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   // BACK - full detailed content with poster on left (original two-column layout)
   const back = document.createElement('div');
   back.className = 'flip-card-face flip-card-back';
+  // Make the back card itself scrollable with explicit height
+  back.style.position = 'relative';
+  back.style.height = '600px'; // Fixed height for the back card
+  back.style.maxHeight = '80vh';
+  back.style.overflowY = 'scroll'; // Force scroll
+  back.style.overflowX = 'hidden';
+  back.style.WebkitOverflowScrolling = 'touch'; // Smooth scroll on iOS
   
   // Create two-column layout container
   const backLayout = document.createElement('div');
   backLayout.style.display = 'flex';
   backLayout.style.gap = '16px';
-  backLayout.style.flex = '1';
-  backLayout.style.minHeight = '0';
-  backLayout.style.overflow = 'hidden';
+  backLayout.style.minHeight = 'min-content'; // Allow content to determine height
   
-  // LEFT COLUMN - Poster
+  // LEFT COLUMN - Poster (sticky)
   const leftColumn = document.createElement('div');
-  leftColumn.style.flex = '0 0 240px';
-  leftColumn.style.display = 'flex';
-  leftColumn.style.flexDirection = 'column';
+  leftColumn.style.flex = '0 0 200px';
+  leftColumn.style.position = 'sticky';
+  leftColumn.style.top = '0';
+  leftColumn.style.alignSelf = 'flex-start';
   
   const backPoster = document.createElement('img');
   backPoster.className = 'back-poster-image';
@@ -636,28 +642,23 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backPoster.style.width = '100%';
   backPoster.style.borderRadius = '8px';
   backPoster.style.objectFit = 'cover';
-  backPoster.style.maxHeight = '360px';
+  backPoster.style.maxHeight = '300px';
   backPoster.onerror = () => { backPoster.style.display = 'none'; };
   
   leftColumn.appendChild(backPoster);
   
-  // RIGHT COLUMN - Content (scrollable)
+  // RIGHT COLUMN - Content (flows naturally, parent scrolls)
   const rightColumn = document.createElement('div');
   rightColumn.style.flex = '1';
   rightColumn.style.display = 'flex';
   rightColumn.style.flexDirection = 'column';
-  rightColumn.style.minHeight = '0';
-  rightColumn.style.overflowY = 'auto';
-  rightColumn.style.overflowX = 'hidden';
-  rightColumn.style.paddingRight = '8px';
+  rightColumn.style.gap = '12px';
   
   // Add movie title and metadata at the top of right column
   const backHeader = document.createElement('div');
   backHeader.className = 'back-header';
-  backHeader.style.marginBottom = '12px';
   backHeader.style.borderBottom = '2px solid #e5e7eb';
   backHeader.style.paddingBottom = '10px';
-  backHeader.style.flexShrink = '0';
   
   // Title row with ratings on the right
   const titleRow = document.createElement('div');
@@ -724,7 +725,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
   rightColumn.appendChild(backContent);
   
-  // Add streaming section BELOW the text content (inside the scrollable right column)
+  // Add streaming section BELOW the text content
   const backStreamingRow = buildStreamingPlatformsRow(streamingData, true);
   if (backStreamingRow) {
     backStreamingRow.style.marginTop = '16px';
@@ -738,11 +739,16 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backLayout.appendChild(rightColumn);
   back.appendChild(backLayout);
   
-  // Add action buttons to back side as well
+  // Add action buttons AFTER the layout (sticky at bottom)
   const backActionButtons = document.createElement('div');
   backActionButtons.className = 'action-buttons';
-  backActionButtons.style.marginTop = '12px';
-  backActionButtons.style.flexShrink = '0';
+  backActionButtons.style.marginTop = '16px';
+  backActionButtons.style.paddingTop = '12px';
+  backActionButtons.style.borderTop = '1px solid #e5e7eb';
+  backActionButtons.style.position = 'sticky';
+  backActionButtons.style.bottom = '0';
+  backActionButtons.style.background = '#fff';
+  backActionButtons.style.zIndex = '10';
   
   const backLikeBtn = document.createElement('button');
   backLikeBtn.className = 'action-btn like-btn';

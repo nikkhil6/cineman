@@ -167,7 +167,7 @@
       top: 50%; 
       left: 50%; 
       transform: translate(-50%, -50%); 
-      width: min(800px, 90vw); 
+      width: min(900px, 92vw); 
       z-index: 3000; 
       max-height: 90vh;
       overflow: visible;
@@ -175,15 +175,15 @@
     }
     .flip-card.is-flipped .flip-card-inner { 
       transform: rotateY(180deg); 
-      min-height: auto;
-      max-height: 90vh;
+      min-height: 500px;
+      max-height: 85vh;
       overflow: visible;
       height: auto;
     }
     .flip-card.is-flipped .flip-card-back {
-      max-height: 90vh;
-      overflow-y: auto;
-      overflow-x: hidden;
+      min-height: 500px;
+      max-height: 85vh;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
     }

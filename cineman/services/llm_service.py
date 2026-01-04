@@ -3,7 +3,6 @@ from typing import Dict, Any, List, Optional, Tuple
 
 from cineman.chain import get_recommendation_chain, build_session_context, format_chat_history
 from cineman.validation import validate_movie_list
-from cineman.models import db, MovieInteraction
 
 logger = structlog.get_logger()
 

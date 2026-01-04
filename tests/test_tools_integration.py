@@ -12,6 +12,7 @@ from cineman.tools.omdb import fetch_omdb_data_core
 from cineman.api_client import AuthError, QuotaError, NotFoundError, TransientError, APIError
 
 
+
 class TestTMDBToolIntegration:
     """Test TMDB tool integration with MovieDataClient."""
     

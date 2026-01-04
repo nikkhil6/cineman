@@ -66,6 +66,9 @@ def get_import_name(package_name: str) -> str:
         'python-dotenv': 'dotenv',
         'langchain-google-genai': 'langchain_google_genai',
         'langchain-core': 'langchain_core',
+        'google-cloud-secret-manager': 'google.cloud.secretmanager',
+        'google-auth': 'google.auth',
+        'psycopg2-binary': 'psycopg2',
     }
     
     return mappings.get(package_name, package_name.replace('-', '_'))

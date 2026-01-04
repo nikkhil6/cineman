@@ -140,9 +140,9 @@ class MovieRecommendation(BaseModel):
     # LLM-specific fields (for recommendation context)
     anchor_text: Optional[str] = Field(None, description="Anchor text from LLM response")
     anchor_id: Optional[str] = Field(None, description="Anchor ID (e.g., 'm1', 'm2', 'm3')")
-    quick_pitch: Optional[str] = Field(None, description="Quick pitch from LLM")
-    why_matches: Optional[str] = Field(None, description="Why it matches user's request")
-    award_highlight: Optional[str] = Field(None, description="Award and prestige highlights")
+    quick_pitch: Optional[str] = Field(None, description="A compelling 1-2 sentence summary of the movie. MANDATORY for recommendations.")
+    why_matches: Optional[str] = Field(None, description="One sentence explaining why this movie matches the user's specific request. MANDATORY for recommendations.")
+    award_highlight: Optional[str] = Field(None, description="One sentence about the movie's awards, prestige, or a unique quality. MANDATORY for recommendations.")
     
     # Metadata
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
@@ -428,3 +428,7 @@ def validate_llm_manifest(manifest_json: Dict[str, Any]) -> MovieManifest:
         return MovieManifest(movies=movies)
     except Exception as e:
         raise ValueError(f"Invalid LLM manifest: {str(e)}")
+
+class ChatResponse(BaseModel):
+    response_text: str = Field(description="The conversational response to the user. For recommendations, MUST include full markdown descriptions with Sections: **The Quick Pitch**, **Why It Matches Your Request**, and **Award & Prestige Highlight** for each movie. NO anchor tags.")
+    movies: List[MovieRecommendation] = Field(description="List of structured movie metadata for the recommendations found in the response_text.", default=[])

@@ -34,11 +34,16 @@ class TestConversationHolding(unittest.TestCase):
             db.session.remove()
             db.drop_all()
     
-    @patch('cineman.app.movie_chain')
-    def test_session_persists_across_messages(self, mock_chain):
+    @patch('cineman.app.llm_service')
+    def test_session_persists_across_messages(self, mock_service):
         """Test that session ID persists across multiple messages."""
-        # Mock the chain to return a simple response
-        mock_chain.invoke.return_value = "Hello! I'm CineMan. How can I help you with movies today?"
+        # Mock the service to return a simple response
+        mock_service.process_chat_request.return_value = {
+            "response_text": "Hello! I'm CineMan. How can I help you with movies today?",
+            "movies": [],
+            "validation": {}
+        }
+        mock_service.is_available.return_value = True
         
         with self.client as client:
             # Send first message
@@ -63,13 +68,18 @@ class TestConversationHolding(unittest.TestCase):
             # Session should be the same
             self.assertEqual(session_id1, session_id2)
     
-    @patch('cineman.app.movie_chain')
-    def test_chat_history_accumulates(self, mock_chain):
+    @patch('cineman.app.llm_service')
+    def test_chat_history_accumulates(self, mock_service):
         """Test that chat history accumulates across multiple messages."""
         from cineman.session_manager import get_session_manager
         
-        # Mock chain responses
-        mock_chain.invoke.return_value = "That's great! Tell me more."
+        # Mock service responses
+        mock_service.process_chat_request.return_value = {
+            "response_text": "That's great! Tell me more.",
+            "movies": [],
+            "validation": {}
+        }
+        mock_service.is_available.return_value = True
         
         session_manager = get_session_manager()
         session_id = session_manager.create_session()
@@ -103,11 +113,16 @@ class TestConversationHolding(unittest.TestCase):
             self.assertEqual(user_messages[1]['content'], 'Especially ones with great stunts')
             self.assertEqual(user_messages[2]['content'], 'What do you think about Tom Cruise?')
     
-    @patch('cineman.app.movie_chain')
-    def test_new_session_clears_history(self, mock_chain):
+    @patch('cineman.app.llm_service')
+    def test_new_session_clears_history(self, mock_service):
         """Test that creating a new session clears history."""
-        # Mock chain responses
-        mock_chain.invoke.return_value = "Got it! Let me help you with that."
+        # Mock service responses
+        mock_service.process_chat_request.return_value = {
+            "response_text": "Got it! Let me help you with that.",
+            "movies": [],
+            "validation": {}
+        }
+        mock_service.is_available.return_value = True
         
         with self.client as client:
             # Send first message

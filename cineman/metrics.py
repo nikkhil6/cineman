@@ -143,6 +143,10 @@ def track_request(method, endpoint):
     return decorator
 
 
+import structlog
+
+logger = structlog.get_logger()
+
 def track_external_api_call(api_name):
     """
     Decorator to track external API call metrics.
@@ -172,6 +176,14 @@ def track_external_api_call(api_name):
                 duration = time.time() - start_time
                 external_api_calls_total.labels(api_name=api_name, status=status).inc()
                 external_api_duration_seconds.labels(api_name=api_name).observe(duration)
+                
+                # Log the event
+                logger.info(
+                    "external_api_call",
+                    api_name=api_name,
+                    status=status,
+                    duration_ms=round(duration * 1000, 2)
+                )
         return wrapper
     return decorator
 

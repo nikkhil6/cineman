@@ -407,3 +407,9 @@ def get_cache() -> MovieCache:
     if _global_cache is None:
         _global_cache = MovieCache()
     return _global_cache
+
+
+def reset_global_cache():
+    """Reset the global cache instance (useful for testing)."""
+    global _global_cache
+    _global_cache = None

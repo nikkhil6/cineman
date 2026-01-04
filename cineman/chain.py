@@ -37,7 +37,9 @@ def get_recommendation_chain():
     gemini_api_key = os.getenv("GEMINI_API_KEY")
     
     if not gemini_api_key:
-        raise ValueError("GEMINI_API_KEY environment variable is not set.")
+        # Instead of raising ValueError, return None to allow app to start in degraded mode
+        # The app.py will handle None and disable AI features
+        return None
 
     # 1. Define the LLM (Gemini as the Brain)
     # **FIX:** Pass google_api_key explicitly to bypass Default Credentials Error.
@@ -64,11 +66,12 @@ def get_recommendation_chain():
         ]
     )
     
-    # 3. Define the Output Parser (simply returns the text)
-    parser = StrOutputParser()
+    # 3. Define the Structured Output
+    from cineman.schemas import ChatResponse
     
-    # 4. Create the Chain: Prompt | LLM | Parser
-    chain = prompt | llm | parser
+    # 4. Create the Chain: Prompt | LLM.with_structured_output(...)
+    # Note: with_structured_output returns a Runnable that outputs the Pydantic object
+    chain = prompt | llm.with_structured_output(ChatResponse)
     
     return chain
 

@@ -109,9 +109,9 @@ Cineman uses a modular architecture with clear separation of concerns:
 2. **Flask Handler** → Receives JSON, loads session, calls `llm_service.process_chat_request`
 3. **LLM Service** → Prepares context, calls LangChain chain
 4. **Chain Invocation** → Invokes Gemini AI with structured output enabled
-5. **Validation** → `LLM Service` validates recommended movies against TMDB/OMDb
-6. **Response** → Returns enriched JSON containing text and validated movie list
-7. **Display** → Browser renders conversational text and interactive flip cards
+5. **Validation & Enrichment** → `LLM Service` validates recommended movies against TMDB/OMDb AND enriches them with posters, director, and ratings.
+6. **Response** → Returns enriched JSON containing text and fully-populated movie list.
+7. **Display** → Browser renders conversational text, detailed summaries, and finally interactive flip cards.
 
 ## Configuration Management
 

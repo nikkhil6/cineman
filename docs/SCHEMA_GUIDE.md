@@ -12,6 +12,7 @@ CineMan uses a comprehensive, validated data schema for all movie information. T
 4. **Documentation**: Self-documenting code with clear field descriptions
 5. **Extensibility**: Easy to add new fields without breaking existing code
 6. **Future-Proofing**: Built with long-term usage and feature additions in mind
+7. **Structured-Direct Efficiency**: Enables the backend to pre-populate all movie data, eliminating fragile frontend scraping and redundant API calls.
 
 ## Schema Structure
 

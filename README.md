@@ -245,10 +245,11 @@ cineman/
 - Manages user sessions and basic routing
 
 ### 2. LLM Service (`cineman/services/llm_service.py`)
-- Orchestrates the chat request lifecycle
+- Orchestrates the chat request lifecycle (Single-Invocation Chain)
 - Manages the LangChain chain instance
 - Handles session context and movie validation
-- Ensures performance by optimizing LLM calls
+- **Structured-Direct Orchestration**: Aggregates TMDB/OMDb data and enriches the LLM response.
+- Ensures performance by optimizing LLM calls and eliminating frontend fetches.
 
 ### 3. Recommendation Chain (`cineman/chain.py`)
 - Configures Google Gemini AI model
@@ -268,11 +269,10 @@ cineman/
 - Core function for direct testing, LangChain tool wrapper for agent use
 
 ### 4. Data Schemas (`cineman/schemas.py`)
-- **Comprehensive Movie Schema**: Validates movie data from multiple sources
+- **Structured-Direct Architecture**: Orchestrates movie data flow directly from backend to frontend without redundant client-side fetching.
+- **Comprehensive Movie Schema**: Validates movie data from multiple sources (TMDB, OMDb, LLM)
 - **Type Safety**: Pydantic models ensure data integrity
-- **Nested Structures**: Ratings, identifiers, credits, and details
-- **Backward Compatibility**: Legacy format support for existing code
-- **Extensible**: Easy to add new fields for future features
+- **Enriched Enrichment**: Backend validates recommendations and attaches posters/ratings/directors directly to the JSON response.
 - See [Schema Guide](docs/SCHEMA_GUIDE.md) for detailed documentation
 
 ### 5. Verification Script (`scripts/verify_dependencies.py`)

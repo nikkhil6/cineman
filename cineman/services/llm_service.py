@@ -123,12 +123,6 @@ class LLMService:
             logger.warning("failed_to_get_session_recommendations", error=str(e), session_id=session_id)
             return []
 
-    # Remove _extract_and_validate_movies method as it's no longer needed
-    # logic is now inline or handled by validation.py
-    def _extract_and_validate_movies(self, response_text: str, session_id: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-        # This method is effectively replaced by structured output handling above
-        # But keeping signature if needed or we can just remove it
-        pass
 
 # Singleton instance
 llm_service = LLMService()

@@ -190,6 +190,11 @@ python tests/test_conversation_integration.py
 python scripts/test_conversation.py
 ```
 
+- **Regression testing (single LLM invocation)**:
+```bash
+pytest tests/test_llm_service_regression.py
+```
+
 ## Project Structure
 
 ```
@@ -204,6 +209,8 @@ cineman/
 │   ├── validation.py        # LLM hallucination validation
 │   ├── rate_limiter.py      # API rate limiting
 │   ├── utils.py             # Utility functions
+│   ├── services/            # Core business logic services
+│   │   └── llm_service.py   # LLM interaction and orchestration
 │   ├── routes/              # API routes
 │   │   └── api.py          # Movie API endpoints and /metrics
 │   └── tools/               # Movie data tools
@@ -214,6 +221,7 @@ cineman/
 │   ├── __init__.py
 │   ├── test_schemas.py      # Schema validation tests
 │   ├── test_metrics.py      # Metrics collection tests
+│   ├── test_llm_service_regression.py # Regression tests for LLM service
 │   ├── test_tmdb.py         # TMDB tool tests
 │   └── test_omdb.py         # OMDb tool tests
 ├── docs/                    # Documentation
@@ -233,13 +241,19 @@ cineman/
 
 ### 1. Flask Application (`cineman/app.py`)
 - Serves the web interface
-- Handles chat API requests
-- Manages the LangChain chain instance
+- Handles chat API requests and delegates to `LLMService`
+- Manages user sessions and basic routing
 
-### 2. Recommendation Chain (`cineman/chain.py`)
+### 2. LLM Service (`cineman/services/llm_service.py`)
+- Orchestrates the chat request lifecycle
+- Manages the LangChain chain instance
+- Handles session context and movie validation
+- Ensures performance by optimizing LLM calls
+
+### 3. Recommendation Chain (`cineman/chain.py`)
 - Configures Google Gemini AI model
 - Defines "The Cinephile" persona and prompt structure
-- Creates the LangChain chain for recommendations
+- Uses structured output via Pydantic schemas
 
 ### 3. Movie Tools (`cineman/tools/`)
 

@@ -19,6 +19,12 @@ Cineman uses a modular architecture with clear separation of concerns:
          │
          ▼
 ┌─────────────────┐
+│  LLM Service    │
+│ (llm_service.py)│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
 │  LangChain      │
 │  Chain          │
 │  (chain.py)     │
@@ -39,22 +45,25 @@ Cineman uses a modular architecture with clear separation of concerns:
 **Responsibilities:**
 - Serves static files and HTML templates
 - Exposes `/chat` API endpoint for user messages
-- Manages LangChain chain instance
+- Manages user sessions and delegates orchestration to `LLMService`
 - Handles error responses
 
-**Key Endpoints:**
-- `GET /` - Chat interface
-- `POST /chat` - Process user messages
-- `GET /health` - Health check for deployment
-- `/api/*` - Additional API routes
+### 2. LLM Service (`cineman/services/llm_service.py`)
 
-### 2. LangChain Chain (`cineman/chain.py`)
+**Responsibilities:**
+- Orchestrates the complete chat request lifecycle
+- Manages the LangChain chain instance
+- Handles session context (previously recommended movies)
+- Performs movie validation (hallucination checks)
+- Optimizes LLM invocations to prevent redundant calls
+
+### 3. LangChain Chain (`cineman/chain.py`)
 
 **Responsibilities:**
 - Configures Google Gemini AI model
 - Loads and manages system prompts
-- Creates conversational chain
-- Parses AI responses
+- Defines the structured output schema via Pydantic
+- Creates the sequence: Prompt | LLM | Structured Output
 
 **Key Functions:**
 - `get_recommendation_chain()` - Builds the AI chain
@@ -97,11 +106,12 @@ Cineman uses a modular architecture with clear separation of concerns:
 ## Data Flow
 
 1. **User Input** → Browser sends message to `/chat` endpoint
-2. **Flask Handler** → Receives JSON, validates message
-3. **Chain Invocation** → Passes to LangChain chain with `user_input` key
-4. **AI Processing** → Gemini AI generates recommendation
-5. **Response** → Chain returns formatted response
-6. **Display** → Browser receives and displays message
+2. **Flask Handler** → Receives JSON, loads session, calls `llm_service.process_chat_request`
+3. **LLM Service** → Prepares context, calls LangChain chain
+4. **Chain Invocation** → Invokes Gemini AI with structured output enabled
+5. **Validation** → `LLM Service` validates recommended movies against TMDB/OMDb
+6. **Response** → Returns enriched JSON containing text and validated movie list
+7. **Display** → Browser renders conversational text and interactive flip cards
 
 ## Configuration Management
 

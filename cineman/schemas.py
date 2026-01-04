@@ -431,4 +431,4 @@ def validate_llm_manifest(manifest_json: Dict[str, Any]) -> MovieManifest:
 
 class ChatResponse(BaseModel):
     response_text: str = Field(description="The conversational response to the user. For recommendations, MUST include full markdown descriptions with Sections: **The Quick Pitch**, **Why It Matches Your Request**, and **Award & Prestige Highlight** for each movie. NO anchor tags.")
-    movies: List[MovieRecommendation] = Field(description="List of structured movie metadata for the recommendations found in the response_text.", default=[])
+    movies: List[MovieRecommendation] = Field(description="List of structured movie metadata for the recommendations found in the response_text.", default_factory=list)

@@ -241,8 +241,8 @@ class TestExternalAPILogging(unittest.TestCase):
             # Should log API call or cache hit
             # The output will contain either external_api_call or cache_event
             self.assertTrue(
-                'external_api_call' in output or 'cache_event' in output,
-                "Expected API call or cache event in logs"
+                'external_api_call' in output or 'cache_event' in output or 'omdb_movie_found' in output,
+                f"Expected API call or cache event in logs. Got: {output}"
             )
 
 

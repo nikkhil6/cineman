@@ -42,6 +42,13 @@ def load_gemini_key(project_id: str = None, secret_name: str = None) -> str | No
         _logger.error("GCP_PROJECT or GEMINI_SECRET_NAME not set and no GEMINI_API_KEY env var found.")
         return None
 
+    # Check if we are running in a likely GCP environment or have credentials
+    # to avoid hanging/crashing on local machines without GCP creds.
+    is_gcp = os.environ.get("GAE_ENV") or os.environ.get("CLOUD_RUN_SERVICE") or os.environ.get("GOOGLE_CLOUD_PROJECT")
+    if not is_gcp and not os.environ.get("ENABLE_GCP_SECRETS"):
+        _logger.warning("Not running in GCP and ENABLE_GCP_SECRETS not set. Skipping Secret Manager lookup.")
+        return None
+
     try:
         key = get_secret_from_manager(project_id, secret_name)
         _logger.info("Loaded GEMINI_API_KEY from Secret Manager.")

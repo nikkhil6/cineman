@@ -4,7 +4,7 @@
 // - Keeps robust extraction, modal formatting, compact-summary fallback, and runtime debug from v15.2
 // - Exposes helpers on window and stores lastAssistantRaw for debugging
 
-(function(){})();
+(function () { })();
 
 /* ----- Config ----- */
 const CI_DEBUG = false; // set false to silence verbose logs in production
@@ -25,7 +25,7 @@ function escapeRegex(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, function (m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); });
+  return String(s).replace(/[&<>"']/g, function (m) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]); });
 }
 
 /* ----- Data extraction helpers ----- */
@@ -67,13 +67,19 @@ function parseManifestAndStrip(replyText) {
   const possible = replyText.slice(startIdx);
   try {
     const parsed = JSON.parse(possible);
-    if (parsed && Array.isArray(parsed.movies) && parsed.movies.length === 3) {
+    if (parsed && Array.isArray(parsed.movies) && parsed.movies.length > 0) {
       let assistantRaw = replyText.slice(0, startIdx).trim();
       let assistantClean = assistantRaw;
       for (const m of parsed.movies) {
         if (m.anchor_id) {
           const tokens = [` (anchor:${m.anchor_id})`, `(anchor:${m.anchor_id})`, ` [anchor:${m.anchor_id}]`, `[anchor:${m.anchor_id}]`];
           for (const t of tokens) assistantClean = assistantClean.replaceAll(t, '');
+        }
+        if (m.title) {
+          // Extra safety: clean up "Masterpiece #X: Title" if the LLM followed that old format
+          const titleEsc = escapeRegex(m.title);
+          const legacyRe1 = new RegExp(`Masterpiece\s*#?\d*\s*[:\-]\s*${titleEsc}`, 'gi');
+          assistantClean = assistantClean.replace(legacyRe1, m.title);
         }
       }
       assistantClean = assistantClean.replace(/\*\*\s*Ratings\s*\:\s*\*\*/gi, '');
@@ -222,12 +228,12 @@ function formatModalContentForThreeSections(rawMarkdown) {
   if (pPos) found.push({ key: 'pitch', pos: pPos.pos, label: 'The Quick Pitch' });
   if (wPos) found.push({ key: 'why', pos: wPos.pos, label: 'Why It Matches Your Request' });
   if (aPos) found.push({ key: 'award', pos: aPos.pos, label: 'Award & Prestige Highlight' });
-  found.sort((a,b) => a.pos - b.pos);
+  found.sort((a, b) => a.pos - b.pos);
 
   const sections = {};
   for (let i = 0; i < found.length; i++) {
     const start = found[i].pos;
-    const end = (i + 1 < found.length) ? found[i+1].pos : text.length;
+    const end = (i + 1 < found.length) ? found[i + 1].pos : text.length;
     const rawSlice = text.slice(start, end).trim();
     const firstLineEnd = rawSlice.indexOf('\n');
     let content;
@@ -244,13 +250,13 @@ function formatModalContentForThreeSections(rawMarkdown) {
   }
 
   let out = '';
-  if (sections.pitch) out += `<h4>The Quick Pitch</h4>${window.marked ? marked.parse(sections.pitch) : '<p>'+escapeHtml(sections.pitch)+'</p>'}\n`;
-  if (sections.why) out += `<h4>Why It Matches Your Request</h4>${window.marked ? marked.parse(sections.why) : '<p>'+escapeHtml(sections.why)+'</p>'}\n`;
-  if (sections.award) out += `<h4>Award & Prestige Highlight</h4>${window.marked ? marked.parse(sections.award) : '<p>'+escapeHtml(sections.award)+'</p>'}\n`;
+  if (sections.pitch) out += `<h4>The Quick Pitch</h4>${window.marked ? marked.parse(sections.pitch) : '<p>' + escapeHtml(sections.pitch) + '</p>'}\n`;
+  if (sections.why) out += `<h4>Why It Matches Your Request</h4>${window.marked ? marked.parse(sections.why) : '<p>' + escapeHtml(sections.why) + '</p>'}\n`;
+  if (sections.award) out += `<h4>Award & Prestige Highlight</h4>${window.marked ? marked.parse(sections.award) : '<p>' + escapeHtml(sections.award) + '</p>'}\n`;
 
   if (!sections.pitch && (sections.why || sections.award)) {
     const remaining = text;
-    out = window.marked ? marked.parse(remaining) : '<p>'+escapeHtml(remaining)+'</p>';
+    out = window.marked ? marked.parse(remaining) : '<p>' + escapeHtml(remaining) + '</p>';
   }
 
   return out || (window.marked ? marked.parse(text) : '<pre>' + escapeHtml(text) + '</pre>');
@@ -266,9 +272,9 @@ function extractCompactSummary(movieMarkdown, movieData) {
       const p = doc.querySelector('p');
       if (p && p.textContent.trim()) return p.textContent.trim();
       const blocks = Array.from(doc.body.querySelectorAll('h1,h2,h3,h4,div,li'));
-      for (const b of blocks) if (b.textContent && b.textContent.trim()) return b.textContent.trim().slice(0,300);
+      for (const b of blocks) if (b.textContent && b.textContent.trim()) return b.textContent.trim().slice(0, 300);
       const text = doc.body.textContent || '';
-      if (text.trim()) return text.trim().split(/\n{1,2}/)[0].trim().slice(0,300);
+      if (text.trim()) return text.trim().split(/\n{1,2}/)[0].trim().slice(0, 300);
     }
   } catch (e) {
     if (CI_DEBUG) console.warn('extractCompactSummary: HTML parse failed', e);
@@ -278,7 +284,7 @@ function extractCompactSummary(movieMarkdown, movieData) {
   if (typeof movieMarkdown === 'string' && movieMarkdown.trim()) {
     const para = movieMarkdown.split(/\r?\n\r?\n/).find(p => p && p.trim().length > 0);
     if (para && para.trim()) return para.trim().slice(0, 300);
-    const first = movieMarkdown.trim().replace(/\s+/g,' ').slice(0,300);
+    const first = movieMarkdown.trim().replace(/\s+/g, ' ').slice(0, 300);
     if (first) return first;
   }
 
@@ -286,13 +292,13 @@ function extractCompactSummary(movieMarkdown, movieData) {
   if (movieData) {
     if (movieData.tmdb && movieData.tmdb.overview) {
       const t = movieData.tmdb.overview.trim();
-      if (t) return t.split(/\r?\n\r?\n/)[0].slice(0,300);
+      if (t) return t.split(/\r?\n\r?\n/)[0].slice(0, 300);
     }
     if (movieData.omdb && (movieData.omdb.Plot || movieData.omdb.Plot)) {
       const t = (movieData.omdb.Plot || '').trim();
-      if (t) return t.split(/\r?\n\r?\n/)[0].slice(0,300);
+      if (t) return t.split(/\r?\n\r?\n/)[0].slice(0, 300);
     }
-    if (movieData.note && String(movieData.note).trim()) return String(movieData.note).trim().slice(0,300);
+    if (movieData.note && String(movieData.note).trim()) return String(movieData.note).trim().slice(0, 300);
   }
 
   return '';
@@ -302,13 +308,13 @@ function extractCompactSummary(movieMarkdown, movieData) {
 function buildFlipCard(movie, movieData, movieMarkdown) {
   const { imdb, rt_tomatometer, rt_audience } = extractRatings(movieData || {});
   const director = extractDirector(movieData || {});
-  
+
   // Debug logging for ratings
   if (CI_DEBUG || (!imdb && !rt_tomatometer && !rt_audience)) {
     console.log('[Ratings Debug]', {
       title: movie.title,
       imdb: imdb || 'N/A',
-      rt_tomatometer: rt_tomatometer || 'N/A', 
+      rt_tomatometer: rt_tomatometer || 'N/A',
       rt_audience: rt_audience || 'N/A',
       rawData: {
         imdb_rating: movieData?.imdb_rating,
@@ -366,72 +372,72 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   ratingRow.style.justifyContent = 'center';
   ratingRow.style.flexWrap = 'wrap';
   ratingRow.style.gap = '8px';
-  
+
   let hasRatings = false;
-  
-  if (imdb) { 
-    const imdbBadge = document.createElement('div'); 
-    imdbBadge.className = 'rating-badge'; 
-    imdbBadge.textContent = `⭐ ${imdb}`; 
+
+  if (imdb) {
+    const imdbBadge = document.createElement('div');
+    imdbBadge.className = 'rating-badge';
+    imdbBadge.textContent = `⭐ ${imdb}`;
     imdbBadge.title = 'IMDB Rating';
-    ratingRow.appendChild(imdbBadge); 
+    ratingRow.appendChild(imdbBadge);
     hasRatings = true;
   }
-  if (rt_tomatometer) { 
-    const rtBadge = document.createElement('div'); 
-    rtBadge.className = 'rating-badge'; 
-    rtBadge.textContent = `🍅 ${rt_tomatometer}`; 
+  if (rt_tomatometer) {
+    const rtBadge = document.createElement('div');
+    rtBadge.className = 'rating-badge';
+    rtBadge.textContent = `🍅 ${rt_tomatometer}`;
     rtBadge.title = 'Rotten Tomatoes';
-    ratingRow.appendChild(rtBadge); 
+    ratingRow.appendChild(rtBadge);
     hasRatings = true;
   }
-  else if (rt_audience) { 
-    const rtBadge = document.createElement('div'); 
-    rtBadge.className = 'rating-badge'; 
-    rtBadge.textContent = `🍅 ${rt_audience}`; 
+  else if (rt_audience) {
+    const rtBadge = document.createElement('div');
+    rtBadge.className = 'rating-badge';
+    rtBadge.textContent = `🍅 ${rt_audience}`;
     rtBadge.title = 'Rotten Tomatoes Audience';
-    ratingRow.appendChild(rtBadge); 
+    ratingRow.appendChild(rtBadge);
     hasRatings = true;
   }
-  
+
   // Only append rating row if there are ratings to show
   if (hasRatings) {
     meta.appendChild(ratingRow);
   }
-  
+
   // Action buttons (like, dislike, watchlist)
   const actionButtons = document.createElement('div');
   actionButtons.className = 'action-buttons';
-  
+
   const likeBtn = document.createElement('button');
   likeBtn.className = 'action-btn like-btn';
   likeBtn.innerHTML = '👍';
   likeBtn.setAttribute('data-action', 'like');
   likeBtn.title = 'Like this movie';
-  
+
   const dislikeBtn = document.createElement('button');
   dislikeBtn.className = 'action-btn dislike-btn';
   dislikeBtn.innerHTML = '👎';
   dislikeBtn.setAttribute('data-action', 'dislike');
   dislikeBtn.title = 'Dislike this movie';
-  
+
   const watchlistBtn = document.createElement('button');
   watchlistBtn.className = 'action-btn watchlist-btn';
   watchlistBtn.innerHTML = '📋';
   watchlistBtn.setAttribute('data-action', 'watchlist');
   watchlistBtn.title = 'Add to watchlist';
-  
+
   actionButtons.appendChild(likeBtn);
   actionButtons.appendChild(dislikeBtn);
   actionButtons.appendChild(watchlistBtn);
   meta.appendChild(actionButtons);
-  
+
   front.appendChild(meta);
 
   // BACK - full detailed content with poster on left
   const back = document.createElement('div');
   back.className = 'flip-card-face flip-card-back';
-  
+
   // Create two-column layout container
   const backLayout = document.createElement('div');
   backLayout.style.display = 'flex';
@@ -439,13 +445,13 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backLayout.style.flex = '1';
   backLayout.style.minHeight = '0';
   backLayout.style.overflow = 'hidden';
-  
+
   // LEFT COLUMN - Poster
   const leftColumn = document.createElement('div');
   leftColumn.style.flex = '0 0 240px';
   leftColumn.style.display = 'flex';
   leftColumn.style.flexDirection = 'column';
-  
+
   const backPoster = document.createElement('img');
   backPoster.className = 'back-poster-image';
   backPoster.src = posterUrl || '';
@@ -455,9 +461,9 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backPoster.style.objectFit = 'cover';
   backPoster.style.maxHeight = '360px';
   backPoster.onerror = () => { backPoster.style.display = 'none'; };
-  
+
   leftColumn.appendChild(backPoster);
-  
+
   // RIGHT COLUMN - Content
   const rightColumn = document.createElement('div');
   rightColumn.style.flex = '1';
@@ -465,7 +471,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   rightColumn.style.flexDirection = 'column';
   rightColumn.style.minHeight = '0';
   rightColumn.style.overflow = 'hidden';
-  
+
   // Add movie title and metadata at the top of right column
   const backHeader = document.createElement('div');
   backHeader.className = 'back-header';
@@ -473,7 +479,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backHeader.style.borderBottom = '2px solid #e5e7eb';
   backHeader.style.paddingBottom = '10px';
   backHeader.style.flexShrink = '0';
-  
+
   // Title row with ratings on the right
   const titleRow = document.createElement('div');
   titleRow.style.display = 'flex';
@@ -481,14 +487,14 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   titleRow.style.alignItems = 'flex-start';
   titleRow.style.gap = '12px';
   titleRow.style.marginBottom = '4px';
-  
+
   const backTitle = document.createElement('div');
   backTitle.style.fontWeight = '700';
   backTitle.style.fontSize = '1.15rem';
   backTitle.style.flex = '1';
   backTitle.style.minWidth = '0';
   backTitle.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
-  
+
   const backRatings = document.createElement('div');
   backRatings.style.fontSize = '0.75rem';
   backRatings.style.color = '#374151';
@@ -498,7 +504,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backRatings.style.flexWrap = 'nowrap';
   backRatings.style.flexShrink = '0';
   backRatings.style.whiteSpace = 'nowrap';
-  
+
   if (imdb) {
     const imdbSpan = document.createElement('span');
     imdbSpan.textContent = `⭐ ${imdb}`;
@@ -516,21 +522,21 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     rtSpan.title = `Rotten Tomatoes Audience: ${rt_audience}`;
     backRatings.appendChild(rtSpan);
   }
-  
+
   titleRow.appendChild(backTitle);
   if (imdb || rt_tomatometer || rt_audience) titleRow.appendChild(backRatings);
-  
+
   const backYearDir = document.createElement('div');
   backYearDir.style.color = '#6b7280';
   backYearDir.style.fontSize = '0.85rem';
-  
+
   backYearDir.textContent = year + (director ? ` • Dir: ${director}` : '');
-  
+
   backHeader.appendChild(titleRow);
   backHeader.appendChild(backYearDir);
   rightColumn.appendChild(backHeader);
-  
-  // Add the full formatted content
+
+  // Add the structured content
   const backContent = document.createElement('div');
   backContent.className = 'card-back-content';
   backContent.style.flex = '1';
@@ -538,41 +544,58 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backContent.style.paddingRight = '8px';
   backContent.style.minHeight = '0';
   backContent.style.overflowX = 'hidden';
-  
-  // Use the full formatted content from formatModalContentForThreeSections
-  const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
-  backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
+
+  // PRIORITY: Use structured JSON fields if available
+  if (movie.quick_pitch || movie.why_matches || movie.award_highlight) {
+    let structuredHtml = '';
+    if (movie.quick_pitch) {
+      structuredHtml += `<h4>The Quick Pitch</h4><p>${escapeHtml(movie.quick_pitch)}</p>`;
+    }
+    if (movie.why_matches) {
+      structuredHtml += `<h4>Why It Matches Your Request</h4><p>${escapeHtml(movie.why_matches)}</p>`;
+    }
+    if (movie.award_highlight || movie.why_gem) {
+      const label = movie.why_gem ? "Why It's a Gem" : "Award & Prestige Highlight";
+      structuredHtml += `<h4>${label}</h4><p>${escapeHtml(movie.award_highlight || movie.why_gem)}</p>`;
+    }
+    backContent.innerHTML = structuredHtml;
+  } else {
+    // FALLBACK: Use extracted markdown if JSON fields are empty
+    const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
+    backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
+  }
+
   rightColumn.appendChild(backContent);
-  
+
   // Assemble the layout
   backLayout.appendChild(leftColumn);
   backLayout.appendChild(rightColumn);
   back.appendChild(backLayout);
-  
+
   // Add action buttons to back side as well
   const backActionButtons = document.createElement('div');
   backActionButtons.className = 'action-buttons';
   backActionButtons.style.marginTop = '12px';
   backActionButtons.style.flexShrink = '0';
-  
+
   const backLikeBtn = document.createElement('button');
   backLikeBtn.className = 'action-btn like-btn';
   backLikeBtn.innerHTML = '👍';
   backLikeBtn.setAttribute('data-action', 'like');
   backLikeBtn.title = 'Like this movie';
-  
+
   const backDislikeBtn = document.createElement('button');
   backDislikeBtn.className = 'action-btn dislike-btn';
   backDislikeBtn.innerHTML = '👎';
   backDislikeBtn.setAttribute('data-action', 'dislike');
   backDislikeBtn.title = 'Dislike this movie';
-  
+
   const backWatchlistBtn = document.createElement('button');
   backWatchlistBtn.className = 'action-btn watchlist-btn';
   backWatchlistBtn.innerHTML = '📋';
   backWatchlistBtn.setAttribute('data-action', 'watchlist');
   backWatchlistBtn.title = 'Add to watchlist';
-  
+
   backActionButtons.appendChild(backLikeBtn);
   backActionButtons.appendChild(backDislikeBtn);
   backActionButtons.appendChild(backWatchlistBtn);
@@ -599,14 +622,12 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   // store debug data on the DOM node and log if debug enabled
   try {
     flipCard.dataset.extracted = (movieMarkdown || '').slice(0, 1000);
-    flipCard.dataset.compact = (compact || '').slice(0, 1000);
     if (CI_DEBUG) {
       console.debug('[movie-integration] buildFlipCard:', {
         title: movie.title,
-        extractedSnippet: flipCard.dataset.extracted,
-        compactSnippet: flipCard.dataset.compact,
+        hasPitch: !!movie.quick_pitch,
+        hasWhy: !!movie.why_matches,
         poster: posterUrl ? posterUrl : '<no poster>',
-        tmdbTitle: movieData?.tmdb?.title || '',
       });
     }
   } catch (e) {
@@ -617,7 +638,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   const handleActionClick = async (action, frontBtn, backBtn) => {
     const isActive = frontBtn.classList.contains('active');
     const newValue = !isActive;
-    
+
     try {
       const response = await fetch('/api/interaction', {
         method: 'POST',
@@ -632,7 +653,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
           value: newValue
         })
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         if (result.status === 'success') {
@@ -655,7 +676,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
             frontBtn.classList.toggle('active', newValue);
             backBtn.classList.toggle('active', newValue);
           }
-          
+
           // Update watchlist count
           if (typeof window.updateWatchlistCount === 'function') {
             window.updateWatchlistCount();
@@ -666,39 +687,39 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
       console.error('Failed to update interaction:', err);
     }
   };
-  
+
   // Add click handlers for front buttons
   likeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     handleActionClick('like', likeBtn, backLikeBtn);
   });
-  
+
   dislikeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     handleActionClick('dislike', dislikeBtn, backDislikeBtn);
   });
-  
+
   watchlistBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     handleActionClick('watchlist', watchlistBtn, backWatchlistBtn);
   });
-  
+
   // Add click handlers for back buttons
   backLikeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     handleActionClick('like', likeBtn, backLikeBtn);
   });
-  
+
   backDislikeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     handleActionClick('dislike', dislikeBtn, backDislikeBtn);
   });
-  
+
   backWatchlistBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     handleActionClick('watchlist', watchlistBtn, backWatchlistBtn);
   });
-  
+
   // Load existing interaction state and sync both front and back buttons
   (async () => {
     try {
@@ -729,9 +750,9 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   // Click to flip the card or close if already flipped
   flipCard.addEventListener('click', (e) => {
     if (e.target.closest('a') || e.target.closest('.action-btn')) return;
-    
+
     const posterRow = flipCard.closest('.poster-row');
-    
+
     // If this card is flipped, ANY click on it should close it
     if (flipCard.classList.contains('is-flipped')) {
       flipCard.classList.remove('is-flipped');
@@ -741,18 +762,18 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
       }
       return;
     }
-    
+
     // Check if another card is already flipped
     const anyFlipped = posterRow && posterRow.querySelector('.flip-card.is-flipped');
-    
+
     // If another card is flipped and this isn't it, don't allow flip
     if (anyFlipped) {
       return;
     }
-    
+
     // Flip this card
     flipCard.classList.add('is-flipped');
-    
+
     // Toggle backdrop on parent poster-row
     if (posterRow) {
       posterRow.classList.add('has-flipped-card');
@@ -765,16 +786,16 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   flipCard.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      
+
       // Check if another card is already flipped
       const posterRow = flipCard.closest('.poster-row');
       const anyFlipped = posterRow && posterRow.querySelector('.flip-card.is-flipped');
-      
+
       // If another card is flipped and this isn't it, don't allow flip
       if (anyFlipped && anyFlipped !== flipCard && !flipCard.classList.contains('is-flipped')) {
         return;
       }
-      
+
       const isFlipped = flipCard.classList.toggle('is-flipped');
       if (posterRow) {
         if (isFlipped) {
@@ -795,7 +816,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
       }
     }
   });
-  
+
   // Click backdrop to close
   const handleBackdropClick = (e) => {
     const posterRow = flipCard.closest('.poster-row');
@@ -807,44 +828,44 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
       }
     }
   };
-  
+
   // Add backdrop click handler after a short delay to prevent immediate closing
   setTimeout(() => {
     document.addEventListener('click', handleBackdropClick);
   }, 100);
-  
+
   // Touch/swipe support for mobile navigation between posters
   let touchStartX = 0;
   let touchStartY = 0;
   let touchEndX = 0;
   let touchEndY = 0;
-  
+
   flipCard.addEventListener('touchstart', (e) => {
     // Only handle swipes when card is NOT flipped
     if (flipCard.classList.contains('is-flipped')) return;
-    
+
     touchStartX = e.changedTouches[0].screenX;
     touchStartY = e.changedTouches[0].screenY;
   }, { passive: true });
-  
+
   flipCard.addEventListener('touchend', (e) => {
     // Only handle swipes when card is NOT flipped
     if (flipCard.classList.contains('is-flipped')) return;
-    
+
     touchEndX = e.changedTouches[0].screenX;
     touchEndY = e.changedTouches[0].screenY;
-    
+
     const deltaX = touchEndX - touchStartX;
     const deltaY = touchEndY - touchStartY;
-    
+
     // Check if it's a horizontal swipe (more horizontal than vertical)
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
       const posterRow = flipCard.closest('.poster-row');
       if (!posterRow) return;
-      
+
       const allCards = Array.from(posterRow.querySelectorAll('.flip-card'));
       const currentIndex = allCards.indexOf(flipCard);
-      
+
       if (deltaX > 0) {
         // Swipe right - go to previous card
         if (currentIndex > 0) {
@@ -864,8 +885,34 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
 
 /* ----- Main handler: Split response into conversation -> posters -> recommendation text ----- */
 async function handleAssistantReplyWithManifest(data) {
-  const raw = (typeof data.response === 'string') ? data.response : '';
-  const { manifest, assistantTextClean, assistantTextRaw } = parseManifestAndStrip(raw);
+  // Support both new structured output (response_text + movies) and legacy embedded JSON (response)
+  const rawText = data.response_text || data.response || '';
+
+  let manifest = null;
+  let assistantTextClean = '';
+  let assistantTextRaw = '';
+
+  if (data.movies && Array.isArray(data.movies) && data.movies.length > 0) {
+    // New structured path: movies are provided directly
+    manifest = { movies: data.movies };
+    assistantTextRaw = rawText;
+    assistantTextClean = rawText;
+
+    // STRUCTURAL FIX: Robustly strip any anchor tokens (anchor:m1, anchor m2, [anchor:m3], etc)
+    const genericAnchorRegex = /[\(\[]?\s*anchor\s*[:\s]\s*m\d+\s*[\)\]]?/gi;
+    assistantTextClean = assistantTextClean.replace(genericAnchorRegex, '');
+
+    // Clean ratings headers
+    assistantTextClean = assistantTextClean.replace(/\*\*\s*Ratings\s*\:\s*\*\*/gi, '');
+    assistantTextClean = assistantTextClean.replace(/\bRatings\s*:\s*/gi, '');
+
+  } else {
+    // Legacy path: parse embedded JSON from text
+    const result = parseManifestAndStrip(rawText);
+    manifest = result.manifest;
+    assistantTextClean = result.assistantTextClean;
+    assistantTextRaw = result.assistantTextRaw;
+  }
 
   // store for debugging convenience
   window.lastAssistantRaw = assistantTextRaw || '';
@@ -873,8 +920,8 @@ async function handleAssistantReplyWithManifest(data) {
   if (CI_DEBUG) {
     console.debug('[movie-integration] handleAssistantReplyWithManifest invoked', {
       manifest,
-      assistantTextClean: assistantTextClean ? assistantTextClean.slice(0,800) : '',
-      assistantTextRaw: assistantTextRaw ? assistantTextRaw.slice(0,800) : ''
+      assistantTextClean: assistantTextClean ? assistantTextClean.slice(0, 800) : '',
+      assistantTextRaw: assistantTextRaw ? assistantTextRaw.slice(0, 800) : ''
     });
   }
 
@@ -894,10 +941,10 @@ async function handleAssistantReplyWithManifest(data) {
   // Look for the "### 🍿 CineMan's Curated Recommendation" header or similar
   const recommendationHeaderRegex = /^###?\s*🍿.*?(?:Recommendation|Curated)/mi;
   const match = assistantTextClean.match(recommendationHeaderRegex);
-  
+
   let conversationalText = '';
   let recommendationText = '';
-  
+
   if (match && match.index !== undefined) {
     // Split at the recommendation header
     conversationalText = assistantTextClean.slice(0, match.index).trim();
@@ -926,7 +973,7 @@ async function handleAssistantReplyWithManifest(data) {
   avatar.className = 'agent-avatar';
   avatar.src = '/static/cineman_hero.jpg';
   avatar.alt = 'CineMan';
-  avatar.onerror = function() { this.style.display = 'none'; };
+  avatar.onerror = function () { this.style.display = 'none'; };
   posterBubbleWrap.appendChild(avatar);
 
   const posterBubble = document.createElement('div');
@@ -945,14 +992,14 @@ async function handleAssistantReplyWithManifest(data) {
   for (const m of manifest.movies) {
     if (!m || !m.title) continue;
     const movieSectionMarkdown = findBestMovieSection(assistantTextRaw, m) || findBestMovieSection(assistantTextClean, m) || '';
-    if (CI_DEBUG) console.debug('[movie-integration] extracted per-movie markdown for', m.title, movieSectionMarkdown ? movieSectionMarkdown.slice(0,300) : '<empty>');
+    if (CI_DEBUG) console.debug('[movie-integration] extracted per-movie markdown for', m.title, movieSectionMarkdown ? movieSectionMarkdown.slice(0, 300) : '<empty>');
     try {
       const movieData = await fetchMovieCombined(m.title);
       if (CI_DEBUG) console.debug('[movie-integration] fetched movieData for', m.title, { hasPoster: !!movieData.poster, tmdbTitle: movieData.tmdb?.title || null });
       const hasMeta = movieData.tmdb?.title || movieData.omdb?.Title || movieData.poster;
       if (!hasMeta) { if (CI_DEBUG) console.debug('Skipping manifest entry (no poster/metadata):', m.title); continue; }
       const card = buildFlipCard(m, movieData, movieSectionMarkdown);
-      try { card.dataset.extracted = (movieSectionMarkdown || '').slice(0, 1000); } catch (e) {}
+      try { card.dataset.extracted = (movieSectionMarkdown || '').slice(0, 1000); } catch (e) { }
       posterRow.appendChild(card);
     } catch (err) {
       console.warn('Failed to fetch/build card:', m.title, err);

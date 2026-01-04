@@ -44,39 +44,13 @@ class LLMService:
         # 2. Invoke Chain
         logger.info("llm_invoke_start", session_id=session_id)
         try:
-            response_text = self.chain.invoke({
-                "user_input": user_input,
-                "chat_history": langchain_history,
-                # In a real LangChain prompt with placeholders, we typically insert system context via the PromptTemplate 
-                # or as a SystemMessage. 
-                # However, the current chain.py implementation seems to have a fixed system prompt 
-                # and doesn't explicitly expose a variable for dynamic context injection in the system prompt 
-                # unless we modify chain.py. 
-                # NOTE: The original app.py logic didn't seem to pass `session_context` effectively to the chain 
-                # if the chain's prompt template doesn't have a variable for it! 
-                # Let's check chain.py again. It has MessagesPlaceholder(variable_name="chat_history").
-                # It does NOT seem to have a slot for `session_context` string injection. 
-                # The original code in app.py: 
-                #   session_context = build_session_context(...)
-                #   response = movie_chain.invoke({"user_input": user_input, "chat_history": langchain_history})
-                # It calculated session_context but didn't pass it! 
-                # This seems to be a BUG in the original code. 
-                # For now, I will replicate original behavior (ignoring context) or try to append it to user_input?
-                # The original code:
-                # context = build_session_context(...)
-                # ...
-                # response = movie_chain.invoke(...)
-                # It strictly ignored `context`! 
-                # I will append it to user_input to actually use it.
-            })
-            
             # Use the context by appending to user input (invisible to user in chat UI, but visible to LLM)
-            # This fixes the bug where context was ignored.
+            # This fixes the bug where context was ignored and avoids double invocation.
             full_input = user_input
             if session_context:
                  full_input += f"\n\n[System Context]: {session_context}"
             
-            # Invoke with structured output
+            # Invoke with structured output - SINGLE CALL
             response_obj = self.chain.invoke({
                  "user_input": full_input, 
                  "chat_history": langchain_history

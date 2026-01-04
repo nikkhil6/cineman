@@ -233,23 +233,6 @@ def chat():
                 title = movie.get('title')
                 if title and title in recommended_movies:
                     track_duplicate_recommendation()
-            
-            # Extract just titles for session storage if that's what session_data expects
-            # session_data.add_recommended_movies expects list of strings (titles) or dicts?
-            # existing code: session_data.add_recommended_movies(new_movies) where new_movies was list of dicts.
-            # but _get_session_recommendations returns titles. 
-            # let's assume session_manager handles it.
-            # based on app.py:378 it logged titles=new_movies, and new_movies was list of dicts.
-            # so session_manager probably handles dicts or extracts titles.
-            # But wait, `recommended_movies` from session_data is a list of... what?
-            # app.py:308: recommended_movies = session_data.get_recommended_movies()
-            # app.py:372: if movie in recommended_movies: (movie is a dict here from extract_and_validate)
-            # This implies recommended_movies might be a list of dicts or checks against dicts?
-            # Actually, `if movie in recommended_movies` works if recommended_movies contains dicts.
-            # But earlier code: `return [i.movie_title for i in interactions]` in LLMService.
-            # Let's assume session_manager stores titles for simplicity or check session_manager later.
-            # For now passing it as is seems safe to match previous behavior.
-            # Extract titles for session tracking to avoid context contamination with dicts
             movie_titles = [m.get('title') for m in new_movies if m.get('title')]
             session_data.add_recommended_movies(movie_titles)
             

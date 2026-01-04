@@ -255,7 +255,7 @@ cineman/
 - Defines "The Cinephile" persona and prompt structure
 - Uses structured output via Pydantic schemas
 
-### 3. Movie Tools (`cineman/tools/`)
+### 4. Movie Tools (`cineman/tools/`)
 
 **TMDB Tool (`cineman/tools/tmdb.py`):**
 - Searches TMDB for movie posters and metadata
@@ -267,7 +267,7 @@ cineman/
 - Provides IMDb ratings and additional metadata
 - Core function for direct testing, LangChain tool wrapper for agent use
 
-### 4. Data Schemas (`cineman/schemas.py`)
+### 5. Data Schemas (`cineman/schemas.py`)
 - **Comprehensive Movie Schema**: Validates movie data from multiple sources
 - **Type Safety**: Pydantic models ensure data integrity
 - **Nested Structures**: Ratings, identifiers, credits, and details
@@ -275,7 +275,7 @@ cineman/
 - **Extensible**: Easy to add new fields for future features
 - See [Schema Guide](docs/SCHEMA_GUIDE.md) for detailed documentation
 
-### 5. Verification Script (`scripts/verify_dependencies.py`)
+### 6. Verification Script (`scripts/verify_dependencies.py`)
 - Automatically checks all dependencies from `requirements.txt`
 - Shows installed versions and missing packages
 - Provides color-coded output for easy verification

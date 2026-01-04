@@ -31,7 +31,7 @@ class LLMService:
         Process a chat request: invoke LLM, parse response, validate movies, update history.
         """
         if not self.chain:
-             raise RuntimeError("AI service is not available.")
+            raise RuntimeError("AI service is not available.")
 
         # 1. Build Context
         # Get previously recommended movies for this session to avoid duplicates
@@ -74,7 +74,7 @@ class LLMService:
             # This fixes the bug where context was ignored.
             full_input = user_input
             if session_context:
-                 full_input += f"\n\n[System Context]: {session_context}"
+                full_input += f"\n\n[System Context]: {session_context}"
             
             # Invoke with structured output
             response_obj = self.chain.invoke({
@@ -99,7 +99,7 @@ class LLMService:
         
         # Log dropped
         if dropped_movies:
-             logger.info("movies_dropped_validation", count=len(dropped_movies), movies=[m.get('title') for m in dropped_movies])
+            logger.info("movies_dropped_validation", count=len(dropped_movies), movies=[m.get('title') for m in dropped_movies])
 
         return {
             "response_text": response_text,

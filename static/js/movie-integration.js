@@ -898,7 +898,7 @@ async function handleAssistantReplyWithManifest(data) {
     assistantTextRaw = rawText;
     assistantTextClean = rawText;
 
-    // STRUCUTRAL FIX: Robustly strip any anchor tokens (anchor:m1, anchor m2, [anchor:m3], etc)
+    // STRUCTURAL FIX: Robustly strip any anchor tokens (anchor:m1, anchor m2, [anchor:m3], etc)
     const genericAnchorRegex = /[\(\[]?\s*anchor\s*[:\s]\s*m\d+\s*[\)\]]?/gi;
     assistantTextClean = assistantTextClean.replace(genericAnchorRegex, '');
 

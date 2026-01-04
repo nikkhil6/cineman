@@ -99,6 +99,8 @@ def fetch_omdb_data_core(title: str, year: str = None) -> Dict[str, Any]:
     track_cache_operation('omdb', hit=False)
 
     params = {"apikey": OMDB_API_KEY, "t": title, "plot": "short", "r": "json"}
+    if year:
+        params["y"] = year
     client = _get_omdb_client()
 
     start = time.time()

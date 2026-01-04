@@ -67,6 +67,8 @@ def get_movie_poster_core(title: str, year: str = None) -> Dict[str, Any]:
 
     search_url = f"{TMDB_BASE_URL}/search/movie"
     params = {"api_key": TMDB_API_KEY, "query": title}
+    if year:
+        params["primary_release_year"] = year
 
     client = _get_tmdb_client()
 

@@ -216,8 +216,8 @@ def validate_against_tmdb(title: str, year: Optional[str] = None) -> Dict[str, A
     Returns:
         Dict with validation results from TMDB
     """
-    # TODO: Future enhancement - pass year to TMDB API for better filtering
-    result = get_movie_poster_core(title)
+    # Pass year to TMDB API for better filtering
+    result = get_movie_poster_core(title, year=year)
     
     return {
         "found": result.get("status") == "success",
@@ -245,8 +245,8 @@ def validate_against_omdb(title: str, year: Optional[str] = None) -> Dict[str, A
     Returns:
         Dict with validation results from OMDb
     """
-    # TODO: Future enhancement - pass year to OMDb API for better filtering
-    result = fetch_omdb_data_core(title)
+    # Pass year to OMDb API for better filtering
+    result = fetch_omdb_data_core(title, year=year)
     
     return {
         "found": result.get("status") == "success",
@@ -349,8 +349,10 @@ def validate_llm_recommendation(
             matched_year = normalize_year(omdb_result.get("year"))
             matched_director = omdb_result.get("director")
         else:
-            # Both found but poor matches - likely wrong movie
-            confidence = 0.3
+            # Both found but poor matches - likely wrong movie OR fake movie
+            # Setting to 0.0 prevents False Positives for completely fake movies 
+            # where API might coincidentally return a loosely named result.
+            confidence = 0.0
             source = "none"
     
     # Only TMDB found
@@ -470,12 +472,54 @@ def validate_movie_list(
             "corrections": result.corrections
         }
         
+        # --- ARCHITECTURE CLEANUP: Add metadata for frontend direct-render ---
+        # This eliminates the need for the frontend to call /api/movie
+        
+        tmdb_raw = result.tmdb_data.get("raw", {}) if result.tmdb_data else {}
+        omdb_raw = result.omdb_data.get("raw", {}) if result.omdb_data else {}
+
+        # 1. Poster URL
+        enriched_movie["poster_url"] = tmdb_raw.get("poster_url") or omdb_raw.get("Poster_URL") or omdb_raw.get("Poster")
+        
+        # 2. Ratings (Normalize for consistent frontend display)
+        from cineman.schemas import MovieRatings
+        ratings_obj = MovieRatings()
+        
+        # OMDb Ratings
+        ratings_obj.imdb_rating = omdb_raw.get("imdbRating") or omdb_raw.get("IMDb_Rating")
+        ratings_obj.rt_tomatometer = omdb_raw.get("Rotten_Tomatoes")
+        # If Ratings list exists, check for RT
+        if not ratings_obj.rt_tomatometer and isinstance(omdb_raw.get("Ratings"), list):
+            for r in omdb_raw["Ratings"]:
+                if "Rotten Tomatoes" in r.get("Source", ""):
+                     ratings_obj.rt_tomatometer = r.get("Value")
+        
+        # TMDB Ratings
+        if tmdb_raw.get("vote_average"):
+            try:
+                ratings_obj.tmdb_rating = float(tmdb_raw["vote_average"])
+            except (ValueError, TypeError):
+                logger.warning("invalid_tmdb_rating", value=tmdb_raw.get("vote_average"))
+            
+        enriched_movie["ratings"] = ratings_obj.model_dump(exclude_none=True)
+        
+        # 3. Director (if matched)
+        enriched_movie["director"] = result.matched_director
+        
+        # 4. Canonical Metadata
+        if result.matched_title:
+            enriched_movie["title"] = result.matched_title
+        if result.matched_year:
+            enriched_movie["year"] = result.matched_year
+
+        # --- End Enrichment ---
+
         # Apply corrections if needed
         if result.corrections:
-            for field, (old_val, new_val) in result.corrections.items():
-                enriched_movie[field] = new_val
-                if "original_" + field not in enriched_movie:
-                    enriched_movie["original_" + field] = old_val
+            for field_name, (old_val, new_val) in result.corrections.items():
+                enriched_movie[field_name] = new_val
+                if "original_" + field_name not in enriched_movie:
+                    enriched_movie["original_" + field_name] = old_val
         
         if result.should_drop:
             dropped_movies.append({

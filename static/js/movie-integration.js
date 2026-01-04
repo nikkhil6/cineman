@@ -31,313 +31,69 @@ function escapeHtml(s) {
 /* ----- Data extraction helpers ----- */
 function extractDirector(data) {
   if (!data) return null;
-  if (data.director && String(data.director).trim()) return String(data.director).trim();
+  // Priority 1: New Backend-Enriched field
+  if (data.director) return String(data.director).trim();
+  // Priority 2: Injected from LLM or other levels
   if (data.omdb && (data.omdb.Director || data.omdb.director)) return data.omdb.Director || data.omdb.director;
   if (data.tmdb && data.tmdb.director) return data.tmdb.director;
-  if (data.tmdb && data.tmdb.credits && Array.isArray(data.tmdb.credits.crew)) {
-    const dir = data.tmdb.credits.crew.find(c => c.job === 'Director' || c.department === 'Directing');
-    if (dir && dir.name) return dir.name;
-  }
-  if (Array.isArray(data.directors) && data.directors.length) return data.directors[0];
   return null;
 }
 
 function extractRatings(data) {
-  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDb_Rating || data.omdb.IMDbRating)) || null;
+  if (!data) return { imdb: null, rt_tomatometer: null, rt_audience: null };
+
+  // Priority 1: New Backend-Enriched ratings object
+  if (data.ratings) {
+    return {
+      imdb: data.ratings.imdb_rating || null,
+      rt_tomatometer: data.ratings.rt_tomatometer || null,
+      rt_audience: data.ratings.rt_audience || null
+    };
+  }
+
+  // Priority 2: Legacy fallback
+  let imdb = data.imdb_rating || (data.omdb && (data.omdb.imdbRating || data.omdb.IMDb_Rating)) || null;
   let rtTom = data.rt_tomatometer || (data.omdb && (data.omdb.Rotten_Tomatoes || data.omdb.RottenTomatoes_Tomatometer)) || null;
   let rtAud = data.rt_audience || (data.omdb && data.omdb.RottenTomatoes_Audience) || null;
 
-  if ((!rtTom || !imdb) && data.omdb && Array.isArray(data.omdb.Ratings)) {
-    for (const r of data.omdb.Ratings) {
-      if (!rtTom && /rotten/i.test(r.Source || '')) rtTom = r.Value;
-      if (!imdb && /imdb/i.test(r.Source || '')) imdb = r.Value;
-    }
-  }
-  return { imdb: imdb || null, rt_tomatometer: rtTom || null, rt_audience: rtAud || null };
+  return { imdb, rt_tomatometer: rtTom, rt_audience: rtAud };
 }
 
-/* ----- Manifest parsing ----- */
+/* ----- Manifest parsing (Legacy Fallback) ----- */
 function parseManifestAndStrip(replyText) {
   if (!replyText || typeof replyText !== 'string') return { manifest: null, assistantTextClean: replyText || '', assistantTextRaw: '' };
-  const twoNewlineIdx = replyText.lastIndexOf('\n\n{');
-  let startIdx = -1;
-  if (twoNewlineIdx !== -1) startIdx = twoNewlineIdx + 2;
-  else startIdx = replyText.lastIndexOf('{');
+  const possibleIdx = replyText.lastIndexOf('\n\n{');
+  let startIdx = (possibleIdx !== -1) ? possibleIdx + 2 : replyText.lastIndexOf('{');
   if (startIdx === -1) return { manifest: null, assistantTextClean: replyText, assistantTextRaw: replyText };
   const possible = replyText.slice(startIdx);
   try {
     const parsed = JSON.parse(possible);
-    if (parsed && Array.isArray(parsed.movies) && parsed.movies.length > 0) {
-      let assistantRaw = replyText.slice(0, startIdx).trim();
-      let assistantClean = assistantRaw;
-      for (const m of parsed.movies) {
-        if (m.anchor_id) {
-          const tokens = [` (anchor:${m.anchor_id})`, `(anchor:${m.anchor_id})`, ` [anchor:${m.anchor_id}]`, `[anchor:${m.anchor_id}]`];
-          for (const t of tokens) assistantClean = assistantClean.replaceAll(t, '');
-        }
-        if (m.title) {
-          // Extra safety: clean up "Masterpiece #X: Title" if the LLM followed that old format
-          const titleEsc = escapeRegex(m.title);
-          const legacyRe1 = new RegExp(`Masterpiece\s*#?\d*\s*[:\-]\s*${titleEsc}`, 'gi');
-          assistantClean = assistantClean.replace(legacyRe1, m.title);
-        }
-      }
-      assistantClean = assistantClean.replace(/\*\*\s*Ratings\s*\:\s*\*\*/gi, '');
-      assistantClean = assistantClean.replace(/\bRatings\s*:\s*/gi, '');
-      return { manifest: parsed, assistantTextClean: assistantClean, assistantTextRaw: assistantRaw };
+    if (parsed && Array.isArray(parsed.movies)) {
+      return { manifest: parsed, assistantTextClean: replyText.slice(0, startIdx).trim(), assistantTextRaw: replyText };
     }
-  } catch (e) { /* invalid JSON => no manifest */ }
+  } catch (e) { }
   return { manifest: null, assistantTextClean: replyText, assistantTextRaw: replyText };
 }
 
-/* ----- Section parsing & extraction ----- */
-function splitAssistantIntoSections(assistantRaw) {
-  const sections = [];
-  if (!assistantRaw) return sections;
-  const lines = assistantRaw.split(/\r?\n/);
-  let current = { header: null, content: [] };
-  for (let i = 0; i < lines.length; i++) {
-    const ln = lines[i];
-    if (/^#{1,6}\s*/.test(ln)) {
-      if (current.header || current.content.length) sections.push({ header: current.header, content: current.content.join('\n').trim() });
-      current = { header: ln.trim(), content: [] };
-      continue;
-    }
-    if (ln.trim() === '' && current.content.length > 0) {
-      if (current.header || current.content.join('\n').trim()) {
-        sections.push({ header: current.header, content: current.content.join('\n').trim() });
-        current = { header: null, content: [] };
-      }
-      continue;
-    }
-    current.content.push(ln);
-  }
-  if (current.header || current.content.length) sections.push({ header: current.header, content: current.content.join('\n').trim() });
-  return sections;
-}
+// DELETED redundant section parsing and compact summary logic
 
-/* ----- Helper: compute end index of current movie block (next anchor token or next header) ----- */
-function computeBlockEndIndex(assistantRaw, startIdx) {
-  const anchorOrHeaderRegex = /\(anchor:([^)]+)\)|\[anchor:([^\]]+)\]|\n####/g;
-  let m;
-  let end = assistantRaw.length;
-  while ((m = anchorOrHeaderRegex.exec(assistantRaw)) !== null) {
-    const pos = m.index;
-    if (pos > startIdx && pos < end) end = pos;
-  }
-  return end;
-}
-
-function findBestMovieSection(assistantRaw, movie) {
-  if (!assistantRaw) return '';
-
-  // Prefer anchor token-based extraction and capture until next anchor or header, not just first paragraph.
-  if (movie.anchor_id) {
-    const token1 = `(anchor:${movie.anchor_id})`;
-    const token2 = `[anchor:${movie.anchor_id}]`;
-    let idx = assistantRaw.indexOf(token1);
-    if (idx === -1) idx = assistantRaw.indexOf(token2);
-    if (idx !== -1) {
-      // find start of content after the header line (move to next newline after token)
-      let afterHeaderIdx = assistantRaw.indexOf('\n', idx);
-      let contentStart = afterHeaderIdx !== -1 ? afterHeaderIdx + 1 : idx;
-      // compute end as next anchor/header occurrence (so we capture multiple paragraphs/lines)
-      const endIdx = computeBlockEndIndex(assistantRaw, idx);
-      const section = assistantRaw.slice(contentStart, endIdx).trim();
-      if (section) return section;
-      // fallback: try to capture immediate paragraph if above failed
-      const m = assistantRaw.slice(contentStart).match(/([\s\S]*?)(?=\r?\n\r?\n|$)/);
-      if (m && m[1]) return m[1].trim();
-    }
-  }
-
-  // Anchor text exact substring: capture until next anchor/header
-  if (movie.anchor_text) {
-    const idx = assistantRaw.indexOf(movie.anchor_text);
-    if (idx !== -1) {
-      let afterHeaderIdx = assistantRaw.indexOf('\n', idx);
-      let contentStart = afterHeaderIdx !== -1 ? afterHeaderIdx + 1 : idx;
-      const endIdx = computeBlockEndIndex(assistantRaw, idx);
-      const section = assistantRaw.slice(contentStart, endIdx).trim();
-      if (section) return section;
-      const m = assistantRaw.slice(contentStart).match(/([\s\S]*?)(?=\r?\n\r?\n|$)/);
-      if (m && m[1]) return m[1].trim();
-    }
-  }
-
-  // Fuzzy header match: use split sections (headers) and prefer the section whose header best matches title
-  const sections = splitAssistantIntoSections(assistantRaw);
-  const titleNorm = normalizeForMatch(movie.title || movie.anchor_text || '');
-  if (titleNorm) {
-    for (const s of sections) {
-      if (!s.header) continue;
-      const headerNorm = normalizeForMatch(s.header);
-      if (headerNorm.includes(titleNorm) || titleNorm.includes(headerNorm)) return s.content || '';
-      const titleTokens = titleNorm.split(/\s+/).filter(Boolean);
-      const overlap = titleTokens.filter(t => headerNorm.includes(t)).length;
-      if (overlap >= Math.max(1, Math.floor(titleTokens.length / 2))) return s.content || '';
-    }
-  }
-
-  // Fallback: find the first paragraph after the title occurrence anywhere in the raw text
-  const rawLower = assistantRaw.toLowerCase();
-  const tLower = (movie.title || '').toLowerCase();
-  if (tLower && rawLower.indexOf(tLower) !== -1) {
-    const idx = rawLower.indexOf(tLower);
-    const after = assistantRaw.slice(idx);
-    const m = after.match(/(?:\r?\n)+([\s\S]*?)(?=\r?\n#{1,6}\s|\r?\n\s*\r?\n|$)/);
-    if (m && m[1]) return m[1].trim();
-  }
-
-  return '';
-}
-
-/* ----- Modal formatter for three labeled sections ----- */
-function formatModalContentForThreeSections(rawMarkdown) {
-  if (!rawMarkdown) return '<div class="small">No summary available.</div>';
-  const text = rawMarkdown.replace(/\r\n/g, '\n');
-
-  const labels = {
-    pitch: ['**The Quick Pitch:**', 'The Quick Pitch:', '**The Quick Pitch**:', 'The Quick Pitch'],
-    why: ['**Why It Matches Your Request:**', 'Why It Matches Your Request:', '**Why It Matches Your Request**:', 'Why It Matches Your Request'],
-    award: ['**Award & Prestige Highlight:**', 'Award & Prestige Highlight:', '**Award & Prestige Highlight**:', 'Award & Prestige Highlight', 'Award & Prestige']
-  };
-
-  function findLabelPos(labelVariants, src) {
-    for (const v of labelVariants) {
-      const i = src.indexOf(v);
-      if (i !== -1) return { pos: i, label: v };
-    }
-    for (const v of labelVariants) {
-      const re = new RegExp(escapeRegex(v), 'i');
-      const m = re.exec(src);
-      if (m) return { pos: m.index, label: m[0] };
-    }
-    return null;
-  }
-
-  const pPos = findLabelPos(labels.pitch, text);
-  const wPos = findLabelPos(labels.why, text);
-  const aPos = findLabelPos(labels.award, text);
-
-  if (!pPos && !wPos && !aPos) {
-    try { return window.marked ? marked.parse(text) : `<pre>${escapeHtml(text)}</pre>`; } catch (e) { return `<pre>${escapeHtml(text)}</pre>`; }
-  }
-
-  const found = [];
-  if (pPos) found.push({ key: 'pitch', pos: pPos.pos, label: 'The Quick Pitch' });
-  if (wPos) found.push({ key: 'why', pos: wPos.pos, label: 'Why It Matches Your Request' });
-  if (aPos) found.push({ key: 'award', pos: aPos.pos, label: 'Award & Prestige Highlight' });
-  found.sort((a, b) => a.pos - b.pos);
-
-  const sections = {};
-  for (let i = 0; i < found.length; i++) {
-    const start = found[i].pos;
-    const end = (i + 1 < found.length) ? found[i + 1].pos : text.length;
-    const rawSlice = text.slice(start, end).trim();
-    const firstLineEnd = rawSlice.indexOf('\n');
-    let content;
-    if (firstLineEnd !== -1) {
-      content = rawSlice.slice(firstLineEnd + 1).trim();
-      if (!content) {
-        const labelText = rawSlice.split(/\n/)[0];
-        content = rawSlice.slice(labelText.length).trim();
-      }
-    } else {
-      content = rawSlice.replace(/^.*?:\s*/, '').trim();
-    }
-    sections[found[i].key] = content || '';
-  }
-
-  let out = '';
-  if (sections.pitch) out += `<h4>The Quick Pitch</h4>${window.marked ? marked.parse(sections.pitch) : '<p>' + escapeHtml(sections.pitch) + '</p>'}\n`;
-  if (sections.why) out += `<h4>Why It Matches Your Request</h4>${window.marked ? marked.parse(sections.why) : '<p>' + escapeHtml(sections.why) + '</p>'}\n`;
-  if (sections.award) out += `<h4>Award & Prestige Highlight</h4>${window.marked ? marked.parse(sections.award) : '<p>' + escapeHtml(sections.award) + '</p>'}\n`;
-
-  if (!sections.pitch && (sections.why || sections.award)) {
-    const remaining = text;
-    out = window.marked ? marked.parse(remaining) : '<p>' + escapeHtml(remaining) + '</p>';
-  }
-
-  return out || (window.marked ? marked.parse(text) : '<pre>' + escapeHtml(text) + '</pre>');
-}
-
-/* ----- Compact summary extractor for card backs ----- */
-function extractCompactSummary(movieMarkdown, movieData) {
-  // 1) If movieMarkdown looks like HTML, parse and return first <p> text
-  try {
-    if (typeof movieMarkdown === 'string' && /<\/?[a-z][\s\S]*>/i.test(movieMarkdown)) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(movieMarkdown, 'text/html');
-      const p = doc.querySelector('p');
-      if (p && p.textContent.trim()) return p.textContent.trim();
-      const blocks = Array.from(doc.body.querySelectorAll('h1,h2,h3,h4,div,li'));
-      for (const b of blocks) if (b.textContent && b.textContent.trim()) return b.textContent.trim().slice(0, 300);
-      const text = doc.body.textContent || '';
-      if (text.trim()) return text.trim().split(/\n{1,2}/)[0].trim().slice(0, 300);
-    }
-  } catch (e) {
-    if (CI_DEBUG) console.warn('extractCompactSummary: HTML parse failed', e);
-  }
-
-  // 2) If movieMarkdown is markdown/plain text: return first non-empty paragraph
-  if (typeof movieMarkdown === 'string' && movieMarkdown.trim()) {
-    const para = movieMarkdown.split(/\r?\n\r?\n/).find(p => p && p.trim().length > 0);
-    if (para && para.trim()) return para.trim().slice(0, 300);
-    const first = movieMarkdown.trim().replace(/\s+/g, ' ').slice(0, 300);
-    if (first) return first;
-  }
-
-  // 3) Fallback to movieData fields
-  if (movieData) {
-    if (movieData.tmdb && movieData.tmdb.overview) {
-      const t = movieData.tmdb.overview.trim();
-      if (t) return t.split(/\r?\n\r?\n/)[0].slice(0, 300);
-    }
-    if (movieData.omdb && (movieData.omdb.Plot || movieData.omdb.Plot)) {
-      const t = (movieData.omdb.Plot || '').trim();
-      if (t) return t.split(/\r?\n\r?\n/)[0].slice(0, 300);
-    }
-    if (movieData.note && String(movieData.note).trim()) return String(movieData.note).trim().slice(0, 300);
-  }
-
-  return '';
-}
-
-/* ----- Build flip card DOM (click opens modal which receives formatted HTML) ----- */
-function buildFlipCard(movie, movieData, movieMarkdown) {
-  const { imdb, rt_tomatometer, rt_audience } = extractRatings(movieData || {});
-  const director = extractDirector(movieData || {});
-
-  // Debug logging for ratings
-  if (CI_DEBUG || (!imdb && !rt_tomatometer && !rt_audience)) {
-    console.log('[Ratings Debug]', {
-      title: movie.title,
-      imdb: imdb || 'N/A',
-      rt_tomatometer: rt_tomatometer || 'N/A',
-      rt_audience: rt_audience || 'N/A',
-      rawData: {
-        imdb_rating: movieData?.imdb_rating,
-        rt_tomatometer: movieData?.rt_tomatometer,
-        omdb: movieData?.omdb,
-      }
-    });
-  }
-
+/* ----- Build flip card DOM ----- */
+function buildFlipCard(movie) {
   const flipCard = document.createElement('div');
   flipCard.className = 'flip-card';
-  flipCard.setAttribute('role', 'listitem');
   flipCard.tabIndex = 0;
 
   const inner = document.createElement('div');
   inner.className = 'flip-card-inner';
   flipCard.appendChild(inner);
 
-  // FRONT
   const front = document.createElement('div');
   front.className = 'flip-card-face flip-card-front';
 
-  const posterUrl = movieData?.poster || (movieData?.omdb && (movieData.omdb.Poster || movieData.omdb.Poster_URL)) || (movieData?.tmdb && movieData.tmdb.poster_url) || null;
+  // movie is now assumed to be an enriched object from the backend
+  const { imdb, rt_tomatometer, rt_audience } = extractRatings(movie);
+  const director = extractDirector(movie);
+  const posterUrl = movie.poster_url || null;
   let img = null;
   if (posterUrl) {
     img = document.createElement('img');
@@ -357,12 +113,12 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     front.appendChild(placeholder);
   }
 
-  // meta block
+  // front meta block
   const meta = document.createElement('div');
   meta.className = 'poster-meta';
-  const titleEl = document.createElement('div'); titleEl.className = 'title'; titleEl.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
+  const titleEl = document.createElement('div'); titleEl.className = 'title'; titleEl.textContent = movie.title;
   meta.appendChild(titleEl);
-  const year = movieData?.tmdb?.year || movieData?.omdb?.Year || movie.year || '';
+  const year = movie.year || '';
   if (year) { const yEl = document.createElement('div'); yEl.className = 'year'; yEl.textContent = year; meta.appendChild(yEl); }
   if (director) { const dEl = document.createElement('div'); dEl.className = 'dir'; dEl.textContent = `Dir: ${director}`; meta.appendChild(dEl); }
 
@@ -493,7 +249,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   backTitle.style.fontSize = '1.15rem';
   backTitle.style.flex = '1';
   backTitle.style.minWidth = '0';
-  backTitle.textContent = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
+  backTitle.textContent = movie.title;
 
   const backRatings = document.createElement('div');
   backRatings.style.fontSize = '0.75rem';
@@ -560,9 +316,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
     }
     backContent.innerHTML = structuredHtml;
   } else {
-    // FALLBACK: Use extracted markdown if JSON fields are empty
-    const fullHtml = formatModalContentForThreeSections(movieMarkdown || '');
-    backContent.innerHTML = fullHtml || '<div class="small">No summary available.</div>';
+    backContent.innerHTML = '<div class="small">No summary available.</div>';
   }
 
   rightColumn.appendChild(backContent);
@@ -621,7 +375,6 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
 
   // store debug data on the DOM node and log if debug enabled
   try {
-    flipCard.dataset.extracted = (movieMarkdown || '').slice(0, 1000);
     if (CI_DEBUG) {
       console.debug('[movie-integration] buildFlipCard:', {
         title: movie.title,
@@ -631,7 +384,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
       });
     }
   } catch (e) {
-    if (CI_DEBUG) console.warn('[movie-integration] failed to set dataset on flipCard', e);
+    if (CI_DEBUG) console.warn('[movie-integration] failed to log flipCard debug info', e);
   }
 
   // Handle action button clicks - sync both front and back buttons
@@ -644,7 +397,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          movie_title: movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title,
+          movie_title: movie.title,
           movie_year: year || '',
           movie_poster_url: posterUrl || '',
           director: director || '',
@@ -723,7 +476,7 @@ function buildFlipCard(movie, movieData, movieMarkdown) {
   // Load existing interaction state and sync both front and back buttons
   (async () => {
     try {
-      const title = movieData?.tmdb?.title || movieData?.omdb?.Title || movie.title;
+      const title = movie.title;
       const response = await fetch(`/api/interaction/${encodeURIComponent(title)}`);
       if (response.ok) {
         const result = await response.json();
@@ -966,7 +719,24 @@ async function handleAssistantReplyWithManifest(data) {
     window.addMessage('Agent', conversationalText);
   }
 
-  // Step 2: Build and display poster cards
+  // Step 2: After conversational text, append the recommendation text (movie details)
+  try {
+    if (recommendationText && typeof window.addMessage === 'function') {
+      window.addMessage('Agent', recommendationText);
+    } else if (recommendationText) {
+      const wrap = document.createElement('div');
+      wrap.className = 'message-container';
+      const bubble = document.createElement('div');
+      bubble.className = 'agent-message';
+      bubble.innerHTML = window.marked ? marked.parse(recommendationText) : recommendationText;
+      wrap.appendChild(bubble);
+      chatbox.appendChild(wrap);
+    }
+  } catch (err) {
+    console.warn('Failed to render recommendationText in chat area', err);
+  }
+
+  // Step 3: Build and display poster cards directly from manifest metadata
   const posterBubbleWrap = document.createElement('div');
   posterBubbleWrap.className = 'message-container';
   const avatar = document.createElement('img');
@@ -984,64 +754,15 @@ async function handleAssistantReplyWithManifest(data) {
   posterBubble.appendChild(posterRow);
   posterBubbleWrap.appendChild(posterBubble);
 
-  // append posters bubble
   chatbox.appendChild(posterBubbleWrap);
   chatbox.scrollTop = chatbox.scrollHeight;
 
-  const unmatched = [];
   for (const m of manifest.movies) {
     if (!m || !m.title) continue;
-    const movieSectionMarkdown = findBestMovieSection(assistantTextRaw, m) || findBestMovieSection(assistantTextClean, m) || '';
-    if (CI_DEBUG) console.debug('[movie-integration] extracted per-movie markdown for', m.title, movieSectionMarkdown ? movieSectionMarkdown.slice(0, 300) : '<empty>');
-    try {
-      const movieData = await fetchMovieCombined(m.title);
-      if (CI_DEBUG) console.debug('[movie-integration] fetched movieData for', m.title, { hasPoster: !!movieData.poster, tmdbTitle: movieData.tmdb?.title || null });
-      const hasMeta = movieData.tmdb?.title || movieData.omdb?.Title || movieData.poster;
-      if (!hasMeta) { if (CI_DEBUG) console.debug('Skipping manifest entry (no poster/metadata):', m.title); continue; }
-      const card = buildFlipCard(m, movieData, movieSectionMarkdown);
-      try { card.dataset.extracted = (movieSectionMarkdown || '').slice(0, 1000); } catch (e) { }
-      posterRow.appendChild(card);
-    } catch (err) {
-      console.warn('Failed to fetch/build card:', m.title, err);
-      const fallbackCard = document.createElement('div');
-      fallbackCard.className = 'poster-card';
-      fallbackCard.textContent = m.title;
-      unmatched.push(fallbackCard);
-    }
-  }
-
-  if (unmatched.length > 0) {
-    const trayWrapper = document.createElement('div');
-    trayWrapper.className = 'poster-collapsed-tray';
-    const btn = document.createElement('button'); btn.className = 'poster-tray-btn'; btn.setAttribute('aria-expanded', 'false'); btn.textContent = 'Posters ';
-    const badge = document.createElement('span'); badge.className = 'badge'; badge.textContent = `${unmatched.length}`; badge.style.marginLeft = '6px'; btn.appendChild(badge);
-    const tray = document.createElement('div'); tray.className = 'poster-row'; tray.style.display = 'none'; tray.style.marginTop = '6px';
-    for (const c of unmatched) tray.appendChild(c);
-    btn.addEventListener('click', () => {
-      const expanded = tray.style.display !== 'none';
-      tray.style.display = expanded ? 'none' : 'flex';
-      btn.setAttribute('aria-expanded', String(!expanded));
-      btn.textContent = expanded ? 'Posters ' : 'Hide posters ';
-    });
-    trayWrapper.appendChild(btn); trayWrapper.appendChild(tray);
-    posterRow.appendChild(trayWrapper);
-  }
-
-  // Step 3: After posters, append the recommendation text (movie details)
-  try {
-    if (recommendationText && typeof window.addMessage === 'function') {
-      window.addMessage('Agent', recommendationText);
-    } else if (recommendationText) {
-      const wrap = document.createElement('div');
-      wrap.className = 'message-container';
-      const bubble = document.createElement('div');
-      bubble.className = 'agent-message';
-      bubble.innerHTML = window.marked ? marked.parse(recommendationText) : recommendationText;
-      wrap.appendChild(bubble);
-      chatbox.appendChild(wrap);
-    }
-  } catch (err) {
-    console.warn('Failed to render recommendationText in chat area', err);
+    // ARCHITECTURE CLEANUP: No more fetchMovieCombined! 
+    // All metadata is already in 'm' thanks to backend enrichment.
+    const card = buildFlipCard(m);
+    posterRow.appendChild(card);
   }
 
   chatbox.scrollTop = chatbox.scrollHeight;

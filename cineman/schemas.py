@@ -430,5 +430,5 @@ def validate_llm_manifest(manifest_json: Dict[str, Any]) -> MovieManifest:
         raise ValueError(f"Invalid LLM manifest: {str(e)}")
 
 class ChatResponse(BaseModel):
-    response_text: str = Field(description="The conversational response to the user. For recommendations, MUST include full markdown descriptions with Sections: **The Quick Pitch**, **Why It Matches Your Request**, and **Award & Prestige Highlight** for each movie. NO anchor tags.")
-    movies: List[MovieRecommendation] = Field(description="List of structured movie metadata for the recommendations found in the response_text.", default_factory=list)
+    response_text: str = Field(description="The conversational response to the user. Maintain the CineMan persona. For recommendations, provide a warm introduction and expert wrap-up, but DO NOT include the detailed movie summaries (pitch, why, awards) in this text as they are moved to structured JSON.")
+    movies: List[MovieRecommendation] = Field(description="List of structured movie metadata for the recommendations. Each object MUST include quick_pitch, why_matches, and award_highlight.", default_factory=list)

@@ -141,6 +141,13 @@ If you need to rotate keys:
 3. **Restart the application**
 4. **Revoke old keys** from service dashboards
 
+### Updating Gemini API Key on GCP
+
+If you have deployed your application to Google Cloud Platform and need to update the Gemini API key, see the detailed **[Update Gemini API Key on GCP Guide](../docs/UPDATE_GEMINI_API_KEY.md)** for step-by-step instructions covering:
+- Using Secret Manager (recommended for production)
+- Updating environment variables directly
+- Using the automated deployment scripts
+
 ## Troubleshooting API Keys
 
 ### Error: "GEMINI_API_KEY environment variable is not set"

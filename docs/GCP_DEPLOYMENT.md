@@ -128,6 +128,8 @@ gcloud app deploy --set-env-vars \
 gcloud app deploy --set-env-vars GEMINI_API_KEY=new_key
 ```
 
+> 💡 **Tip:** For detailed instructions on updating your Gemini API key, see the [Update Gemini API Key Guide](UPDATE_GEMINI_API_KEY.md).
+
 **Check app status:**
 ```bash
 gcloud app describe
@@ -221,6 +223,8 @@ gcloud run services update cineman \
   --region us-central1 \
   --set-env-vars GEMINI_API_KEY=new_key
 ```
+
+> 💡 **Tip:** For detailed instructions on updating your Gemini API key, see the [Update Gemini API Key Guide](UPDATE_GEMINI_API_KEY.md).
 
 **Scale configuration:**
 ```bash

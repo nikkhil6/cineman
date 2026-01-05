@@ -419,12 +419,14 @@ To add new movie data tools:
 
 ### Deploy to Google Cloud Platform (GCP)
 
-This application can be easily deployed to GCP using either App Engine or Cloud Run. See the **[GCP Deployment Guide](GCP_DEPLOYMENT.md)** for complete instructions.
+This application can be easily deployed to GCP using either App Engine or Cloud Run. See the **[GCP Deployment Guide](docs/GCP_DEPLOYMENT.md)** for complete instructions.
 
 **Important:** The database configuration automatically adapts to the environment:
 - **Local Development**: Uses SQLite file (`cineman.db`)
 - **GCP Deployment**: Uses SQLite in `/tmp` (temporary) or Cloud SQL (recommended for production)
-- See **[GCP Database Setup Guide](GCP_DATABASE_SETUP.md)** for persistent database configuration
+- See **[GCP Database Setup Guide](docs/GCP_DATABASE_SETUP.md)** for persistent database configuration
+
+**Updating API Keys:** Need to update your Gemini API key on GCP? See the **[Update Gemini API Key Guide](docs/UPDATE_GEMINI_API_KEY.md)** for step-by-step instructions.
 
 **Quick Deploy to App Engine:**
 ```bash

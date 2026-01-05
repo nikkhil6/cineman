@@ -92,6 +92,10 @@ gcloud run services logs read cineman --region us-central1
 
 ## Update Environment Variables
 
+Need to update your Gemini API key? See the detailed **[Update Gemini API Key Guide](UPDATE_GEMINI_API_KEY.md)** for step-by-step instructions.
+
+**Quick commands:**
+
 **App Engine:**
 ```bash
 gcloud app deploy --set-env-vars GEMINI_API_KEY=new_key

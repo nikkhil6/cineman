@@ -110,6 +110,27 @@ class MovieCredits(BaseModel):
     )
 
 
+class StreamingProvider(BaseModel):
+    """
+    Streaming availability information.
+    """
+    name: str = Field(..., description="Name of the streaming service (e.g., 'Netflix')")
+    type: str = Field(..., description="Type of availability: 'sub', 'free', 'purchase', 'rental'")
+    url: Optional[str] = Field(None, description="Direct link to the content")
+    logo_url: Optional[str] = Field(None, description="URL to the service logo")
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "name": "Netflix",
+                "type": "sub",
+                "url": "https://www.netflix.com/title/123",
+                "logo_url": "https://..."
+            }
+        }
+    )
+
+
 class MovieRecommendation(BaseModel):
     """
     Complete movie recommendation schema with all metadata.
@@ -143,6 +164,9 @@ class MovieRecommendation(BaseModel):
     quick_pitch: Optional[str] = Field(None, description="A compelling 1-2 sentence summary of the movie. MANDATORY for recommendations.")
     why_matches: Optional[str] = Field(None, description="One sentence explaining why this movie matches the user's specific request. MANDATORY for recommendations.")
     award_highlight: Optional[str] = Field(None, description="One sentence about the movie's awards, prestige, or a unique quality. MANDATORY for recommendations.")
+    
+    # Streaming availability
+    streaming: List[StreamingProvider] = Field(default_factory=list, description="List of streaming providers")
     
     # Metadata
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc), description="Creation timestamp")
@@ -250,6 +274,7 @@ class MovieRecommendation(BaseModel):
             "rt_tomatometer": self.ratings.rt_tomatometer if self.ratings else None,
             "rt_audience": self.ratings.rt_audience if self.ratings else None,
             "imdb_id": self.identifiers.imdb_id if self.identifiers else None,
+            "streaming": [p.model_dump() for p in self.streaming] if self.streaming else [],
             "anchor_text": self.anchor_text,
             "anchor_id": self.anchor_id,
         }
@@ -324,6 +349,7 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         "credits": MovieCredits(),
         "details": MovieDetails(),
         "poster_url": None,
+        "streaming": [],
     }
 
     if source == "combined":
@@ -359,6 +385,14 @@ def parse_movie_from_api(api_data: Dict[str, Any], source: str = "combined") -> 
         
         # Poster
         movie_data["poster_url"] = tmdb.get("poster_url") or omdb.get("Poster_URL")
+        
+        # Streaming
+        streaming_data = api_data.get("streaming", [])
+        if isinstance(streaming_data, list):
+            movie_data["streaming"] = [
+                StreamingProvider(**p) if isinstance(p, dict) else p 
+                for p in streaming_data
+            ]
         
     elif source == "tmdb":
         # Parse TMDB-only response

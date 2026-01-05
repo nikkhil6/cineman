@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, session, Response
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
+from cineman.tools.watchmode import fetch_watchmode_data_core
 from cineman.models import db, MovieInteraction
 from cineman.schemas import parse_movie_from_api, MovieRecommendation
 from cineman.api_status import check_all_apis
@@ -55,6 +56,10 @@ def movie_combined():
 
     tmdb = get_movie_poster_core(title)
     omdb = fetch_omdb_data_core(title)
+    
+    # Fetch streaming data using tmdb_id if available
+    tmdb_id = tmdb.get("tmdb_id")
+    watchmode = fetch_watchmode_data_core(title, tmdb_id=tmdb_id)
 
     # Determine preferred rating
     rating = None
@@ -119,6 +124,7 @@ def movie_combined():
         "note": note,
         "imdb_rating": imdb_rating,
         "rt_tomatometer": rt_tomatometer,
+        "streaming": watchmode.get("providers", [])
     }
     
     # Also include structured schema-validated data
@@ -303,6 +309,23 @@ def api_status():
             "status": "error",
             "message": "Failed to check API status"
         }), 500
+
+
+@bp.route("/streaming/status", methods=["GET"])
+def streaming_status():
+    """
+    GET /api/streaming/status
+    Check the status of the Watchmode API.
+    """
+    from cineman.tools.watchmode import WATCHMODE_API_KEY
+    
+    status = "operational" if WATCHMODE_API_KEY else "dummy_mode"
+    return jsonify({
+        "status": "success",
+        "service": "watchmode",
+        "mode": status,
+        "message": "Watchmode API is configured" if WATCHMODE_API_KEY else "Running with dummy data"
+    })
 
 
 @bp.route("/session/timeout", methods=["GET"])

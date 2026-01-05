@@ -200,7 +200,8 @@ function buildFlipCard(movie) {
   backLayout.style.gap = '16px';
   backLayout.style.flex = '1';
   backLayout.style.minHeight = '0';
-  backLayout.style.overflow = 'hidden';
+  backLayout.style.minHeight = '0';
+  // backLayout.style.overflow = 'hidden'; // Removed to allow dropdowns
 
   // LEFT COLUMN - Poster
   const leftColumn = document.createElement('div');
@@ -220,13 +221,16 @@ function buildFlipCard(movie) {
 
   leftColumn.appendChild(backPoster);
 
+
+
   // RIGHT COLUMN - Content
   const rightColumn = document.createElement('div');
   rightColumn.style.flex = '1';
   rightColumn.style.display = 'flex';
   rightColumn.style.flexDirection = 'column';
   rightColumn.style.minHeight = '0';
-  rightColumn.style.overflow = 'hidden';
+  rightColumn.style.minHeight = '0';
+  // rightColumn.style.overflow = 'hidden'; // Removed to allow dropdowns
 
   // Add movie title and metadata at the top of right column
   const backHeader = document.createElement('div');
@@ -252,10 +256,11 @@ function buildFlipCard(movie) {
   backTitle.textContent = movie.title;
 
   const backRatings = document.createElement('div');
-  backRatings.style.fontSize = '0.75rem';
+  backRatings.style.fontSize = '0.85rem';
   backRatings.style.color = '#374151';
   backRatings.style.fontWeight = '600';
   backRatings.style.display = 'flex';
+  backRatings.style.alignItems = 'center';
   backRatings.style.gap = '8px';
   backRatings.style.flexWrap = 'nowrap';
   backRatings.style.flexShrink = '0';
@@ -279,8 +284,92 @@ function buildFlipCard(movie) {
     backRatings.appendChild(rtSpan);
   }
 
+  // NEW: Watch Dropdown in Header (Right Side)
+  if (movie.streaming && movie.streaming.length > 0) {
+    const dropdownContainer = document.createElement('div');
+    dropdownContainer.className = 'watch-dropdown-container';
+
+    // Stop propagation on container to prevent card flip or closing
+    dropdownContainer.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    const dropBtn = document.createElement('div');
+    dropBtn.className = 'watch-dropdown-btn';
+    dropBtn.innerHTML = '📺 Watch';
+
+    // Add logic to close other open dropdowns? Maybe simplify to just self-toggle
+    const dropMenu = document.createElement('div');
+    dropMenu.className = 'watch-dropdown-menu';
+
+    // Populate providers
+    movie.streaming.forEach(p => {
+      const item = document.createElement('a');
+      item.className = 'watch-option';
+      const isFree = (p.type || '').toLowerCase() === 'free';
+
+      if (isFree) {
+        item.classList.add('free-option');
+      }
+      item.href = p.url || '#';
+      item.target = '_blank';
+      item.rel = 'noopener noreferrer';
+
+      if (p.logo_url) {
+        const logo = document.createElement('img');
+        logo.src = p.logo_url;
+        logo.alt = p.name;
+        logo.onerror = function () {
+          // Replace failed image with fallback icon
+          const fallback = document.createElement('span');
+          fallback.textContent = '📺';
+          fallback.style.fontSize = '20px';
+          this.parentNode.replaceChild(fallback, this);
+        };
+        item.appendChild(logo);
+      } else {
+        // Fallback icon?
+        const fallback = document.createElement('span');
+        fallback.textContent = '📺';
+        item.appendChild(fallback);
+      }
+
+      const nameSpan = document.createElement('span');
+      nameSpan.textContent = isFree ? `${p.name} (Free)` : p.name;
+      item.appendChild(nameSpan);
+
+      dropMenu.appendChild(item);
+    });
+
+    // Toggle logic
+    dropBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Close any other open menus first
+      document.querySelectorAll('.watch-dropdown-menu.show').forEach(m => {
+        if (m !== dropMenu) m.classList.remove('show');
+      });
+      dropMenu.classList.toggle('show');
+    });
+
+    // Close when clicking outside - implemented globally or specifically?
+    // Let's add a document listener for outside clicks once
+    document.addEventListener('click', (e) => {
+      if (!dropdownContainer.contains(e.target)) {
+        dropMenu.classList.remove('show');
+      }
+    });
+
+    dropdownContainer.appendChild(dropBtn);
+    dropdownContainer.appendChild(dropMenu);
+
+    backRatings.appendChild(dropdownContainer);
+  }
+
   titleRow.appendChild(backTitle);
-  if (imdb || rt_tomatometer || rt_audience) titleRow.appendChild(backRatings);
+  // Robust check: append backRatings if it has any children (ratings OR dropdown)
+  if (backRatings.hasChildNodes()) {
+    titleRow.appendChild(backRatings);
+  }
 
   const backYearDir = document.createElement('div');
   backYearDir.style.color = '#6b7280';
@@ -757,12 +846,31 @@ async function handleAssistantReplyWithManifest(data) {
   chatbox.appendChild(posterBubbleWrap);
   chatbox.scrollTop = chatbox.scrollHeight;
 
+  // Fetch enriched data for each movie (including streaming info) and build cards
   for (const m of manifest.movies) {
     if (!m || !m.title) continue;
-    // ARCHITECTURE CLEANUP: No more fetchMovieCombined! 
-    // All metadata is already in 'm' thanks to backend enrichment.
-    const card = buildFlipCard(m);
-    posterRow.appendChild(card);
+
+    try {
+      // Fetch full enriched data from backend including streaming providers
+      const enrichedData = await fetchMovieCombined(m.title);
+
+      // Merge LLM fields (quick_pitch, why_matches, etc) with enriched API data
+      const fullMovie = {
+        ...enrichedData,
+        ...m,
+        // Ensure we use enriched data for critical fields
+        poster_url: enrichedData.poster || m.poster_url,
+        streaming: enrichedData.streaming || []
+      };
+
+      const card = buildFlipCard(fullMovie);
+      posterRow.appendChild(card);
+    } catch (err) {
+      console.error('Failed to fetch enriched data for', m.title, err);
+      // Fallback: build card with LLM data only
+      const card = buildFlipCard(m);
+      posterRow.appendChild(card);
+    }
   }
 
   chatbox.scrollTop = chatbox.scrollHeight;

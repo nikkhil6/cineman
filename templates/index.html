@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>🎬 CineMan: Discover Movies</title>
 
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-        rel="stylesheet"
-        crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+    crossorigin="anonymous">
   <link href="{{ url_for('static', filename='css/api-status.css') }}" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/session-timer.css') }}" rel="stylesheet">
 
@@ -17,24 +17,28 @@
   <script src="{{ url_for('static', filename='js/session-timer.js') }}"></script>
 
   <style>
-    :root{
+    :root {
       --card-width-desktop: 220px;
       --card-width-mobile: 150px;
       --card-radius: 10px;
-      --card-shadow: 0 10px 36px rgba(8,20,40,0.08);
-      --card-hover-shadow: 0 18px 46px rgba(8,20,40,0.12);
+      --card-shadow: 0 10px 36px rgba(8, 20, 40, 0.08);
+      --card-hover-shadow: 0 18px 46px rgba(8, 20, 40, 0.12);
       --poster-gap: 14px;
       --modal-max-width: 880px;
       --modal-padding: 20px;
     }
 
-    html, body { height:100%; margin:0; }
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
 
     body {
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      min-height:100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-image: url('/static/background.jpg');
       background-size: cover;
@@ -56,87 +60,228 @@
       content: '';
       position: fixed;
       inset: 0;
-      background: rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.06);
       pointer-events: none;
     }
 
-    .chat-container{
+    .chat-container {
       width: min(960px, 96vw);
       max-width: 960px;
       margin: 0;
       border-radius: 14px;
-      background: rgba(255,255,255,0.94);
-      box-shadow: 0 12px 40px rgba(2,16,34,0.08);
-      display:flex;
-      flex-direction:column;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 12px 40px rgba(2, 16, 34, 0.08);
+      display: flex;
+      flex-direction: column;
       max-height: 92vh;
       overflow: hidden;
-      border: 1px solid rgba(0,0,0,0.04);
+      border: 1px solid rgba(0, 0, 0, 0.04);
       /* Note: Fixed position elements escape overflow:hidden */
     }
 
-    .chat-header{ padding:12px 18px; display:flex; gap:12px; align-items:center; font-weight:700; background: rgba(247,247,247,0.9); border-bottom:1px solid rgba(0,0,0,0.04); justify-content:space-between; }
-    .header-logo{ width:44px; height:44px; border-radius:8px; object-fit:cover; }
-    .header-left { display:flex; gap:12px; align-items:center; }
-    .header-right { display:flex; gap:10px; align-items:center; }
-    .watchlist-icon-btn { background:#2563eb; color:#fff; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px; transition:all 0.2s; }
-    .watchlist-icon-btn:hover { background:#1d4ed8; transform:translateY(-1px); }
-    .watchlist-badge { background:#dc2626; color:#fff; border-radius:999px; padding:2px 6px; font-size:0.75rem; min-width:20px; text-align:center; }
+    .chat-header {
+      padding: 12px 18px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-weight: 700;
+      background: rgba(247, 247, 247, 0.9);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      justify-content: space-between;
+    }
 
-    #chatbox { padding:18px; overflow-y:auto; flex:1 1 auto; }
+    .header-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .header-left {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .header-right {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .watchlist-icon-btn {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .watchlist-icon-btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .watchlist-badge {
+      background: #dc2626;
+      color: #fff;
+      border-radius: 999px;
+      padding: 2px 6px;
+      font-size: 0.75rem;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    #chatbox {
+      padding: 18px;
+      overflow-y: auto;
+      flex: 1 1 auto;
+    }
 
     /* Message layout */
-    .message-container { margin-bottom: 15px; display:flex; gap:10px; align-items:flex-start; }
-    .message-container.user-container { justify-content: flex-end; } /* push user's bubble to the right */
-    .agent-avatar, .user-avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; }
-    .agent-message{ background: rgba(240,240,240,0.95); padding:12px 18px; border-radius:18px; max-width:85%; line-height:1.6; margin-right:auto; }
-    .user-message{ background:#0070c9; color:#fff; padding:12px 18px; border-radius:18px; max-width:85%; margin-left:auto; }
+    .message-container {
+      margin-bottom: 15px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
 
-    .loading-message{ background:#fff7d6; padding:10px 15px; border-radius:18px; max-width:45%; font-style:italic; color:#666; animation:pulse 1.2s infinite; }
-    @keyframes pulse{ 0%{opacity:1} 50%{opacity:.6} 100%{opacity:1} }
+    .message-container.user-container {
+      justify-content: flex-end;
+    }
 
-    .suggestions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-    .chip { background: rgba(0,112,201,0.08); color:#0070c9; padding:8px 12px; border-radius:999px; border:1px solid rgba(0,112,201,0.12); cursor:pointer; font-weight:600; }
+    /* push user's bubble to the right */
+    .agent-avatar,
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .agent-message {
+      background: rgba(240, 240, 240, 0.95);
+      padding: 12px 18px;
+      border-radius: 18px;
+      max-width: 85%;
+      line-height: 1.6;
+      margin-right: auto;
+    }
+
+    .user-message {
+      background: #0070c9;
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 18px;
+      max-width: 85%;
+      margin-left: auto;
+    }
+
+    .loading-message {
+      background: #fff7d6;
+      padding: 10px 15px;
+      border-radius: 18px;
+      max-width: 45%;
+      font-style: italic;
+      color: #666;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .6
+      }
+
+      100% {
+        opacity: 1
+      }
+    }
+
+    .suggestions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .chip {
+      background: rgba(0, 112, 201, 0.08);
+      color: #0070c9;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 112, 201, 0.12);
+      cursor: pointer;
+      font-weight: 600;
+    }
 
     /* poster row used inside an agent bubble (inserted into chat) */
-    .poster-row { display:flex; gap:var(--poster-gap); flex-wrap:wrap; justify-content:center; align-items:flex-start; margin-top:10px; scroll-behavior: smooth; }
-    
+    .poster-row {
+      display: flex;
+      gap: var(--poster-gap);
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+      margin-top: 10px;
+      scroll-behavior: smooth;
+    }
+
     /* Mobile: horizontal scrolling for poster cards */
     @media (max-width: 768px) {
-      .poster-row { 
-        flex-wrap: nowrap; 
-        overflow-x: auto; 
+      .poster-row {
+        flex-wrap: nowrap;
+        overflow-x: auto;
         overflow-y: hidden;
         justify-content: flex-start;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
         padding: 10px 0;
       }
-      .flip-card { 
-        flex-shrink: 0; 
+
+      .flip-card {
+        flex-shrink: 0;
         scroll-snap-align: center;
       }
+
       /* Hide scrollbar but keep functionality */
-      .poster-row::-webkit-scrollbar { display: none; }
-      .poster-row { -ms-overflow-style: none; scrollbar-width: none; }
+      .poster-row::-webkit-scrollbar {
+        display: none;
+      }
+
+      .poster-row {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
     }
 
     /* flip card */
-    .flip-card { 
-      width: var(--card-width-desktop); 
-      perspective: 1200px; 
-      -webkit-perspective:1200px; 
-      display:block; 
-      outline:none; 
-      cursor:pointer; 
-      transition: transform 0.3s ease, box-shadow 0.3s ease; 
-      position: relative; 
-      z-index: 1; 
+    .flip-card {
+      width: var(--card-width-desktop);
+      perspective: 1200px;
+      -webkit-perspective: 1200px;
+      display: block;
+      outline: none;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+      z-index: 1;
     }
-    .flip-card:hover:not(.is-flipped) { 
-      transform: translateY(-6px) scale(1.02); 
-      box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+
+    .flip-card:hover:not(.is-flipped) {
+      transform: translateY(-6px) scale(1.02);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
     }
+
     .flip-card:hover:not(.is-flipped)::before {
       content: '';
       position: absolute;
@@ -147,39 +292,49 @@
       z-index: 10;
       animation: pulseGlow 1.5s ease-in-out infinite;
     }
+
     @keyframes pulseGlow {
-      0%, 100% { border-color: rgba(37, 99, 235, 0.4); }
-      50% { border-color: rgba(37, 99, 235, 0.7); }
+
+      0%,
+      100% {
+        border-color: rgba(37, 99, 235, 0.4);
+      }
+
+      50% {
+        border-color: rgba(37, 99, 235, 0.7);
+      }
     }
 
-    .flip-card-inner { 
-      position: relative; 
-      width:100%; 
-      transform-style: preserve-3d; 
-      transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1); 
-      box-sizing:border-box; 
-      min-height: 480px; 
+    .flip-card-inner {
+      position: relative;
+      width: 100%;
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+      box-sizing: border-box;
+      min-height: 480px;
     }
-    
+
     /* When flipped, expand to larger size and center */
-    .flip-card.is-flipped { 
-      position: fixed; 
-      top: 50%; 
-      left: 50%; 
-      transform: translate(-50%, -50%); 
-      width: min(800px, 90vw); 
-      z-index: 3000; 
+    .flip-card.is-flipped {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: min(800px, 90vw);
+      z-index: 3000;
       max-height: 90vh;
       overflow: visible;
       height: auto;
     }
-    .flip-card.is-flipped .flip-card-inner { 
-      transform: rotateY(180deg); 
+
+    .flip-card.is-flipped .flip-card-inner {
+      transform: rotateY(180deg);
       min-height: auto;
       max-height: 90vh;
       overflow: visible;
       height: auto;
     }
+
     .flip-card.is-flipped .flip-card-back {
       max-height: 90vh;
       overflow-y: auto;
@@ -187,7 +342,7 @@
       display: flex;
       flex-direction: column;
     }
-    
+
     /* Backdrop blur when card is flipped */
     .poster-row::after {
       content: '';
@@ -201,97 +356,437 @@
       transition: opacity 0.3s ease;
       z-index: 2999;
     }
+
     .poster-row.has-flipped-card::after {
       opacity: 1;
       pointer-events: auto;
     }
-    
-    .flip-card-face { 
-      position:absolute; 
-      width:100%; 
-      height:100%; 
-      top:0; 
-      left:0; 
-      backface-visibility:hidden; 
-      -webkit-backface-visibility:hidden; 
-      border-radius: var(--card-radius); 
-      overflow:hidden; 
-      background:#fff; 
-      display:flex; 
-      flex-direction:column; 
-      padding:10px; 
-      box-shadow: var(--card-shadow); 
+
+    .flip-card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: var(--card-radius);
+      overflow: hidden;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      box-shadow: var(--card-shadow);
     }
-    .flip-card-front { z-index:2; align-items:center; }
-    .flip-card-back { 
-      transform: rotateY(180deg); 
-      z-index:1; 
-      padding:16px; 
-      overflow-y: auto; 
-      overflow-x: hidden;
-      background: linear-gradient(180deg,#ffffff,#fbfbfb); 
-      align-items:stretch;
+
+    .flip-card-front {
+      z-index: 2;
+      align-items: center;
+    }
+
+    .flip-card-back {
+      transform: rotateY(180deg);
+      z-index: 1;
+      padding: 16px;
+      /* overflow-y: auto; Commented out to allow dropdown to display */
+      /* overflow-x: hidden; Commented out to allow dropdown to display */
+      background: linear-gradient(180deg, #ffffff, #fbfbfb);
+      align-items: stretch;
       max-height: 100%;
     }
 
-    .poster-image { width:100%; height:280px; object-fit:cover; border-radius:6px; display:block; }
-    .poster-meta { margin-top:8px; text-align:center; font-size:0.95rem; color:#111; }
-    .poster-meta .title { font-weight:700; font-size:0.92rem; }
-    .poster-meta .year { color:#6b7280; font-size:0.8rem; margin-top:3px; }
-    .poster-meta .dir { color:#555; font-size:0.8rem; margin-top:4px; }
-    .rating-badge { 
-      display:inline-flex; 
-      align-items: center;
-      gap: 3px;
-      margin-top:6px; 
-      padding:4px 10px; 
-      border-radius:999px; 
-      background: linear-gradient(135deg, #fff9e6 0%, #fef3c7 100%); 
-      font-weight:700; 
-      font-size:0.78rem; 
-      color:#0f172a; 
-      margin-right:4px; 
-      border: 1px solid rgba(251, 191, 36, 0.3);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    .poster-image {
+      width: 100%;
+      height: 280px;
+      object-fit: cover;
+      border-radius: 6px;
+      display: block;
     }
 
-    .card-back-content { font-size:0.92rem; color:#111; line-height:1.6; }
-    .card-back-content h4 { margin:12px 0 6px 0; font-size:1rem; }
-    .card-back-content p { margin:6px 0; }
+    .poster-meta {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 0.95rem;
+      color: #111;
+    }
 
-    .poster-collapsed-tray { margin-top:12px; display:flex; flex-direction:column; gap:6px; }
-    .poster-tray-btn { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:6px 10px; border:1px solid rgba(2,6,23,0.06); background:#fff; cursor:pointer; font-weight:600; }
+    .poster-meta .title {
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
+    .poster-meta .year {
+      color: #6b7280;
+      font-size: 0.8rem;
+      margin-top: 3px;
+    }
+
+    .poster-meta .dir {
+      color: #555;
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+
+    .rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-top: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #fff9e6 0%, #fef3c7 100%);
+      font-weight: 700;
+      font-size: 0.78rem;
+      color: #0f172a;
+      margin-right: 4px;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-back-content {
+      font-size: 0.92rem;
+      color: #111;
+      line-height: 1.6;
+    }
+
+    .card-back-content h4 {
+      margin: 12px 0 6px 0;
+      font-size: 1rem;
+    }
+
+    .card-back-content p {
+      margin: 6px 0;
+    }
+
+    .poster-tray-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      border: 1px solid rgba(2, 6, 23, 0.06);
+      background: #fff;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* Streaming styles */
+    .streaming-section {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .watch-btn {
+      background: #f8fafc;
+      color: #1e293b;
+      border: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .watch-btn:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+
+    .watch-btn.active {
+      background: #e2e8f0;
+    }
+
+    .streaming-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+      background: #fcfcfc;
+      border-radius: 8px;
+    }
+
+    .streaming-panel.is-open {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #f1f5f9;
+      padding: 8px;
+      margin-top: 4px;
+    }
+
+    .provider-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .provider-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.2s;
+      border: 1px solid transparent;
+    }
+
+    .provider-item:hover {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+    }
+
+    .provider-logo {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .provider-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      flex: 1;
+    }
+
+    .provider-badge {
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .badge-free {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+
+    .badge-paid {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .badge-sub {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    /* Watch Dropdown Styles */
+    .watch-dropdown-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .watch-dropdown-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      border: 1px solid #bbf7d0;
+      color: #15803d;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      transition: all 0.2s;
+    }
+
+    .watch-dropdown-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+      background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    }
+
+    .watch-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      width: 200px;
+      max-height: 240px;
+      overflow-y: auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      border: 1px solid #e5e7eb;
+      padding: 6px;
+      display: none;
+      z-index: 1000;
+    }
+
+    .watch-dropdown-menu.show {
+      display: block;
+      animation: fadeIn 0.15s ease-out;
+    }
+
+    .watch-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      text-decoration: none;
+      color: #1e293b;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .watch-option:hover {
+      background: #f1f5f9;
+    }
+
+    .watch-option img {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .watch-option.free-option {
+      background: #ecfdf5;
+      color: #047857;
+    }
+
+    .watch-option.free-option:hover {
+      background: #d1fae5;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
     /* Action buttons for like/dislike/watchlist */
-    .action-buttons { display:flex; gap:5px; justify-content:center; margin-top:8px; margin-bottom:4px; width:100%; padding:0 4px; }
-    .action-btn { padding:6px 8px; border:none; border-radius:6px; cursor:pointer; font-size:0.82rem; font-weight:600; transition:all 0.2s; display:flex; align-items:center; gap:3px; flex:1; justify-content:center; min-height:32px; }
-    .action-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
-    .like-btn { background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; }
-    .like-btn.active { background:#16a34a; color:#fff; }
-    .dislike-btn { background:#fef2f2; color:#dc2626; border:1px solid #fecaca; }
-    .dislike-btn.active { background:#dc2626; color:#fff; }
-    .watchlist-btn { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; }
-    .watchlist-btn.active { background:#2563eb; color:#fff; }
-    
-    /* Smaller buttons on back side for better content visibility */
-    .flip-card-back .action-buttons { margin-top: 10px; position: sticky; bottom: 0; background: linear-gradient(180deg, transparent, #fbfbfb 20%); padding-top: 12px; padding-bottom: 8px; }
-    .flip-card-back .action-btn { min-height: 32px; padding: 6px 8px; font-size: 0.85rem; }
+    .action-buttons {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      margin-top: 8px;
+      margin-bottom: 4px;
+      width: 100%;
+      padding: 0 4px;
+    }
 
-    .input-group-container { padding:12px 16px; border-top:1px solid rgba(0,0,0,0.04); background: rgba(255,255,255,0.96); display:flex; gap:10px; align-items:center; }
-    .input-group-container input[type="text"] { flex:1; min-height:46px; border-radius:10px; }
+    .action-btn {
+      padding: 6px 8px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      flex: 1;
+      justify-content: center;
+      min-height: 32px;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .like-btn {
+      background: #f0fdf4;
+      color: #16a34a;
+      border: 1px solid #bbf7d0;
+    }
+
+    .like-btn.active {
+      background: #16a34a;
+      color: #fff;
+    }
+
+    .dislike-btn {
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+    }
+
+    .dislike-btn.active {
+      background: #dc2626;
+      color: #fff;
+    }
+
+    .watchlist-btn {
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+    }
+
+    .watchlist-btn.active {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    /* Smaller buttons on back side for better content visibility */
+    .flip-card-back .action-buttons {
+      margin-top: 10px;
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(180deg, transparent, #fbfbfb 20%);
+      padding-top: 12px;
+      padding-bottom: 8px;
+    }
+
+    .flip-card-back .action-btn {
+      min-height: 32px;
+      padding: 6px 8px;
+      font-size: 0.85rem;
+    }
+
+    .input-group-container {
+      padding: 12px 16px;
+      border-top: 1px solid rgba(0, 0, 0, 0.04);
+      background: rgba(255, 255, 255, 0.96);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .input-group-container input[type="text"] {
+      flex: 1;
+      min-height: 46px;
+      border-radius: 10px;
+    }
 
     /* Modal overlay (centered large view) */
     .poster-modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(3,6,18,0.6);
+      background: rgba(3, 6, 18, 0.6);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 2000;
       padding: 16px;
     }
-    .poster-modal-overlay.is-open { display: flex; }
+
+    .poster-modal-overlay.is-open {
+      display: flex;
+    }
+
     .poster-modal {
       width: min(100%, var(--modal-max-width));
       max-height: calc(100vh - 48px);
@@ -299,67 +794,239 @@
       border-radius: 12px;
       overflow: auto;
       padding: var(--modal-padding);
-      box-shadow: 0 30px 80px rgba(3,6,18,0.45);
+      box-shadow: 0 30px 80px rgba(3, 6, 18, 0.45);
       display: flex;
       gap: 18px;
       align-items: flex-start;
       position: relative;
     }
-    .poster-modal .modal-poster { width: 360px; max-width: 40%; border-radius: 8px; object-fit:cover; }
-    .poster-modal .modal-body { flex: 1 1 auto; overflow:auto; }
-    .poster-modal .modal-body h2 { margin-top:0; }
-    .poster-modal .close-btn { position:absolute; right: 24px; top: 18px; border: none; background: transparent; font-size: 22px; cursor:pointer; color:#222; }
+
+    .poster-modal .modal-poster {
+      width: 360px;
+      max-width: 40%;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .poster-modal .modal-body {
+      flex: 1 1 auto;
+      overflow: auto;
+    }
+
+    .poster-modal .modal-body h2 {
+      margin-top: 0;
+    }
+
+    .poster-modal .close-btn {
+      position: absolute;
+      right: 24px;
+      top: 18px;
+      border: none;
+      background: transparent;
+      font-size: 22px;
+      cursor: pointer;
+      color: #222;
+    }
 
     /* Watchlist modal styles */
-    .watchlist-modal-overlay { position:fixed; inset:0; background:rgba(3,6,18,0.6); display:none; align-items:center; justify-content:center; z-index:2000; padding:16px; }
-    .watchlist-modal-overlay.is-open { display:flex; }
-    .watchlist-modal { width:min(100%, 900px); max-height:calc(100vh - 48px); background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 30px 80px rgba(3,6,18,0.45); display:flex; flex-direction:column; }
-    .watchlist-modal-header { padding:20px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; background:#f9fafb; }
-    .watchlist-modal-header h2 { margin:0; font-size:1.5rem; }
-    .watchlist-modal-body { padding:20px; overflow-y:auto; flex:1; }
-    .watchlist-empty { text-align:center; padding:40px 20px; color:#6b7280; }
-    .watchlist-item { display:flex; gap:16px; padding:16px; border-radius:8px; border:1px solid #e5e7eb; margin-bottom:12px; background:#fff; transition:all 0.2s; }
-    .watchlist-item:hover { box-shadow:0 4px 12px rgba(0,0,0,0.08); transform:translateY(-1px); }
-    .watchlist-item-poster { width:80px; height:120px; object-fit:cover; border-radius:6px; flex-shrink:0; }
-    .watchlist-item-content { flex:1; }
-    .watchlist-item-title { font-weight:700; font-size:1.1rem; margin-bottom:4px; }
-    .watchlist-item-meta { color:#6b7280; font-size:0.9rem; margin-bottom:8px; }
-    .watchlist-item-actions { display:flex; gap:8px; margin-top:8px; }
-    .watchlist-remove-btn { background:#dc2626; color:#fff; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:600; }
-    .watchlist-remove-btn:hover { background:#b91c1c; }
+    .watchlist-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 6, 18, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      padding: 16px;
+    }
+
+    .watchlist-modal-overlay.is-open {
+      display: flex;
+    }
+
+    .watchlist-modal {
+      width: min(100%, 900px);
+      max-height: calc(100vh - 48px);
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 30px 80px rgba(3, 6, 18, 0.45);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .watchlist-modal-header {
+      padding: 20px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f9fafb;
+    }
+
+    .watchlist-modal-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+
+    .watchlist-modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .watchlist-empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+    }
+
+    .watchlist-item {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 12px;
+      background: #fff;
+      transition: all 0.2s;
+    }
+
+    .watchlist-item:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .watchlist-item-poster {
+      width: 80px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .watchlist-item-content {
+      flex: 1;
+    }
+
+    .watchlist-item-title {
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 4px;
+    }
+
+    .watchlist-item-meta {
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+
+    .watchlist-item-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .watchlist-remove-btn {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .watchlist-remove-btn:hover {
+      background: #b91c1c;
+    }
 
     @media (max-width:720px) {
-      :root{ --card-width-desktop: var(--card-width-mobile); }
-      .poster-image { height:200px; }
-      .flip-card-inner { min-height: 300px; }
-      #chatbox { padding:14px; }
-      .chat-container { width:96vw; height:96vh; max-width:96vw; max-height:96vh; }
-      .poster-modal { flex-direction: column; align-items: center; }
-      .poster-modal .modal-poster { max-width: 86%; width: auto; }
-      .card-back-content { line-height:1.4; }
-      .watchlist-item { flex-direction:column; }
-      .watchlist-item-poster { width:100%; height:auto; max-height:300px; }
-      .rating-badge { font-size:0.72rem; padding:3px 8px; }
-      .action-btn { font-size:0.75rem; padding:5px 6px; min-height:28px; }
-      .poster-meta .title { font-size:0.88rem; }
-      .poster-meta .year, .poster-meta .dir { font-size:0.76rem; }
-      
+      :root {
+        --card-width-desktop: var(--card-width-mobile);
+      }
+
+      .poster-image {
+        height: 200px;
+      }
+
+      .flip-card-inner {
+        min-height: 300px;
+      }
+
+      #chatbox {
+        padding: 14px;
+      }
+
+      .chat-container {
+        width: 96vw;
+        height: 96vh;
+        max-width: 96vw;
+        max-height: 96vh;
+      }
+
+      .poster-modal {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .poster-modal .modal-poster {
+        max-width: 86%;
+        width: auto;
+      }
+
+      .card-back-content {
+        line-height: 1.4;
+      }
+
+      .watchlist-item {
+        flex-direction: column;
+      }
+
+      .watchlist-item-poster {
+        width: 100%;
+        height: auto;
+        max-height: 300px;
+      }
+
+      .rating-badge {
+        font-size: 0.72rem;
+        padding: 3px 8px;
+      }
+
+      .action-btn {
+        font-size: 0.75rem;
+        padding: 5px 6px;
+        min-height: 28px;
+      }
+
+      .poster-meta .title {
+        font-size: 0.88rem;
+      }
+
+      .poster-meta .year,
+      .poster-meta .dir {
+        font-size: 0.76rem;
+      }
+
       /* Mobile-specific flipped card styling */
-      .flip-card.is-flipped { 
+      .flip-card.is-flipped {
         width: 95vw;
         max-height: 95vh;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
       }
+
       .flip-card.is-flipped .flip-card-inner {
         max-height: 95vh;
       }
+
       .flip-card.is-flipped .flip-card-back {
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
-      
+
 
     }
 
@@ -399,7 +1066,7 @@
       .main-layout {
         flex-direction: column;
       }
-      
+
       .movie-links-container {
         flex-direction: row;
         flex-wrap: wrap;
@@ -407,7 +1074,7 @@
         min-width: auto;
         width: 100%;
       }
-      
+
       .movie-link:hover {
         transform: translateY(-2px);
       }
@@ -418,7 +1085,7 @@
         gap: 10px;
         padding: 10px;
       }
-      
+
       .movie-link {
         font-size: 0.8rem;
         padding: 6px 12px;
@@ -426,59 +1093,66 @@
     }
   </style>
 </head>
+
 <body>
   <div class="main-layout">
     <div class="chat-container" role="main" aria-label="CineMan chat container">
-    <div class="chat-header">
-      <div class="header-left">
-        <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="header-logo" alt="CineMan" onerror="this.style.display='none'">
-        <span>🎬 CineMan: Discover movies</span>
-      </div>
-      <div class="header-right">
-        <button class="watchlist-icon-btn" id="new-session-btn" type="button" style="margin-right: 10px;">
-          🔄 
-        </button>
-        <button class="watchlist-icon-btn" id="watchlist-btn" type="button">
-          📋 Watchlist
-          <span class="watchlist-badge" id="watchlist-count" style="display:none;">0</span>
-        </button>
-      </div>
-    </div>
-
-    <div id="chatbox" aria-live="polite" aria-atomic="false">
-      <!-- initial greeting -->
-      <div class="message-container">
-        <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="agent-avatar" alt="CineMan" onerror="this.style.display='none'">
-        <div class="agent-message">Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a suggestion below.</div>
-      </div>
-
-      <!-- suggestion chips -->
-      <div class="message-row" id="suggestion-row">
-        <div class="suggestions" id="suggestions">
-          <button class="chip" type="button">Sci‑fi with twists</button>
-          <button class="chip" type="button">Comedy for family</button>
-          <button class="chip" type="button">Classic drama</button>
+      <div class="chat-header">
+        <div class="header-left">
+          <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="header-logo" alt="CineMan"
+            onerror="this.style.display='none'">
+          <span>🎬 CineMan: Discover movies</span>
+        </div>
+        <div class="header-right">
+          <button class="watchlist-icon-btn" id="new-session-btn" type="button" style="margin-right: 10px;">
+            🔄
+          </button>
+          <button class="watchlist-icon-btn" id="watchlist-btn" type="button">
+            📋 Watchlist
+            <span class="watchlist-badge" id="watchlist-count" style="display:none;">0</span>
+          </button>
         </div>
       </div>
 
-      <!-- Note: poster rows are inserted as part of an assistant message bubble by the JS handler.
+      <div id="chatbox" aria-live="polite" aria-atomic="false">
+        <!-- initial greeting -->
+        <div class="message-container">
+          <img src="{{ url_for('static', filename='cineman_hero.jpg') }}" class="agent-avatar" alt="CineMan"
+            onerror="this.style.display='none'">
+          <div class="agent-message">Hi! I'm CineMan — tell me what kind of movie you're in the mood for. Or pick a
+            suggestion below.</div>
+        </div>
+
+        <!-- suggestion chips -->
+        <div class="message-row" id="suggestion-row">
+          <div class="suggestions" id="suggestions">
+            <button class="chip" type="button">Sci‑fi with twists</button>
+            <button class="chip" type="button">Comedy for family</button>
+            <button class="chip" type="button">Classic drama</button>
+          </div>
+        </div>
+
+        <!-- Note: poster rows are inserted as part of an assistant message bubble by the JS handler.
            We intentionally removed a fixed #poster-area container to ensure posters appear in correct order
            (immediately after the user's message). -->
-    </div>
+      </div>
 
-    <div class="input-group-container d-flex">
-      <input type="text" id="userInput" class="form-control me-2" placeholder="Ask for a sci-fi thriller or a nostalgic comedy..." aria-label="Ask CineMan for a movie" />
-      <button type="button" id="sendButton" class="btn btn-primary btn-send">Suggest</button>
-    </div>
+      <div class="input-group-container d-flex">
+        <input type="text" id="userInput" class="form-control me-2"
+          placeholder="Ask for a sci-fi thriller or a nostalgic comedy..." aria-label="Ask CineMan for a movie" />
+        <button type="button" id="sendButton" class="btn btn-primary btn-send">Suggest</button>
+      </div>
     </div>
 
     <!-- Movie Website Links -->
     <div class="movie-links-container">
       <a href="https://letterboxd.com/" target="_blank" rel="noopener noreferrer" class="movie-link">Letterboxd</a>
       <a href="https://www.imdb.com/" target="_blank" rel="noopener noreferrer" class="movie-link">IMDb</a>
-      <a href="https://www.rottentomatoes.com/" target="_blank" rel="noopener noreferrer" class="movie-link">Rotten Tomatoes</a>
+      <a href="https://www.rottentomatoes.com/" target="_blank" rel="noopener noreferrer" class="movie-link">Rotten
+        Tomatoes</a>
       <a href="https://www.themoviedb.org/" target="_blank" rel="noopener noreferrer" class="movie-link">TMDb</a>
-      <a href="https://www.metacritic.com/movie" target="_blank" rel="noopener noreferrer" class="movie-link">Metacritic</a>
+      <a href="https://www.metacritic.com/movie" target="_blank" rel="noopener noreferrer"
+        class="movie-link">Metacritic</a>
     </div>
   </div>
 
@@ -530,7 +1204,7 @@
         loadingAvatar.src = '/static/cineman_hero.jpg';
         loadingAvatar.className = 'agent-avatar';
         loadingAvatar.alt = 'CineMan';
-        loadingAvatar.onerror = function() { this.style.display = 'none'; };
+        loadingAvatar.onerror = function () { this.style.display = 'none'; };
         msgContainer.appendChild(loadingAvatar);
       } else {
         msgDiv.className = sender === 'User' ? 'user-message' : 'agent-message';
@@ -538,7 +1212,7 @@
         avatar.className = sender === 'User' ? 'user-avatar' : 'agent-avatar';
         avatar.alt = sender === 'User' ? 'You' : 'CineMan';
         avatar.src = sender === 'User' ? '/static/user_avatar.png' : '/static/cineman_hero.jpg';
-        avatar.onerror = function() { this.style.display = 'none'; };
+        avatar.onerror = function () { this.style.display = 'none'; };
 
         // Append avatar first; CSS aligns message appropriately (user to right)
         msgContainer.appendChild(avatar);
@@ -600,13 +1274,13 @@
       }
 
       modalOverlay.classList.add('is-open');
-      modalOverlay.setAttribute('aria-hidden','false');
+      modalOverlay.setAttribute('aria-hidden', 'false');
       setTimeout(() => modalCloseBtn?.focus(), 80);
     }
 
     function closePosterModal() {
       modalOverlay.classList.remove('is-open');
-      modalOverlay.setAttribute('aria-hidden','true');
+      modalOverlay.setAttribute('aria-hidden', 'true');
       modalPosterImg.src = '';
       modalContent.innerHTML = '';
     }
@@ -636,8 +1310,21 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message })
         });
-        if (!response.ok) throw new Error(`Server returned ${response.status}`);
-        const data = await response.json();
+
+        let data;
+        try {
+          data = await response.json();
+        } catch (e) {
+          throw new Error(`Invalid server response (HTTP ${response.status})`);
+        }
+
+        if (!response.ok) {
+          let msg = data.response || `Server error (HTTP ${response.status})`;
+          if (data.error_type && data.error_detail) {
+            msg = `⚠️ ${data.error_type}: ${data.error_detail}`;
+          }
+          throw new Error(msg);
+        }
 
         // remove loader
         if (loaderEl && loaderEl.parentElement) loaderEl.parentElement.remove();
@@ -651,7 +1338,14 @@
       } catch (err) {
         if (loaderEl && loaderEl.parentElement) loaderEl.parentElement.remove();
         console.error('sendMessageImpl error:', err);
-        addMessage('Agent', 'Error: Could not connect to the AI service. Please restart the Flask server.');
+
+        let errorMsg = 'Error: Could not connect to CineMan.';
+        if (err.message === 'Failed to fetch') {
+          errorMsg = '📡 **CineMan is offline.** Please ensure the Flask server is running and try again.';
+        } else {
+          errorMsg = `⚠️ **Connection Issue**\n\n${err.message}\n\nPlease try again or restart the server if the issue persists.`;
+        }
+        addMessage('Agent', errorMsg);
       } finally {
         toggleInput(false);
       }
@@ -683,13 +1377,13 @@
           if (!confirm('Are you sure you want to start a new session? This will clear your chat history and recommended movies.')) {
             return;
           }
-          
+
           try {
             const response = await fetch('/session/clear', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' }
             });
-            
+
             if (response.ok) {
               // Clear the chatbox
               const chatbox = document.getElementById('chatbox');
@@ -706,7 +1400,7 @@
                   </div>
                 </div>
               `;
-              
+
               // Reload the page to reinitialize everything
               window.location.reload();
             } else {
@@ -727,4 +1421,5 @@
     });
   </script>
 </body>
+
 </html>

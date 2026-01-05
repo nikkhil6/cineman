@@ -267,8 +267,14 @@ def chat():
         return jsonify(response_data)
     
     except Exception as e:
-        logger.error("chat_request_failed", error=str(e), exc_info=True)
-        return jsonify({"response": "An unexpected error occurred while processing your request."}), 500
+        error_type = type(e).__name__
+        error_msg = str(e)
+        logger.error("chat_request_failed", error=error_msg, error_type=error_type, exc_info=True)
+        return jsonify({
+            "response": f"An unexpected error occurred: {error_type}",
+            "error_detail": error_msg,
+            "error_type": error_type
+        }), 500
 
 # --- API Endpoint to clear/reset session ---
 @app.route('/session/clear', methods=['POST'])

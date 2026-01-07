@@ -31,7 +31,7 @@ curl http://localhost:5000/api/session/timeout
 
 To enable the visual timer in the web interface:
 
-1. The JavaScript and CSS files are already loaded in `templates/index.html`
+1. The JavaScript (`session-timer.js`) and CSS (`session-timer.css`) files are already loaded in `templates/index.html`
 
 2. Add HTML elements to the header section (e.g., in `.header-right` div):
    ```html
@@ -41,7 +41,7 @@ To enable the visual timer in the web interface:
    </div>
    ```
 
-3. The JavaScript will automatically initialize and update the timer.
+3. The JavaScript will automatically initialize and update the timer once the HTML elements are present.
 
 ---
 

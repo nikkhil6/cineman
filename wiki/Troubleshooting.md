@@ -122,7 +122,7 @@ kill -9 <PID>  # Mac/Linux
 - Verify Gemini API status
 - Consider reducing temperature in `chain.py`
 - Check if hitting API rate limits
-- Review cache hit ratio (should be >70%)
+- Review cache hit ratio (typical: 70-90% for normal workloads)
 
 ### No Movie Results
 
@@ -143,8 +143,8 @@ kill -9 <PID>  # Mac/Linux
 - Check cache statistics via logs
 - Adjust `MOVIE_CACHE_TTL` if needed
 - Adjust `MOVIE_CACHE_MAX_SIZE` if needed
-- Monitor cache hit ratio (aim for >70%)
-- Review `docs/CACHE_GUIDE.md` for tuning tips
+- Monitor cache hit ratio (typical: 70-90% for normal workloads, varies by usage pattern)
+- Review `docs/CACHE_GUIDE.md` for detailed tuning tips
 
 ### Logging Issues
 

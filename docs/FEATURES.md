@@ -119,11 +119,11 @@ This document provides a comprehensive list of all features currently implemente
 - **Session Metrics**: Active sessions, session duration
 
 ### API Health Checks
-- **Real-time Monitoring**: Periodic health checks for all external APIs
+- **Real-time Monitoring**: Backend endpoint for periodic health checks of all external APIs
 - **Response Time Tracking**: Measures API latency
 - **Status Endpoint**: `/api/status` for programmatic access
-- **UI Integration**: Visual indicators in user interface
 - **Error Detection**: Identifies API outages and degradation
+- **Note**: UI integration available but not currently enabled (backend-only feature)
 
 ## Security & Configuration
 

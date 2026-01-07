@@ -21,8 +21,6 @@ An intelligent movie recommendation agent powered by Google Gemini AI (via LangC
 - 🎴 **Interactive Flip Cards**: Click movie posters to flip and see full details with smooth 3D animation
 - 📱 **Mobile-Optimized**: Swipe gestures for browsing movies on mobile devices
 - 🎯 **Modal View**: Flipped cards expand to center with blurred background for enhanced readability
-- ⏱️ **Session Timeout Timer**: Visual countdown showing time remaining before session expires
-- 📊 **API Status Monitoring**: Real-time health indicators for external APIs (Gemini, TMDB, OMDb)
 
 ### Session Management & Conversation Features
 - 🗨️ **Natural Conversations**: Engage in meaningful discussions about movies, directors, genres, and themes
@@ -35,7 +33,7 @@ An intelligent movie recommendation agent powered by Google Gemini AI (via LangC
 - 💭 **Ask Questions**: Discuss movie themes, directors, trivia, and get expert insights
 - 🔁 **Provide Feedback**: Share your thoughts on recommendations and get refined suggestions
 
-### Performance & Infrastructure Features
+### Monitoring & Infrastructure Features
 - 💨 **Response Caching**: In-memory caching layer for API responses with configurable TTL
 - 🔄 **Automatic Retry Logic**: Exponential backoff for transient API failures
 - 📈 **Prometheus Metrics**: Comprehensive metrics for monitoring and alerting
@@ -43,6 +41,8 @@ An intelligent movie recommendation agent powered by Google Gemini AI (via LangC
 - 🔒 **Secret Management**: Google Cloud Secret Manager integration for secure API key storage
 - ⚡ **Performance Optimization**: Reduced API calls through intelligent caching
 - 🏗️ **Modular Architecture**: Clean separation of concerns for maintainability
+- 📊 **API Health Monitoring**: Backend endpoint (`/api/status`) for checking external API health (Gemini, TMDB, OMDb)
+- ⏱️ **Session Timeout API**: Backend endpoint (`/api/session/timeout`) for session management
 
 ### Deployment Options
 - ☁️ **Google Cloud Platform**: Deploy to App Engine or Cloud Run with automated workflows
@@ -484,6 +484,12 @@ curl http://localhost:5000/api/metrics
 
 # Check rate limit status
 curl http://localhost:5000/api/rate-limit
+
+# Check API health status (backend only)
+curl http://localhost:5000/api/status
+
+# Check session timeout information (backend only)
+curl http://localhost:5000/api/session/timeout
 ```
 
 **Key Features:**
@@ -491,6 +497,11 @@ curl http://localhost:5000/api/rate-limit
 - No sensitive data exposed (no API keys, user data, or credentials)
 - Real-time performance monitoring and alerting support
 - Comprehensive test coverage including load and error scenarios
+
+**Backend-Only Monitoring Endpoints:**
+- `/api/status` - External API health checks (Gemini, TMDB, OMDb)
+- `/api/session/timeout` - Session timeout information
+- Note: UI integration for these features is available but not currently enabled in the template
 
 For detailed metrics documentation, see [docs/metrics.md](docs/metrics.md).
 
@@ -587,8 +598,8 @@ This application now includes a complete movie recommendation experience:
 - **Interactive flip cards**: 3D animations and modal view for movie details
 - **Mobile-optimized navigation**: Swipe gestures for browsing movies
 - **Session management**: New Session button to clear history and start fresh
-- **Session timeout timer**: Visual countdown showing time remaining before session expires
-- **API status monitoring**: Real-time health checks for Gemini AI, TMDB, and OMDb
+- **API health monitoring**: Backend endpoint for checking external API status (accessible at `/api/status`)
+- **Session timeout tracking**: Backend endpoint for session timeout information (accessible at `/api/session/timeout`)
 - **Response caching**: In-memory cache with configurable TTL and LRU eviction
 - **Structured logging**: JSON logging with request tracing and PII scrubbing
 - **Automatic retry logic**: Exponential backoff for transient API failures

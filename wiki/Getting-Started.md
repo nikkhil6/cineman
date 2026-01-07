@@ -39,6 +39,11 @@ Create a `.env` file in the project root:
 GEMINI_API_KEY=your_gemini_api_key
 TMDB_API_KEY=your_tmdb_api_key
 OMDB_API_KEY=your_omdb_api_key
+
+# Optional configurations
+WATCHMODE_API_KEY=your_watchmode_api_key
+GEMINI_DAILY_LIMIT=50
+LOG_LEVEL=INFO
 ```
 
 See [API Keys](API-Keys.md) for detailed instructions on obtaining these keys.

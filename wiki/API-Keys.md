@@ -10,6 +10,14 @@ Cineman requires three API keys to function:
 2. **TMDB API** - Provides movie posters and metadata
 3. **OMDb API** - Provides ratings and additional movie data
 
+## Optional API Keys
+
+### Watchmode API (Optional)
+- **Purpose:** Streaming availability information across platforms
+- **Required:** No (uses dummy data with search links if not configured)
+- **Free Tier:** Available with limited requests
+- **Setup:** See Watchmode API section below
+
 ## Obtaining API Keys
 
 ### 1. Google Gemini API Key
@@ -54,6 +62,20 @@ Cineman requires three API keys to function:
 - Free tier: 1,000 requests per day
 - Paid tiers available for higher limits
 
+### 4. Watchmode API Key (Optional)
+
+**Steps:**
+1. Visit [Watchmode API](https://api.watchmode.com/)
+2. Sign up for an account
+3. Navigate to your API dashboard
+4. Copy your API key
+
+**Usage Limits:**
+- Free tier available with limited requests
+- Check pricing page for details
+
+**Note:** If not configured, the application will use dummy streaming data with search links to streaming platforms.
+
 ## Configuration Methods
 
 ### Method 1: Environment Variables (Recommended)
@@ -63,6 +85,7 @@ Cineman requires three API keys to function:
 export GEMINI_API_KEY='your_gemini_key'
 export TMDB_API_KEY='your_tmdb_key'
 export OMDB_API_KEY='your_omdb_key'
+export WATCHMODE_API_KEY='your_watchmode_key'  # Optional
 ```
 
 **Windows (Command Prompt):**
@@ -70,6 +93,7 @@ export OMDB_API_KEY='your_omdb_key'
 set GEMINI_API_KEY=your_gemini_key
 set TMDB_API_KEY=your_tmdb_key
 set OMDB_API_KEY=your_omdb_key
+set WATCHMODE_API_KEY=your_watchmode_key
 ```
 
 **Windows (PowerShell):**
@@ -77,6 +101,7 @@ set OMDB_API_KEY=your_omdb_key
 $env:GEMINI_API_KEY='your_gemini_key'
 $env:TMDB_API_KEY='your_tmdb_key'
 $env:OMDB_API_KEY='your_omdb_key'
+$env:WATCHMODE_API_KEY='your_watchmode_key'
 ```
 
 ### Method 2: .env File (Recommended for Development)
@@ -87,6 +112,12 @@ Create a `.env` file in the project root:
 GEMINI_API_KEY=your_gemini_key_here
 TMDB_API_KEY=your_tmdb_key_here
 OMDB_API_KEY=your_omdb_key_here
+WATCHMODE_API_KEY=your_watchmode_key_here  # Optional
+
+# Optional configurations
+GEMINI_DAILY_LIMIT=50
+LOG_LEVEL=INFO
+MOVIE_CACHE_TTL=86400
 ```
 
 **Important:** The `.env` file is already in `.gitignore` - never commit API keys!

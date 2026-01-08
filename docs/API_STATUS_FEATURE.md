@@ -1,5 +1,57 @@
 # API Status Monitoring Feature
 
+## ⚠️ Implementation Status
+
+**Backend**: ✅ Fully implemented and tested  
+**Frontend UI**: ❌ Not integrated in current template  
+**Access Method**: Backend API endpoint only
+
+The API health monitoring backend is fully functional and can be accessed programmatically via the `/api/status` endpoint. The frontend UI components (JavaScript and CSS) exist but are not currently integrated into the main template (`templates/index.html`).
+
+### Current Usage
+
+The feature is available as a **backend-only API** for monitoring and automation:
+
+```bash
+# Check API health status
+curl http://localhost:5000/api/status
+
+# Example response:
+{
+  "status": "success",
+  "timestamp": 1700000000,
+  "services": {
+    "gemini": {"status": "operational", "response_time": 150, ...},
+    "tmdb": {"status": "operational", "response_time": 200, ...},
+    "omdb": {"status": "operational", "response_time": 180, ...}
+  }
+}
+```
+
+### To Enable UI Integration
+
+To enable the visual status indicator in the web interface:
+
+1. Add the JavaScript file to `templates/index.html`:
+   ```html
+   <script src="{{ url_for('static', filename='js/api-status.js') }}"></script>
+   ```
+
+2. Add HTML elements to the header section:
+   ```html
+   <div id="api-status-container" class="api-status-container">
+     <div id="status-indicator" class="status-indicator">
+       <span class="status-icon">🟢</span>
+       <span class="status-text">APIs OK</span>
+     </div>
+     <div id="status-tooltip" class="status-tooltip"></div>
+   </div>
+   ```
+
+3. The CSS (`static/css/api-status.css`) is already loaded.
+
+---
+
 ## Overview
 
 The API Status Monitoring feature provides real-time health status feedback for all external APIs used by Cineman:
@@ -7,23 +59,25 @@ The API Status Monitoring feature provides real-time health status feedback for 
 - **TMDB (The Movie Database)** - Movie posters and metadata
 - **OMDB (Open Movie Database)** - Movie ratings and additional details
 
-## User Interface
+## User Interface (Optional - Not Currently Enabled)
 
-### Status Indicator
-Located in the top-right corner of the main page, the status indicator shows the overall health of all APIs:
+**Note**: The UI components are available but not integrated in the current template. See "Implementation Status" section above for details.
+
+### Status Indicator (When Enabled)
+The status indicator would appear in the top-right corner of the main page, showing the overall health of all APIs:
 
 - 🟢 **Green (APIs OK)** - All services are operational
 - 🟡 **Yellow (Degraded)** - One or more services experiencing issues but still functioning
 - 🔴 **Red (Issues)** - One or more services are down or experiencing critical errors
 
-### Detailed Tooltip
-Hover over the status indicator to see detailed information:
+### Detailed Tooltip (When Enabled)
+Hovering over the status indicator would show detailed information:
 - Individual status for each API service
 - Response time in milliseconds
 - Error messages (if any)
 - Last check timestamp
 
-### Mobile Behavior
+### Mobile Behavior (When Enabled)
 - **Tablets (< 768px)**: Shows icon only, text hidden
 - **Small screens (< 480px)**: Completely hidden to avoid clutter
 

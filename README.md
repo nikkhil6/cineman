@@ -33,6 +33,17 @@ An intelligent movie recommendation agent powered by Google Gemini AI (via LangC
 - 💭 **Ask Questions**: Discuss movie themes, directors, trivia, and get expert insights
 - 🔁 **Provide Feedback**: Share your thoughts on recommendations and get refined suggestions
 
+### Monitoring & Infrastructure Features
+- 💨 **Response Caching**: In-memory caching layer for API responses with configurable TTL
+- 🔄 **Automatic Retry Logic**: Exponential backoff for transient API failures
+- 📈 **Prometheus Metrics**: Comprehensive metrics for monitoring and alerting
+- 📝 **Structured Logging**: JSON logging with request tracing and automatic PII scrubbing
+- 🔒 **Secret Management**: Google Cloud Secret Manager integration for secure API key storage
+- ⚡ **Performance Optimization**: Reduced API calls through intelligent caching
+- 🏗️ **Modular Architecture**: Clean separation of concerns for maintainability
+- 📊 **API Health Monitoring**: Backend endpoint (`/api/status`) for checking external API health (Gemini, TMDB, OMDb)
+- ⏱️ **Session Timeout API**: Backend endpoint (`/api/session/timeout`) for session management
+
 ### Deployment Options
 - ☁️ **Google Cloud Platform**: Deploy to App Engine or Cloud Run with automated workflows
 - 🐳 **Docker Support**: Containerized deployment ready for any platform
@@ -85,6 +96,13 @@ Create a `.env` file in the project root or export them in your shell:
 export GEMINI_API_KEY=your_gemini_api_key
 export TMDB_API_KEY=your_tmdb_api_key
 export OMDB_API_KEY=your_omdb_api_key
+
+# Optional configurations
+export WATCHMODE_API_KEY=your_watchmode_api_key  # For streaming availability
+export GEMINI_DAILY_LIMIT=50                      # Daily API call limit
+export LOG_LEVEL=INFO                             # Logging level (DEBUG, INFO, WARNING, ERROR)
+export MOVIE_CACHE_TTL=86400                      # Cache TTL in seconds (default 24 hours)
+export MOVIE_CACHE_MAX_SIZE=1000                  # Maximum cache entries
 ```
 
 Or create a `.env` file:
@@ -92,6 +110,13 @@ Or create a `.env` file:
 GEMINI_API_KEY=your_gemini_api_key
 TMDB_API_KEY=your_tmdb_api_key
 OMDB_API_KEY=your_omdb_api_key
+
+# Optional
+WATCHMODE_API_KEY=your_watchmode_api_key
+GEMINI_DAILY_LIMIT=50
+LOG_LEVEL=INFO
+MOVIE_CACHE_TTL=86400
+MOVIE_CACHE_MAX_SIZE=1000
 ```
 
 ## Usage
@@ -205,34 +230,78 @@ cineman/
 │   ├── chain.py             # LangChain recommendation chain with Gemini AI
 │   ├── models.py            # Database models (MovieInteraction)
 │   ├── schemas.py           # Pydantic data schemas for validation
+│   ├── session_manager.py   # Session management and chat history
+│   ├── cache.py             # In-memory caching layer for API responses
 │   ├── metrics.py           # Prometheus metrics collection
 │   ├── validation.py        # LLM hallucination validation
 │   ├── rate_limiter.py      # API rate limiting
+│   ├── api_client.py        # HTTP client abstraction with retry logic
+│   ├── api_status.py        # External API health checking
+│   ├── secret_helper.py     # GCP Secret Manager integration
+│   ├── logging_config.py    # Structured logging configuration
+│   ├── logging_context.py   # Request/session context for logging
+│   ├── logging_metrics.py   # Logging performance metrics
+│   ├── logging_middleware.py # Flask logging middleware
 │   ├── utils.py             # Utility functions
 │   ├── services/            # Core business logic services
 │   │   └── llm_service.py   # LLM interaction and orchestration
 │   ├── routes/              # API routes
-│   │   └── api.py          # Movie API endpoints and /metrics
+│   │   └── api.py          # Movie API endpoints, /metrics, /api/status
 │   └── tools/               # Movie data tools
 │       ├── __init__.py
 │       ├── tmdb.py          # TMDB API integration tool
-│       └── omdb.py          # OMDb API integration tool
+│       ├── omdb.py          # OMDb API integration tool
+│       └── watchmode.py     # Watchmode streaming availability tool
 ├── tests/                   # Test suite
 │   ├── __init__.py
 │   ├── test_schemas.py      # Schema validation tests
 │   ├── test_metrics.py      # Metrics collection tests
+│   ├── test_cache.py        # Cache unit tests
+│   ├── test_cache_integration.py # Cache integration tests
+│   ├── test_api_status.py   # API status monitoring tests
 │   ├── test_llm_service_regression.py # Regression tests for LLM service
 │   ├── test_tmdb.py         # TMDB tool tests
 │   └── test_omdb.py         # OMDb tool tests
 ├── docs/                    # Documentation
-│   ├── SCHEMA_GUIDE.md     # Movie data schema guide
-│   └── metrics.md          # Metrics and monitoring guide
+│   ├── SCHEMA_GUIDE.md      # Movie data schema guide
+│   ├── metrics.md           # Metrics and monitoring guide
+│   ├── logging.md           # Structured logging guide
+│   ├── CACHE_GUIDE.md       # Caching layer documentation
+│   ├── VALIDATION_GUIDE.md  # LLM validation documentation
+│   ├── api-client-abstraction.md # API client documentation
+│   ├── API_STATUS_FEATURE.md # API status monitoring guide
+│   ├── SESSION_TIMER_FEATURE.md # Session timeout timer guide
+│   └── GCP_DEPLOYMENT.md    # Google Cloud deployment guide
+├── wiki/                    # Wiki documentation
+│   ├── Home.md              # Wiki home page
+│   ├── Getting-Started.md   # Quick start guide
+│   ├── Architecture.md      # Technical architecture
+│   ├── API-Keys.md          # API key configuration
+│   └── Troubleshooting.md   # Common issues and solutions
 ├── scripts/                 # Utility scripts
 │   └── verify_dependencies.py
+├── static/                  # Static assets
+│   ├── css/                 # Stylesheets
+│   │   ├── api-status.css   # API status styling
+│   │   ├── chat.css         # Chat interface styling
+│   │   └── session-timer.css # Session timer styling
+│   ├── js/                  # JavaScript files
+│   │   ├── api-status.js    # API status monitoring
+│   │   ├── session-timer.js # Session timeout timer
+│   │   ├── movie-integration.js # Movie card interactions
+│   │   ├── watchlist.js     # Watchlist management
+│   │   └── chat-enhancements.js # Chat UI enhancements
+│   └── images/              # Images and assets
 ├── templates/               # Flask templates
 │   └── index.html          # Chat interface HTML
+├── prompts/                 # AI prompts
+│   └── cineman_system_prompt.txt # System prompt for Gemini AI
 ├── run.py                  # Application entry point
 ├── requirements.txt         # Python dependencies
+├── Dockerfile              # Docker containerization
+├── app.yaml                # Google App Engine configuration
+├── cloudrun.yaml           # Google Cloud Run configuration
+├── render.yaml             # Render deployment configuration
 ├── .gitignore              # Git ignore rules
 └── README.md               # This file
 ```
@@ -243,20 +312,22 @@ cineman/
 - Serves the web interface
 - Handles chat API requests and delegates to `LLMService`
 - Manages user sessions and basic routing
+- Integrates structured logging and metrics collection
 
 ### 2. LLM Service (`cineman/services/llm_service.py`)
 - Orchestrates the chat request lifecycle (Single-Invocation Chain)
 - Manages the LangChain chain instance
 - Handles session context and movie validation
-- **Structured-Direct Orchestration**: Aggregates TMDB/OMDb data and enriches the LLM response.
-- Ensures performance by optimizing LLM calls and eliminating frontend fetches.
+- **Structured-Direct Orchestration**: Aggregates TMDB/OMDb data and enriches the LLM response
+- Ensures performance by optimizing LLM calls and eliminating frontend fetches
 
 ### 3. Recommendation Chain (`cineman/chain.py`)
-- Configures Google Gemini AI model
+- Configures Google Gemini AI model (gemini-2.5-flash)
 - Defines "The Cinephile" persona and prompt structure
 - Uses structured output via Pydantic schemas
+- Implements creative recommendation generation (temperature 1.2)
 
-### 3. Movie Tools (`cineman/tools/`)
+### 4. Movie Tools (`cineman/tools/`)
 
 **TMDB Tool (`cineman/tools/tmdb.py`):**
 - Searches TMDB for movie posters and metadata
@@ -268,14 +339,59 @@ cineman/
 - Provides IMDb ratings and additional metadata
 - Core function for direct testing, LangChain tool wrapper for agent use
 
-### 4. Data Schemas (`cineman/schemas.py`)
+**Watchmode Tool (`cineman/tools/watchmode.py`):**
+- Provides streaming availability information
+- Searches for movies across streaming platforms
+- Returns platform-specific viewing links
+- Supports fallback with dummy data for development
+
+### 5. Data Schemas (`cineman/schemas.py`)
 - **Structured-Direct Architecture**: Orchestrates movie data flow directly from backend to frontend without redundant client-side fetching.
 - **Comprehensive Movie Schema**: Validates movie data from multiple sources (TMDB, OMDb, LLM)
 - **Type Safety**: Pydantic models ensure data integrity
 - **Enriched Enrichment**: Backend validates recommendations and attaches posters/ratings/directors directly to the JSON response.
 - See [Schema Guide](docs/SCHEMA_GUIDE.md) for detailed documentation
 
-### 5. Verification Script (`scripts/verify_dependencies.py`)
+### 6. Session Management (`cineman/session_manager.py`)
+- Manages user chat sessions and conversation history
+- Tracks recommended movies to avoid duplicates
+- Implements session timeout and cleanup
+- Provides session data persistence across requests
+
+### 7. Caching Layer (`cineman/cache.py`)
+- In-memory caching for TMDB/OMDb API responses
+- Configurable TTL (default 24 hours)
+- LRU eviction policy for cache management
+- Normalized key generation for improved hit rates
+- Reduces API calls and improves performance
+
+### 8. Structured Logging (`cineman/logging_*.py`)
+- JSON structured logging for production environments
+- Request/session ID propagation for tracing
+- Automatic scrubbing of sensitive data (API keys, PII)
+- Performance metrics tracking
+- Configurable via LOG_LEVEL environment variable
+
+### 9. API Client Abstraction (`cineman/api_client.py`)
+- Robust HTTP client with automatic retry logic
+- Exponential backoff for transient failures
+- Configurable timeouts and retry limits
+- Standardized error taxonomy (AuthError, QuotaError, TransientError)
+- Used by all movie data tools for reliable API integration
+
+### 10. API Status Monitoring (`cineman/api_status.py`)
+- Real-time health checks for external APIs
+- Monitors Gemini AI, TMDB, and OMDb availability
+- Provides status endpoint for frontend integration
+- Displays response times and error messages
+
+### 11. Secret Management (`cineman/secret_helper.py`)
+- Loads API keys from Google Cloud Secret Manager
+- Supports fallback to environment variables for local development
+- Automatic injection at application startup
+- Graceful degradation when secrets unavailable
+
+### 12. Verification Script (`scripts/verify_dependencies.py`)
 - Automatically checks all dependencies from `requirements.txt`
 - Shows installed versions and missing packages
 - Provides color-coded output for easy verification
@@ -335,6 +451,17 @@ The rate limiter:
 - Returns a graceful error message (HTTP 429) when the limit is reached
 - Provides a `/api/rate-limit` endpoint to check current usage
 
+### Optional API Keys
+
+#### Watchmode API (Optional)
+For streaming availability information:
+1. Visit [Watchmode API](https://api.watchmode.com/)
+2. Sign up for an API key
+3. Set as `WATCHMODE_API_KEY` environment variable
+4. If not configured, the application uses dummy data with search links
+
+**Note:** Watchmode integration provides real streaming platform availability but is not required for core functionality.
+
 ### Metrics and Monitoring
 
 CineMan exposes comprehensive metrics in Prometheus format for external monitoring:
@@ -357,6 +484,12 @@ curl http://localhost:5000/api/metrics
 
 # Check rate limit status
 curl http://localhost:5000/api/rate-limit
+
+# Check API health status (backend only)
+curl http://localhost:5000/api/status
+
+# Check session timeout information (backend only)
+curl http://localhost:5000/api/session/timeout
 ```
 
 **Key Features:**
@@ -364,6 +497,11 @@ curl http://localhost:5000/api/rate-limit
 - No sensitive data exposed (no API keys, user data, or credentials)
 - Real-time performance monitoring and alerting support
 - Comprehensive test coverage including load and error scenarios
+
+**Backend-Only Monitoring Endpoints:**
+- `/api/status` - External API health checks (Gemini, TMDB, OMDb)
+- `/api/session/timeout` - Session timeout information
+- Note: UI integration for these features is available but not currently enabled in the template
 
 For detailed metrics documentation, see [docs/metrics.md](docs/metrics.md).
 
@@ -460,11 +598,19 @@ This application now includes a complete movie recommendation experience:
 - **Interactive flip cards**: 3D animations and modal view for movie details
 - **Mobile-optimized navigation**: Swipe gestures for browsing movies
 - **Session management**: New Session button to clear history and start fresh
+- **API health monitoring**: Backend endpoint for checking external API status (accessible at `/api/status`)
+- **Session timeout tracking**: Backend endpoint for session timeout information (accessible at `/api/session/timeout`)
+- **Response caching**: In-memory cache with configurable TTL and LRU eviction
+- **Structured logging**: JSON logging with request tracing and PII scrubbing
+- **Automatic retry logic**: Exponential backoff for transient API failures
+- **Movie validation**: LLM hallucination detection and correction against TMDB/OMDb
 - **Rate Limiting**: Intelligent API usage tracking with daily limits (50 calls/day for free tier)
   - Persistent tracking across restarts using database storage
   - Automatic daily reset at midnight UTC
   - Graceful degradation with user-friendly error messages
   - Rate limit status API endpoint for monitoring usage
+- **Prometheus metrics**: Comprehensive monitoring for HTTP requests, API calls, cache performance, and more
+- **Secret management**: Google Cloud Secret Manager integration for secure API key storage
 - **GCP deployment support**: App Engine and Cloud Run ready
 - **Automated CI/CD workflows**: GitHub Actions for deployment
 - **Comprehensive testing suite**: Unit tests, integration tests, and interactive testing tools

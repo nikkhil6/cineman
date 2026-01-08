@@ -1,13 +1,60 @@
 # Session Timeout Timer Feature
 
+## ⚠️ Implementation Status
+
+**Backend**: ✅ Fully implemented and tested  
+**Frontend Files**: ✅ CSS and JavaScript loaded  
+**Frontend UI**: ❌ HTML elements not integrated in current template  
+**Access Method**: Backend API endpoint only
+
+The session timeout backend is fully functional and can be accessed programmatically via the `/api/session/timeout` endpoint. The frontend CSS and JavaScript files are loaded, but the HTML elements to display the timer are not currently present in the template (`templates/index.html`).
+
+### Current Usage
+
+The feature is available as a **backend-only API** for monitoring session timeouts:
+
+```bash
+# Check session timeout information
+curl http://localhost:5000/api/session/timeout
+
+# Example response:
+{
+  "status": "success",
+  "session_exists": true,
+  "timeout_seconds": 3600,
+  "remaining_seconds": 3542,
+  "last_accessed": "2026-01-07T21:25:30.123456"
+}
+```
+
+### To Enable UI Integration
+
+To enable the visual timer in the web interface:
+
+1. The JavaScript (`session-timer.js`) and CSS (`session-timer.css`) files are already loaded in `templates/index.html`
+
+2. Add HTML elements to the header section (e.g., in `.header-right` div):
+   ```html
+   <div id="session-timer-container" class="session-timer-container">
+     <span class="timer-icon">⏱️</span>
+     <span id="session-timer" class="session-timer">60:00</span>
+   </div>
+   ```
+
+3. The JavaScript will automatically initialize and update the timer once the HTML elements are present.
+
+---
+
 ## Overview
 
 The Session Timeout Timer provides users with a visual countdown showing how much time remains before their chat session expires and resets. This helps users understand when they need to complete their movie recommendations before the conversation context is lost.
 
-## User Interface
+## User Interface (Optional - Not Currently Enabled)
 
-### Timer Display
-Located in the top-right corner of the header, next to the API status indicator.
+**Note**: The frontend files (CSS and JavaScript) are loaded, but HTML elements are not present in the current template. See "Implementation Status" section above for details.
+
+### Timer Display (When Enabled)
+The timer would appear in the top-right corner of the header.
 
 **Format:** MM:SS (e.g., "60:00", "45:30", "02:15")
 
@@ -24,7 +71,7 @@ Located in the top-right corner of the header, next to the API status indicator.
   - Stronger pulsing animation
   - Urgent warning that session is about to expire
 
-### Mobile Behavior
+### Mobile Behavior (When Enabled)
 - **Desktop (> 768px)**: Full timer with icon and countdown
 - **Tablet (580-768px)**: Icon only, countdown hidden
 - **Mobile (< 580px)**: Completely hidden to avoid clutter

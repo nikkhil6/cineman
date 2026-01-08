@@ -122,6 +122,7 @@ kill -9 <PID>  # Mac/Linux
 - Verify Gemini API status
 - Consider reducing temperature in `chain.py`
 - Check if hitting API rate limits
+- Review cache hit ratio (typical: 70-90% for normal workloads)
 
 ### No Movie Results
 
@@ -132,6 +133,48 @@ kill -9 <PID>  # Mac/Linux
 - Check movie title spelling
 - Try alternative movie titles
 - Check API service status pages
+- View API status indicator in the UI (top-right corner)
+
+### Cache Performance Issues
+
+**Symptom:** Slow performance or high memory usage
+
+**Solutions:**
+- Check cache statistics via logs
+- Adjust `MOVIE_CACHE_TTL` if needed
+- Adjust `MOVIE_CACHE_MAX_SIZE` if needed
+- Monitor cache hit ratio (typical: 70-90% for normal workloads, varies by usage pattern)
+- Review `docs/CACHE_GUIDE.md` for detailed tuning tips
+
+### Logging Issues
+
+**Symptom:** Too verbose or missing log entries
+
+**Solutions:**
+- Adjust `LOG_LEVEL` environment variable (DEBUG, INFO, WARNING, ERROR)
+- Check structured logging configuration
+- Review `docs/logging.md` for details
+- Verify logs are not being filtered by deployment platform
+
+### API Health Status Not Showing
+
+**Symptom:** Status indicator not appearing or updating
+
+**Solutions:**
+- Check browser console for JavaScript errors
+- Verify `/api/status` endpoint is accessible
+- Clear browser cache and reload
+- Check if `api-status.js` is loading properly
+
+### Session Timeout Issues
+
+**Symptom:** Session expires too quickly or not at all
+
+**Solutions:**
+- Check `PERMANENT_SESSION_LIFETIME` in app.py (default: 3600s/1 hour)
+- Verify session manager configuration
+- Review `docs/SESSION_TIMER_FEATURE.md` for details
+- Check if cookies are enabled in browser
 
 ### Chat Interface Not Responding
 

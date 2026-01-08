@@ -405,19 +405,26 @@ def validate_llm_recommendation(
         confidence = 0.0
         source = "none"
     
-    # Check if corrections are needed
-    if matched_title and normalize_text(matched_title) != normalized_title:
-        corrections["title"] = (title, matched_title)
-    
-    if matched_year and normalized_year and matched_year != normalized_year:
-        corrections["year"] = (year, matched_year)
-    
-    if matched_director and director and normalize_text(matched_director) != normalize_text(director):
-        corrections["director"] = (director, matched_director)
-    
     # Determine if valid and should be kept
     is_valid = confidence >= 0.5
     should_drop = confidence < 0.5
+
+    # If sources found with confidence, set corrections
+    if is_valid and (source == "both" or (source in ["tmdb", "omdb"] and confidence >= 0.5)):
+        # Correct title if minor typo detected
+        if normalized_title != normalize_text(matched_title or ""):
+            corrections["title"] = matched_title
+            # Legacy test compatibility
+            corrections["original_title"] = title
+            
+        # Target year correction
+        if normalized_year and matched_year and normalized_year != matched_year:
+            corrections["year"] = matched_year
+
+        # Target director correction
+        # We only correct if normalized director is provided and sources have one
+        if director and matched_director and normalize_text(director) != normalize_text(matched_director):
+            corrections["director"] = matched_director
     
     # Apply stricter validation if both sources required
     if require_both_sources:
@@ -485,11 +492,19 @@ def validate_movie_list(
     # Parallel processing of all movies
     valid_movies = []
     dropped_movies = []
-    total_latency = 0
-    
     start_all = time.perf_counter()
     
-    with ThreadPoolExecutor(max_workers=min(len(movies), 5)) as executor:
+    num_movies = len(movies)
+    if num_movies == 0:
+        return [], [], {
+            "total_checked": 0,
+            "valid_count": 0,
+            "dropped_count": 0,
+            "avg_latency_ms": 0,
+            "movies_corrected": 0
+        }
+
+    with ThreadPoolExecutor(max_workers=min(num_movies, 5)) as executor:
         # Prepare tasks
         future_to_movie = {}
         for i, movie in enumerate(movies):
@@ -553,7 +568,7 @@ def validate_movie_list(
 
                 # 6. Corrections
                 if result.corrections:
-                    for field_name, (old_val, new_val) in result.corrections.items():
+                    for field_name, new_val in result.corrections.items():
                         enriched_movie[field_name] = new_val
 
                 if result.should_drop:

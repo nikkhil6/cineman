@@ -192,7 +192,8 @@ class TestValidationWithMocks:
         assert result.confidence >= 0.7
         # Should have correction
         assert "title" in result.corrections
-        assert result.corrections["title"][1] == "The Shawshank Redemption"
+        assert result.corrections["title"] == "The Shawshank Redemption"
+        assert result.corrections["original_title"] == "The Shawshank Redemtion"
     
     @patch('cineman.validation.get_movie_poster_core')
     @patch('cineman.validation.fetch_omdb_data_core')
@@ -251,7 +252,7 @@ class TestValidationWithMocks:
         
         assert result.is_valid is True  # Still valid movie
         assert "year" in result.corrections  # But year corrected
-        assert result.corrections["year"][1] == "1999"
+        assert result.corrections["year"] == "1999"
     
     @patch('cineman.validation.get_movie_poster_core')
     @patch('cineman.validation.fetch_omdb_data_core')

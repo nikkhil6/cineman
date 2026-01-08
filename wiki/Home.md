@@ -27,6 +27,7 @@ Cineman is an intelligent movie recommendation agent that combines:
 - 💾 Session-based preferences and watchlist
 - ⏱️ Session timeout timer with visual countdown
 - 📊 Real-time API health status monitoring
+- 💨 9-Way Parallel Enrichment for near-instant responses
 - 💨 Response caching for improved performance
 - 📝 Structured JSON logging with request tracing
 - 📈 Prometheus metrics for monitoring

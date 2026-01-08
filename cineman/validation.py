@@ -20,7 +20,9 @@ from typing import Dict, Any, Optional, List, Tuple
 from dataclasses import dataclass, field
 from cineman.tools.tmdb import get_movie_poster_core
 from cineman.tools.omdb import fetch_omdb_data_core
+from cineman.tools.watchmode import fetch_watchmode_data_core
 from cineman.metrics import track_validation, movie_validation_duration_seconds
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -57,6 +59,7 @@ class ValidationResult:
     latency_ms: float = 0.0
     tmdb_data: Optional[Dict[str, Any]] = None
     omdb_data: Optional[Dict[str, Any]] = None
+    watchmode_data: Optional[Dict[str, Any]] = None
 
 
 def normalize_text(text: str) -> str:
@@ -300,24 +303,51 @@ def validate_llm_recommendation(
     # Normalize inputs
     normalized_title = normalize_text(title)
     normalized_year = normalize_year(year) if year else None
-    
-    # Validate against both sources
-    tmdb_result = validate_against_tmdb(title, normalized_year)
-    omdb_result = validate_against_omdb(title, normalized_year)
-    
-    # Calculate validation metrics
-    tmdb_found = tmdb_result["found"]
-    omdb_found = omdb_result["found"]
-    
-    # Calculate title similarities
+    # 2. Query Authoritative Sources (Parallelized)
+    tmdb_result = {}
+    omdb_result = {}
+    watchmode_result = {}
+    tmdb_latency = 0
+    omdb_latency = 0
+    watchmode_latency = 0
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        # Submit all 3 API calls concurrently
+        tmdb_future = executor.submit(validate_against_tmdb, title, year=year)
+        omdb_future = executor.submit(validate_against_omdb, title, year=year)
+        # For watchmode, title-based search is okay, but tmdb_id helps if already known.
+        # Since we're parallelizing, we use title-based search primarily or wait for TMDB.
+        # But wait, fetch_watchmode_data_core can handle searching by title if tmdb_id is None.
+        watchmode_future = executor.submit(fetch_watchmode_data_core, title)
+
+        # Start timing
+        pt_start = time.perf_counter()
+        
+        # Wait for results
+        tmdb_data = tmdb_future.result()
+        tmdb_latency = (time.perf_counter() - pt_start) * 1000
+        tmdb_result = tmdb_data.get("raw", {})
+        
+        omdb_data = omdb_future.result()
+        omdb_latency = (time.perf_counter() - pt_start) * 1000
+        omdb_result = omdb_data.get("raw", {})
+        
+        watchmode_result = watchmode_future.result()
+        watchmode_latency = (time.perf_counter() - pt_start) * 1000
+
+    tmdb_found = tmdb_data.get("found", False)
+    omdb_found = omdb_data.get("found", False)
+
+    # 3. Compare and Calculate Confidence
+    # (Existing comparison logic below) similarities
     tmdb_title_sim = 0.0
     omdb_title_sim = 0.0
     
-    if tmdb_found and tmdb_result["title"]:
-        tmdb_title_sim = calculate_title_similarity(title, tmdb_result["title"])
+    if tmdb_found and tmdb_data["title"]:
+        tmdb_title_sim = calculate_title_similarity(title, tmdb_data["title"])
     
-    if omdb_found and omdb_result["title"]:
-        omdb_title_sim = calculate_title_similarity(title, omdb_result["title"])
+    if omdb_found and omdb_data["title"]:
+        omdb_title_sim = calculate_title_similarity(title, omdb_data["title"])
     
     # Determine best match and confidence
     confidence = 0.0
@@ -334,20 +364,20 @@ def validate_llm_recommendation(
             confidence = max(tmdb_title_sim, omdb_title_sim)
             source = "both"
             # Prefer OMDb for title/year as it's more authoritative
-            matched_title = omdb_result.get("title")
-            matched_year = normalize_year(omdb_result.get("year"))
-            matched_director = omdb_result.get("director")
+            matched_title = omdb_data.get("title")
+            matched_year = normalize_year(omdb_data.get("year"))
+            matched_director = omdb_data.get("director")
         elif tmdb_title_sim >= 0.7:
             confidence = tmdb_title_sim * 0.9  # Slight penalty for only one strong match
             source = "tmdb"
-            matched_title = tmdb_result.get("title")
-            matched_year = tmdb_result.get("year")
+            matched_title = tmdb_data.get("title")
+            matched_year = tmdb_data.get("year")
         elif omdb_title_sim >= 0.7:
             confidence = omdb_title_sim * 0.9
             source = "omdb"
-            matched_title = omdb_result.get("title")
-            matched_year = normalize_year(omdb_result.get("year"))
-            matched_director = omdb_result.get("director")
+            matched_title = omdb_data.get("title")
+            matched_year = normalize_year(omdb_data.get("year"))
+            matched_director = omdb_data.get("director")
         else:
             # Both found but poor matches - likely wrong movie OR fake movie
             # Setting to 0.0 prevents False Positives for completely fake movies 
@@ -359,16 +389,16 @@ def validate_llm_recommendation(
     elif tmdb_found and tmdb_title_sim >= 0.7:
         confidence = tmdb_title_sim * 0.8  # Penalty for single source
         source = "tmdb"
-        matched_title = tmdb_result.get("title")
-        matched_year = tmdb_result.get("year")
+        matched_title = tmdb_data.get("title")
+        matched_year = tmdb_data.get("year")
     
     # Only OMDb found
     elif omdb_found and omdb_title_sim >= 0.7:
         confidence = omdb_title_sim * 0.8  # Penalty for single source
         source = "omdb"
-        matched_title = omdb_result.get("title")
-        matched_year = normalize_year(omdb_result.get("year"))
-        matched_director = omdb_result.get("director")
+        matched_title = omdb_data.get("title")
+        matched_year = normalize_year(omdb_data.get("year"))
+        matched_director = omdb_data.get("director")
     
     # Neither found or poor matches
     else:
@@ -408,7 +438,7 @@ def validate_llm_recommendation(
     # Log results
     logger.info(
         f"{log_prefix} Result: valid={is_valid}, confidence={confidence:.2f}, "
-        f"source={source}, latency={latency_ms:.1f}ms"
+        f"source={source}, tmdb_sim={tmdb_title_sim:.2f}, omdb_sim={omdb_title_sim:.2f}, latency={latency_ms:.1f}ms"
     )
     
     if corrections:
@@ -428,8 +458,9 @@ def validate_llm_recommendation(
         error_message=error_message,
         should_drop=should_drop,
         latency_ms=latency_ms,
-        tmdb_data=tmdb_result,
-        omdb_data=omdb_result
+        tmdb_data={**tmdb_data, "latency_ms": tmdb_latency} if tmdb_data else None,
+        omdb_data={**omdb_data, "latency_ms": omdb_latency} if omdb_data else None,
+        watchmode_data={**watchmode_result, "latency_ms": watchmode_latency} if watchmode_result else None
     )
 
 
@@ -451,102 +482,99 @@ def validate_movie_list(
     dropped_movies = []
     total_latency = 0.0
     
-    for i, movie in enumerate(movies):
-        recommendation_id = f"{session_id}_m{i+1}" if session_id else f"m{i+1}"
-        
-        result = validate_llm_recommendation(
-            title=movie.get("title", ""),
-            year=movie.get("year"),
-            director=movie.get("director"),
-            recommendation_id=recommendation_id
-        )
-        
-        total_latency += result.latency_ms
-        
-        # Create enriched movie dict with validation results
-        enriched_movie = {**movie}
-        enriched_movie["validation"] = {
-            "is_valid": result.is_valid,
-            "confidence": result.confidence,
-            "source": result.source,
-            "corrections": result.corrections
-        }
-        
-        # --- ARCHITECTURE CLEANUP: Add metadata for frontend direct-render ---
-        # This eliminates the need for the frontend to call /api/movie
-        
-        tmdb_raw = result.tmdb_data.get("raw", {}) if result.tmdb_data else {}
-        omdb_raw = result.omdb_data.get("raw", {}) if result.omdb_data else {}
-
-        # 1. Poster URL
-        enriched_movie["poster_url"] = tmdb_raw.get("poster_url") or omdb_raw.get("Poster_URL") or omdb_raw.get("Poster")
-        
-        # 2. Ratings (Normalize for consistent frontend display)
-        from cineman.schemas import MovieRatings
-        ratings_obj = MovieRatings()
-        
-        # OMDb Ratings
-        ratings_obj.imdb_rating = omdb_raw.get("imdbRating") or omdb_raw.get("IMDb_Rating")
-        ratings_obj.rt_tomatometer = omdb_raw.get("Rotten_Tomatoes")
-        # If Ratings list exists, check for RT
-        if not ratings_obj.rt_tomatometer and isinstance(omdb_raw.get("Ratings"), list):
-            for r in omdb_raw["Ratings"]:
-                if "Rotten Tomatoes" in r.get("Source", ""):
-                     ratings_obj.rt_tomatometer = r.get("Value")
-        
-        # TMDB Ratings
-        if tmdb_raw.get("vote_average"):
-            try:
-                ratings_obj.tmdb_rating = float(tmdb_raw["vote_average"])
-            except (ValueError, TypeError):
-                logger.warning("invalid_tmdb_rating", value=tmdb_raw.get("vote_average"))
-            
-        enriched_movie["ratings"] = ratings_obj.model_dump(exclude_none=True)
-        
-        # 3. Director (if matched)
-        enriched_movie["director"] = result.matched_director
-        
-        # 4. Canonical Metadata
-        if result.matched_title:
-            enriched_movie["title"] = result.matched_title
-        if result.matched_year:
-            enriched_movie["year"] = result.matched_year
-
-        # --- End Enrichment ---
-
-        # Apply corrections if needed
-        if result.corrections:
-            for field_name, (old_val, new_val) in result.corrections.items():
-                enriched_movie[field_name] = new_val
-                if "original_" + field_name not in enriched_movie:
-                    enriched_movie["original_" + field_name] = old_val
-        
-        if result.should_drop:
-            dropped_movies.append({
-                **enriched_movie,
-                "drop_reason": result.error_message
-            })
-            # Track dropped validation
-            track_validation('dropped')
-        else:
-            valid_movies.append(enriched_movie)
-            # Track valid or corrected validation
-            if result.corrections:
-                track_validation('corrected')
-            else:
-                track_validation('valid')
-        
-        # Track validation duration
-        movie_validation_duration_seconds.observe(result.latency_ms / 1000.0)
+    # Parallel processing of all movies
+    valid_movies = []
+    dropped_movies = []
+    total_latency = 0
     
-    # Build summary
+    start_all = time.perf_counter()
+    
+    with ThreadPoolExecutor(max_workers=min(len(movies), 5)) as executor:
+        # Prepare tasks
+        future_to_movie = {}
+        for i, movie in enumerate(movies):
+            mid = f"{session_id or 'ext'}_m{i+1}"
+            future = executor.submit(
+                validate_llm_recommendation,
+                title=movie.get("title", ""),
+                year=movie.get("year"),
+                director=movie.get("director"),
+                recommendation_id=mid
+            )
+            future_to_movie[future] = movie
+
+        # Collect results as they complete
+        for future in as_completed(future_to_movie):
+            movie = future_to_movie[future]
+            try:
+                result = future.result()
+                total_latency += result.latency_ms
+                
+                # --- Enrichment (Combined logic) ---
+                enriched_movie = movie.copy()
+                
+                tmdb_raw = result.tmdb_data.get("raw", {}) if result.tmdb_data and "raw" in result.tmdb_data else (result.tmdb_data or {})
+                omdb_raw = result.omdb_data.get("raw", {}) if result.omdb_data and "raw" in result.omdb_data else (result.omdb_data or {})
+
+                # 1. Poster URL
+                # Ensure we handle the nested 'raw' or flat dict correctly
+                enriched_movie["poster_url"] = tmdb_raw.get("poster_url") or omdb_raw.get("Poster_URL") or omdb_raw.get("Poster")
+                
+                # 2. Ratings
+                from cineman.schemas import MovieRatings
+                ratings_obj = MovieRatings()
+                ratings_obj.imdb_rating = omdb_raw.get("imdbRating") or omdb_raw.get("IMDb_Rating")
+                ratings_obj.rt_tomatometer = omdb_raw.get("Rotten_Tomatoes")
+                if not ratings_obj.rt_tomatometer and isinstance(omdb_raw.get("Ratings"), list):
+                    for r in omdb_raw["Ratings"]:
+                        if "Rotten Tomatoes" in r.get("Source", ""):
+                             ratings_obj.rt_tomatometer = r.get("Value")
+                
+                if tmdb_raw.get("vote_average"):
+                    try:
+                        ratings_obj.tmdb_rating = float(tmdb_raw["vote_average"])
+                    except: pass
+                enriched_movie["ratings"] = ratings_obj.model_dump(exclude_none=True)
+                
+                # 3. Director & Identifiers
+                enriched_movie["director"] = result.matched_director
+                enriched_movie["identifiers"] = {
+                    "tmdb_id": tmdb_raw.get("tmdb_id") or tmdb_raw.get("id"),
+                    "imdb_id": omdb_raw.get("imdbID")
+                }
+                
+                # 4. Canonical Metadata
+                if result.matched_title: enriched_movie["title"] = result.matched_title
+                if result.matched_year: enriched_movie["year"] = result.matched_year
+
+                # 5. Streaming (Watchmode)
+                if result.watchmode_data:
+                    enriched_movie["streaming"] = result.watchmode_data.get("providers", [])
+
+                # 6. Corrections
+                if result.corrections:
+                    for field_name, (old_val, new_val) in result.corrections.items():
+                        enriched_movie[field_name] = new_val
+
+                if result.should_drop:
+                    dropped_movies.append({**enriched_movie, "drop_reason": result.error_message})
+                    track_validation("dropped")
+                else:
+                    valid_movies.append(enriched_movie)
+                    track_validation("corrected" if result.corrections else "valid")
+                
+                movie_validation_duration_seconds.observe(result.latency_ms / 1000.0)
+            except Exception as e:
+                logger.error(f"movie_validation_task_failed: {str(e)}, movie={movie.get('title')}")
+
+    overall_duration = (time.perf_counter() - start_all) * 1000
     avg_latency = total_latency / len(movies) if movies else 0
     summary = {
         "total_checked": len(movies),
         "valid_count": len(valid_movies),
         "dropped_count": len(dropped_movies),
         "avg_latency_ms": avg_latency,
-        "total_latency_ms": total_latency
+        "total_latency_ms": overall_duration  # Changed to represent parallel wall-time
     }
     
     logger.info(

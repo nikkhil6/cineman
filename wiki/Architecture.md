@@ -4,38 +4,50 @@ Technical overview of Cineman's system design and components.
 
 ## System Overview
 
-Cineman uses a modular architecture with clear separation of concerns:
+Cineman uses a high-performance, parallelized architecture designed for minimal latency and maximum data richness.
 
-```
-┌─────────────────┐
-│   Web Browser   │
-└────────┬────────┘
-         │ HTTP
-         ▼
-┌─────────────────┐
-│  Flask Server   │
-│   (app.py)      │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  LLM Service    │
-│ (llm_service.py)│
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  LangChain      │
-│  Chain          │
-│  (chain.py)     │
-└────────┬────────┘
-         │
-         ├─────────────────┐
-         ▼                 ▼
-┌──────────────┐   ┌────────────┐
-│ Gemini AI    │   │ Movie APIs │
-│              │   │ TMDB/OMDb  │
-└──────────────┘   └────────────┘
+```mermaid
+graph TD
+    subgraph Frontend [Client Browser]
+        UI["User Interface (Chat UI)"]
+        JS["JavaScript Controller"]
+    end
+
+    subgraph Backend [Flask Application]
+        App["app.py (/api/chat)"]
+        LLMS["LLMService"]
+        VAL["ValidationService"]
+        
+        subgraph ParallelValidation [Parallel Validation & Enrichment]
+            Task1["Movie 1 Validation"]
+            Task2["Movie 2 Validation"]
+            Task3["Movie 3 Validation"]
+        end
+    end
+
+    subgraph ExternalAPIs [External API Layer]
+        Gemini["Gemini 2.5 Flash"]
+        TMDB["TMDB API"]
+        OMDB["OMDb API"]
+        WM["Watchmode API"]
+    end
+
+    UI -->|1. User Prompt| JS
+    JS -->|2. POST /chat| App
+    App -->|3. Orchestrate| LLMS
+    LLMS -->|4. Generate| Gemini
+    Gemini -->|5. JSON recommendations| LLMS
+    LLMS -->|6. Parallelize| VAL
+    VAL -->|7. ThreadPool| Task1 & Task2 & Task3
+    
+    Task1 -->|8. Parallel Fetch| TMDB & OMDB & WM
+    Task2 -->|8. Parallel Fetch| TMDB & OMDB & WM
+    Task3 -->|8. Parallel Fetch| TMDB & OMDB & WM
+    
+    VAL -->|9. Consolidate| LLMS
+    LLMS -->|10. Final Enriched Response| App
+    App -->|11. Response JSON| JS
+    JS -->|12. Instant Render| UI
 ```
 
 ## Core Components
@@ -167,13 +179,13 @@ Cineman uses a modular architecture with clear separation of concerns:
 
 ## Data Flow
 
-1. **User Input** → Browser sends message to `/chat` endpoint
-2. **Flask Handler** → Receives JSON, loads session, calls `llm_service.process_chat_request`
-3. **LLM Service** → Prepares context, calls LangChain chain
-4. **Chain Invocation** → Invokes Gemini AI with structured output enabled
-5. **Validation & Enrichment** → `LLM Service` validates recommended movies against TMDB/OMDb AND enriches them with posters, director, and ratings.
-6. **Response** → Returns enriched JSON containing text and fully-populated movie list.
-7. **Display** → Browser renders conversational text, detailed summaries, and finally interactive flip cards.
+1. **User Input** → Browser sends message to `/chat` endpoint.
+2. **Flask Handler** → Receives JSON, loads session, and calls `llm_service.process_chat_request`.
+3. **LLM Service** → Prepares context and invokes the LangChain chain.
+4. **Chain Invocation** → Gemini AI generates structured movie recommendations based on user intent.
+5. **9-Way Parallel Enrichment** → `LLM Service` uses a `ThreadPoolExecutor` to concurrently validate and enrich all recommended movies. For each movie, TMDB (posters), OMDb (ratings/meta), and Watchmode (streaming) are queried simultaneously.
+6. **Response** → Returns a single, complete JSON object containing conversational text and fully-enriched movie metadata.
+7. **Display** → Browser renders the response instantly, with no secondary API calls required for movie details or streaming links.
 
 ## Configuration Management
 

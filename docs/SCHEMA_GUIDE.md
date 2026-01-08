@@ -297,7 +297,7 @@ python -m pytest tests/test_schemas.py -v
 ## Future Enhancements
 
 Planned schema additions:
-- [ ] Streaming availability data
+- [x] Streaming availability data (Integrated via Watchmode)
 - [ ] User reviews and ratings
 - [ ] Similar movies/recommendations
 - [ ] Trailer URLs

@@ -846,31 +846,14 @@ async function handleAssistantReplyWithManifest(data) {
   chatbox.appendChild(posterBubbleWrap);
   chatbox.scrollTop = chatbox.scrollHeight;
 
-  // Fetch enriched data for each movie (including streaming info) and build cards
+  // Build and display poster cards directly from manifest metadata
+  // Optimization: Data is now already enriched by the backend in parallel!
   for (const m of manifest.movies) {
     if (!m || !m.title) continue;
 
-    try {
-      // Fetch full enriched data from backend including streaming providers
-      const enrichedData = await fetchMovieCombined(m.title);
-
-      // Merge LLM fields (quick_pitch, why_matches, etc) with enriched API data
-      const fullMovie = {
-        ...enrichedData,
-        ...m,
-        // Ensure we use enriched data for critical fields
-        poster_url: enrichedData.poster || m.poster_url,
-        streaming: enrichedData.streaming || []
-      };
-
-      const card = buildFlipCard(fullMovie);
-      posterRow.appendChild(card);
-    } catch (err) {
-      console.error('Failed to fetch enriched data for', m.title, err);
-      // Fallback: build card with LLM data only
-      const card = buildFlipCard(m);
-      posterRow.appendChild(card);
-    }
+    // The backend now provides poster_url, ratings, and streaming data directly
+    const card = buildFlipCard(m);
+    posterRow.appendChild(card);
   }
 
   chatbox.scrollTop = chatbox.scrollHeight;

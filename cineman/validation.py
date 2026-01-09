@@ -220,7 +220,9 @@ def validate_against_tmdb(title: str, year: Optional[str] = None) -> Dict[str, A
         Dict with validation results from TMDB
     """
     # Pass year to TMDB API for better filtering
+    start = time.perf_counter()
     result = get_movie_poster_core(title, year=year)
+    latency_ms = (time.perf_counter() - start) * 1000
     
     return {
         "found": result.get("status") == "success",
@@ -229,6 +231,7 @@ def validate_against_tmdb(title: str, year: Optional[str] = None) -> Dict[str, A
         "tmdb_id": result.get("tmdb_id"),
         "vote_average": result.get("vote_average"),
         "vote_count": result.get("vote_count"),
+        "latency_ms": latency_ms,
         "raw": result
     }
 
@@ -249,7 +252,9 @@ def validate_against_omdb(title: str, year: Optional[str] = None) -> Dict[str, A
         Dict with validation results from OMDb
     """
     # Pass year to OMDb API for better filtering
+    start = time.perf_counter()
     result = fetch_omdb_data_core(title, year=year)
+    latency_ms = (time.perf_counter() - start) * 1000
     
     return {
         "found": result.get("status") == "success",
@@ -257,6 +262,7 @@ def validate_against_omdb(title: str, year: Optional[str] = None) -> Dict[str, A
         "year": result.get("Year"),
         "director": result.get("Director"),
         "imdb_rating": result.get("IMDb_Rating"),
+        "latency_ms": latency_ms,
         "raw": result
     }
 
@@ -315,25 +321,26 @@ def validate_llm_recommendation(
         # Submit all 3 API calls concurrently
         tmdb_future = executor.submit(validate_against_tmdb, title, year=year)
         omdb_future = executor.submit(validate_against_omdb, title, year=year)
-        # For watchmode, title-based search is okay, but tmdb_id helps if already known.
-        # Since we're parallelizing, we use title-based search primarily or wait for TMDB.
-        # But wait, fetch_watchmode_data_core can handle searching by title if tmdb_id is None.
-        watchmode_future = executor.submit(fetch_watchmode_data_core, title)
-
-        # Start timing
-        pt_start = time.perf_counter()
         
+        # Measure watchmode latency inside the task to avoid blocking in the main thread
+        def timed_watchmode(t):
+            wm_pt_start = time.perf_counter()
+            res = fetch_watchmode_data_core(t)
+            return res, (time.perf_counter() - wm_pt_start) * 1000
+            
+        watchmode_future = executor.submit(timed_watchmode, title)
+
         # Wait for results
         tmdb_data = tmdb_future.result()
-        tmdb_latency = (time.perf_counter() - pt_start) * 1000
+        tmdb_latency = tmdb_data.get("latency_ms", 0)
         tmdb_result = tmdb_data.get("raw", {})
         
         omdb_data = omdb_future.result()
-        omdb_latency = (time.perf_counter() - pt_start) * 1000
+        omdb_latency = omdb_data.get("latency_ms", 0)
         omdb_result = omdb_data.get("raw", {})
         
-        watchmode_result = watchmode_future.result()
-        watchmode_latency = (time.perf_counter() - pt_start) * 1000
+        watchmode_res, watchmode_latency = watchmode_future.result()
+        watchmode_result = watchmode_res
 
     tmdb_found = tmdb_data.get("found", False)
     omdb_found = omdb_data.get("found", False)
@@ -413,18 +420,18 @@ def validate_llm_recommendation(
     if is_valid and (source == "both" or (source in ["tmdb", "omdb"] and confidence >= 0.5)):
         # Correct title if minor typo detected
         if normalized_title != normalize_text(matched_title or ""):
-            corrections["title"] = matched_title
+            corrections["title"] = (title, matched_title)
             # Legacy test compatibility
-            corrections["original_title"] = title
+            corrections["original_title"] = (title, title) # old value is title, but tests expect original_title field
             
         # Target year correction
         if normalized_year and matched_year and normalized_year != matched_year:
-            corrections["year"] = matched_year
+            corrections["year"] = (year, matched_year)
 
         # Target director correction
         # We only correct if normalized director is provided and sources have one
         if director and matched_director and normalize_text(director) != normalize_text(matched_director):
-            corrections["director"] = matched_director
+            corrections["director"] = (director, matched_director)
     
     # Apply stricter validation if both sources required
     if require_both_sources:
@@ -568,8 +575,17 @@ def validate_movie_list(
 
                 # 6. Corrections
                 if result.corrections:
-                    for field_name, new_val in result.corrections.items():
-                        enriched_movie[field_name] = new_val
+                    for field_name, corr_vals in result.corrections.items():
+                        if isinstance(corr_vals, tuple) and len(corr_vals) == 2:
+                            # Set the field to the NEW value
+                            if field_name == "original_title":
+                                # Legacy support: 'original_title' is not a field to overwrite 'title'
+                                enriched_movie["original_title"] = corr_vals[0]
+                            else:
+                                enriched_movie[field_name] = corr_vals[1]
+                        else:
+                            # Fallback
+                            enriched_movie[field_name] = corr_vals
 
                 if result.should_drop:
                     dropped_movies.append({**enriched_movie, "drop_reason": result.error_message})

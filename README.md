@@ -88,11 +88,19 @@ graph TD
     LLMS -->|4. Generate| Gemini
     Gemini -->|5. JSON recommendations| LLMS
     LLMS -->|6. Parallelize| VAL
-    VAL -->|7. ThreadPool| Task1 & Task2 & Task3
+    VAL -->|7. ThreadPool| Task1
+    VAL -->|7. ThreadPool| Task2
+    VAL -->|7. ThreadPool| Task3
     
-    Task1 -->|8. Parallel Fetch| TMDB & OMDB & WM
-    Task2 -->|8. Parallel Fetch| TMDB & OMDB & WM
-    Task3 -->|8. Parallel Fetch| TMDB & OMDB & WM
+    Task1 -->|8. Parallel Fetch| TMDB
+    Task1 -->|8. Parallel Fetch| OMDB
+    Task1 -->|8. Parallel Fetch| WM
+    Task2 -->|8. Parallel Fetch| TMDB
+    Task2 -->|8. Parallel Fetch| OMDB
+    Task2 -->|8. Parallel Fetch| WM
+    Task3 -->|8. Parallel Fetch| TMDB
+    Task3 -->|8. Parallel Fetch| OMDB
+    Task3 -->|8. Parallel Fetch| WM
     
     VAL -->|9. Consolidate| LLMS
     LLMS -->|10. Final Enriched Response| App

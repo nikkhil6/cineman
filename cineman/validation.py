@@ -555,7 +555,8 @@ def validate_movie_list(
                 if tmdb_raw.get("vote_average"):
                     try:
                         ratings_obj.tmdb_rating = float(tmdb_raw["vote_average"])
-                    except: pass
+                    except (TypeError, ValueError) as parse_err:
+                        logger.debug(f"Failed to parse TMDB vote_average '{tmdb_raw.get('vote_average')}' as float: {parse_err}")
                 enriched_movie["ratings"] = ratings_obj.model_dump(exclude_none=True)
                 
                 # 3. Director & Identifiers

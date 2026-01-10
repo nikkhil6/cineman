@@ -1,3 +1,4 @@
+import time
 import structlog
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -33,15 +34,21 @@ class LLMService:
         if not self.chain:
              raise RuntimeError("AI service is not available.")
 
+        # 0. Start Timing
+        total_start = time.perf_counter()
+
         # 1. Build Context
+        context_start = time.perf_counter()
         # Get previously recommended movies for this session to avoid duplicates
         recommended_movies = self._get_session_recommendations(session_id)
         session_context = build_session_context(chat_history, recommended_movies)
         
         # Format history for LangChain
         langchain_history = format_chat_history(chat_history)
+        context_duration = time.perf_counter() - context_start
 
         # 2. Invoke Chain
+        invoke_start = time.perf_counter()
         logger.info("llm_invoke_start", session_id=session_id)
         try:
             # Use the context by appending to user input (invisible to user in chat UI, but visible to LLM)
@@ -64,21 +71,44 @@ class LLMService:
             logger.error("llm_invoke_failed", error=str(e), session_id=session_id)
             raise e
 
-        logger.info("llm_invoke_success", session_id=session_id)
+        invoke_duration = time.perf_counter() - invoke_start
+        logger.info("llm_invoke_success", session_id=session_id, duration_s=f"{invoke_duration:.3f}")
 
         # 3. Validate
+        validation_start = time.perf_counter()
         # Pass the raw dicts to validation logic
         # Note: validate_movie_list expects dicts with 'title', 'year', 'director'
         valid_movies, dropped_movies, summary = validate_movie_list(raw_movies, session_id)
+        validation_duration = time.perf_counter() - validation_start
         
         # Log dropped
         if dropped_movies:
              logger.info("movies_dropped_validation", count=len(dropped_movies), movies=[m.get('title') for m in dropped_movies])
 
+        total_duration = time.perf_counter() - total_start
+        
+        # Comprehensive performance log
+        logger.info(
+            "chat_request_performance",
+            total_duration=f"{total_duration:.3f}s",
+            context_duration=f"{context_duration:.3f}s",
+            llm_duration=f"{invoke_duration:.3f}s",
+            validation_duration=f"{validation_duration:.3f}s",
+            session_id=session_id
+        )
+
         return {
             "response_text": response_text,
             "movies": valid_movies,
-            "validation": summary
+            "validation": {
+                **summary,
+                "performance": {
+                    "total_s": total_duration,
+                    "context_s": context_duration,
+                    "llm_s": invoke_duration,
+                    "validation_s": validation_duration
+                }
+            }
         }
 
     def _get_session_recommendations(self, session_id: str) -> List[str]:

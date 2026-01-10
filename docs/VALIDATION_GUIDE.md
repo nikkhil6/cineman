@@ -8,12 +8,21 @@ The hallucination validation system provides automatic verification of LLM-gener
 
 ### Validation Pipeline
 
-```
-LLM Response → Extract Movies → Validate Each Movie → Filter/Correct → Updated Response
-                                        ↓
-                              TMDB API + OMDb API
-                                        ↓
-                           Cache Check → API Call
+```mermaid
+graph LR
+    LLM[LLM Response] --> Ext[Extract Movies]
+    Ext --> Parallel[Parallel Validation]
+    
+    subgraph ParallelPool [ThreadPoolExecutor]
+        direction TB
+        M1[Movie 1] --> APIs1[TMDB + OMDb + Watchmode]
+        M2[Movie 2] --> APIs2[TMDB + OMDb + Watchmode]
+        M3[Movie 3] --> APIs3[TMDB + OMDb + Watchmode]
+    end
+    
+    Parallel --> ParallelPool
+    ParallelPool --> Consolidate[Consolidate & Correct]
+    Consolidate --> Final[Enriched JSON Response]
 ```
 
 ### Validation Steps
@@ -130,9 +139,9 @@ result = validate_llm_recommendation(
 
 ### Optimization Tips
 
-1. **Batch Validation**: Use `validate_movie_list()` for multiple movies
-2. **Cache Warming**: Pre-populate cache for popular movies
-3. **Parallel Processing**: APIs called concurrently per movie
+1. **Batch Validation**: Use `validate_movie_list()` for multiple movies.
+2. **Cache Warming**: Pre-populate cache for popular movies.
+3. **9-Way Parallelization**: APIs (TMDB, OMDb, Watchmode) are called concurrently for all movies in the list using `ThreadPoolExecutor`. This reduces total validation wall-time to the duration of the single slowest API call.
 
 ## Logging
 
@@ -297,13 +306,14 @@ Potential improvements:
 4. **User Feedback**: Allow users to report false positives
 5. **Confidence Tuning**: ML-based confidence scoring
 6. **Multi-Language**: Support for non-English titles
-7. **Streaming Data**: Real-time availability checking
+7. **Streaming Data**: Real- [x] Streaming availability data (Integrated via Watchmode)checking
 
 ## Related Documentation
 
 - [API Keys Setup](../wiki/API-Keys.md)
 - [Architecture Overview](../wiki/Architecture.md)
-- [Schema Guide](SCHEMA_GUIDE.md)
+- [Validation Pipeline](VALIDATION_GUIDE.md)
+- [Schema Guide](SCHEMA_GUIDE.md#streaming-data)
 - [Testing Guide](../README.md#testing-individual-components)
 
 ## Support

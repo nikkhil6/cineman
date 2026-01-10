@@ -337,7 +337,6 @@ def validate_llm_recommendation(
         
         omdb_data = omdb_future.result()
         omdb_latency = omdb_data.get("latency_ms", 0)
-        omdb_result = omdb_data.get("raw", {})
         
         watchmode_res, watchmode_latency = watchmode_future.result()
         watchmode_result = watchmode_res
